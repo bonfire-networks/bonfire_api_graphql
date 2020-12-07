@@ -17,6 +17,7 @@ defmodule Bonfire.GraphQL.FetchPages do
   ]
 
   @repo Application.get_env(:bonfire_api_graphql, :repo_module)
+
   alias Bonfire.GraphQL.{Pages, FetchPages}
 
   @doc false

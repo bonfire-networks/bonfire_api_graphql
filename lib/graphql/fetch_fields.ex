@@ -10,6 +10,7 @@ defmodule Bonfire.GraphQL.FetchFields do
   ]
 
   @repo Application.get_env(:bonfire_api_graphql, :repo_module)
+
   alias Bonfire.GraphQL.{Fields, FetchFields}
 
   @type t :: %FetchFields{
