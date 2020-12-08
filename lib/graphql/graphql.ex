@@ -5,14 +5,6 @@ defmodule Bonfire.GraphQL do
   alias Bonfire.Common.Enums
   import Bonfire.Repo.Query, only: [match_admin: 0]
 
-  alias Bonfire.Common.Errors.{
-    NotFoundError,
-    InvalidCredentialError,
-    NotLoggedInError,
-    NotPermittedError
-  }
-
-
   def reverse_path(info) do
     Enum.reverse(Resolution.path(info))
   end
@@ -146,13 +138,13 @@ defmodule Bonfire.GraphQL do
 
   def empty_page(), do: Page.new([], 0, & &1, %{})
 
-  def invalid_credential(), do: {:error, InvalidCredentialError.new()}
+  def invalid_credential(), do: {:error, :invalid_credentials}
 
-  def not_logged_in(), do: {:error, NotLoggedInError.new()}
+  def not_logged_in(), do: {:error, :needs_login}
 
-  def not_permitted(verb \\ "do"), do: {:error, NotPermittedError.new(verb)}
+  def not_permitted(verb \\ "do"), do: {:error, :unauthorized, verb}
 
-  def not_found(), do: {:error, NotFoundError.new()}
+  def not_found(), do: {:error, :not_found}
 
   def cast_ulid(str) when is_binary(str) do
     with :error <- Ecto.ULID.cast(str), do: not_found()
