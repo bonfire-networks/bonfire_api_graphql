@@ -50,7 +50,7 @@ defmodule Bonfire.GraphQL.FetchPage do
     data_q = apply(queries, :filter, [base_q, data_filters])
     count_q = apply(queries, :filter, [base_q, count_filters])
     # IO.inspect(FetchPage_run_data: data_q, count_with: count_q)
-    IO.inspect(repo: @repo)
+    # IO.inspect(repo: @repo)
     {:ok, [data, count]} = @repo.transact_many([{:all, data_q}, {count_with, count_q}])
 
     # IO.inspect(FetchPage_run_data: data, count: count)
