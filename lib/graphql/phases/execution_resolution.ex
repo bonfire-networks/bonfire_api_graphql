@@ -53,7 +53,7 @@ defmodule Bonfire.GraphQL.Phase.ExecutionResolution do
     IO.puts(Exception.format_exit(exception))
     IO.puts(Exception.format_stacktrace(stacktrace))
 
-    Sentry.capture_exception(
+    if Code.ensure_loaded?(Sentry), do: Sentry.capture_exception(
       exception,
       stacktrace: stacktrace
     )
