@@ -21,4 +21,14 @@ defmodule Bonfire.GraphQL.SchemaUtils do
       end
     end)
   end
+
+
+  # defmacro import_many_types(types) do # TODO / doesn't work with Absinthe
+  #   quote do
+  #     Enum.map(unquote(types), fn(schema_module) ->
+  #       import_types(schema_module)
+  #     end)
+  #   end
+  # end
+
 end
