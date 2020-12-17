@@ -1,4 +1,5 @@
 jason = "~> 1.0"
+redirect = "~> 0.3.0"
 # deps specific to Bonfire:API:GraphQL extensions
 absinthe = "~> 1.5.3"
 geo = "~> 3.3"
