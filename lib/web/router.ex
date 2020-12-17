@@ -28,7 +28,7 @@ defmodule Bonfire.GraphQL.Router do
       scope "/api" do
 
         # TODO: choose default UI in config
-        redirect("/", "/explore", :temporary)
+        redirect("/", "/api/explore", :temporary)
 
         get("/schema", Bonfire.GraphQL.DevTools, :schema)
 
