@@ -16,7 +16,7 @@ defmodule Bonfire.GraphQL.FetchPages do
     map_counts_fn: nil
   ]
 
-  @repo Application.get_env(:bonfire_api_graphql, :repo_module)
+  import Bonfire.Common.Config, only: [repo: 0]
 
   alias Bonfire.GraphQL.{Pages, FetchPages}
 
@@ -47,7 +47,7 @@ defmodule Bonfire.GraphQL.FetchPages do
         map_fn: map_fn,
         map_counts_fn: map_counts_fn
       }) do
-    {:ok, [data, counts]} = @repo.transact_many(all: data_query, all: count_query)
+    {:ok, [data, counts]} = repo().transact_many(all: data_query, all: count_query)
     data = group_data(data, group_fn, map_fn)
     counts = group_counts(counts, map_counts_fn)
     Pages.new(data, counts, cursor_fn, page_opts)

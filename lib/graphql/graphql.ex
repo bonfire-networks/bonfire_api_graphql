@@ -1,15 +1,12 @@
-# SPDX-License-Identifier: AGPL-3.0-only
+Bonfire.Common.Config.require_extension_config!(:bonfire_api_graphql)
+
+  # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.GraphQL do
   alias Absinthe.Resolution
   alias Bonfire.GraphQL.Page
   alias Bonfire.Common.Enums
   import Bonfire.Repo.Query, only: [match_admin: 0]
   import Bonfire.Common.Error
-
-  @lib :bonfire_api_graphql
-  if !Application.get_env(@lib, :env) do
-    IO.warn("It looks like you are missing configuration for this Bonfire extension, please copy ./deps/#{@lib}/config/#{@lib}.ex to ./config/#{@lib}.ex in your Bonfire app repository, and then add `import_config \"#{@lib}.exs\"` to ./config/config.ex")
-  end
 
   def reverse_path(info) do
     Enum.reverse(Resolution.path(info))

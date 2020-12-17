@@ -228,7 +228,7 @@ defmodule Bonfire.GraphQL.QueryHelper do
   end
 
   def maybe_debug(q, obj, debug) do
-    if debug do # || CommonsPub.Config.get([:logging, :tests_output_graphql]) do
+    if debug do # || Bonfire.Common.Config.get([:logging, :tests_output_graphql]) do
       IO.inspect(graphql_query: q)
       IO.inspect(graphql_response: obj)
     end

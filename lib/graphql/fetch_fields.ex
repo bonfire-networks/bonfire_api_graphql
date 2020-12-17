@@ -9,7 +9,7 @@ defmodule Bonfire.GraphQL.FetchFields do
     filters: []
   ]
 
-  @repo Application.get_env(:bonfire_api_graphql, :repo_module)
+  import Bonfire.Common.Config, only: [repo: 0]
 
   alias Bonfire.GraphQL.{Fields, FetchFields}
 
@@ -29,7 +29,7 @@ defmodule Bonfire.GraphQL.FetchFields do
         filters: filters
       }) do
     apply(queries, :query, [query, filters])
-    |> @repo.all()
+    |> repo().all()
     |> Fields.new(group_fn, map_fn)
   end
 end
