@@ -9,7 +9,10 @@ defmodule Bonfire.GraphQL.MixProject do
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       compilers: [:phoenix, :gettext] ++ Mix.compilers(),
-      deps: Mess.deps [{:phoenix_live_reload, "~> 1.2", only: :dev}]
+      deps: Mess.deps [
+        {:phoenix_live_reload, "~> 1.2", only: :dev},
+        {:bonfire_me, git: "https://github.com/bonfire-ecosystem/bonfire_me", branch: "main", optional: true},
+      ]
     ]
   end
 

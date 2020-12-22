@@ -72,6 +72,21 @@ defmodule Bonfire.GraphQL.Router do
           )
         end
       end
+
+      # session auth integration, see also login mutation in Bonfire.GraphQL.CommonSchema
+      def absinthe_before_send(conn, %Absinthe.Blueprint{} = blueprint) do
+        if current_account = blueprint.execution.context[:current_account] do
+          put_session(conn, :current_account, current_account)
+          put_session(conn, :current_user, blueprint.execution.context[:current_user])
+        else
+          conn
+        end
+      end
+
+      def absinthe_before_send(conn, _) do
+        conn
+      end
+
     end
   end
 end

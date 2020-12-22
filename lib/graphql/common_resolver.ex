@@ -101,4 +101,39 @@ defmodule Bonfire.GraphQL.CommonResolver do
       {:error, "Generic deletion is not supported."}
     end
   end
+
+  def login(_, %{email_or_username: email_or_username, password: password} = attrs, _) do
+    with {:ok, authed} <- Bonfire.Me.Identity.Accounts.login(attrs) do
+      account = hd(Map.get(authed, :accounted, []))
+      {:ok, %{current_account: account, current_user: Map.get(account, :user, nil)}}
+    else e ->
+      {:error, e}
+    end
+  end
+end
+
+# SPDX-License-Identifier: AGPL-3.0-only
+defimpl Jason.Encoder, for: [Bonfire.Data.Identity.Accounted, Bonfire.Data.Identity.Account, Bonfire.Data.Identity.User, Bonfire.Data.Identity.Character, Bonfire.Data.Social.Profile] do
+  def encode(struct, opts) do
+    IO.inspect(input: struct)
+
+    Map.from_struct(struct)
+    |>
+    Map.drop([:__meta__])
+    |>
+    Enum.reduce(%{}, fn
+      ({k, %Ecto.Association.NotLoaded{}}, acc) -> acc
+      # ({__meta__, _}, acc) -> acc
+      # ({k, %{__struct__: _} = sub_struct}, acc) -> Map.put(acc, k, Jason.encode!(sub_struct))
+      ({k, v}, acc) ->
+        IO.inspect(k: k)
+        IO.inspect(v: v)
+        Map.put(acc, k, v)
+      (hmm, acc) ->
+        IO.inspect(hmm: hmm)
+       acc
+    end)
+    |> IO.inspect()
+    |> Jason.Encode.map(opts)
+  end
 end
