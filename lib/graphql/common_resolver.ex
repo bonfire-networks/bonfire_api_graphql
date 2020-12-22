@@ -115,7 +115,7 @@ end
 # SPDX-License-Identifier: AGPL-3.0-only
 defimpl Jason.Encoder, for: [Bonfire.Data.Identity.Accounted, Bonfire.Data.Identity.Account, Bonfire.Data.Identity.User, Bonfire.Data.Identity.Character, Bonfire.Data.Social.Profile] do
   def encode(struct, opts) do
-    IO.inspect(input: struct)
+    # IO.inspect(input: struct)
 
     Map.from_struct(struct)
     |>
@@ -124,16 +124,14 @@ defimpl Jason.Encoder, for: [Bonfire.Data.Identity.Accounted, Bonfire.Data.Ident
     Enum.reduce(%{}, fn
       ({k, %Ecto.Association.NotLoaded{}}, acc) -> acc
       # ({__meta__, _}, acc) -> acc
-      # ({k, %{__struct__: _} = sub_struct}, acc) -> Map.put(acc, k, Jason.encode!(sub_struct))
+      ({k, %Bonfire.Data.Social.Profile{} = v}, acc) -> Map.put(acc, k, v)
+      ({k, %{__struct__: _} = sub_struct}, acc) -> acc #Map.put(acc, k, Jason.encode!(sub_struct))
       ({k, v}, acc) ->
-        IO.inspect(k: k)
-        IO.inspect(v: v)
         Map.put(acc, k, v)
-      (hmm, acc) ->
-        IO.inspect(hmm: hmm)
+      (_, acc) ->
        acc
     end)
-    |> IO.inspect()
+    # |> IO.inspect()
     |> Jason.Encode.map(opts)
   end
 end

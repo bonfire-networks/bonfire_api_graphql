@@ -22,11 +22,11 @@ defmodule Bonfire.GraphQL.CommonSchema do
 
       middleware(fn resolution, _ ->
         case resolution.value do
-          %{current_user: current_user, current_account: current_account, auth_token: auth_token} ->
+          %{current_user: current_user, current_account: current_account} ->
             Map.update!(
               resolution,
               :context,
-              &Map.merge(&1, %{auth_token: auth_token, current_account: current_account, current_user: current_user})
+              &Map.merge(&1, %{current_account: current_account, current_user: current_user})
             )
 
           _ ->

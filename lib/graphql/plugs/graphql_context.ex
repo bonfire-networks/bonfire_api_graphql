@@ -13,9 +13,8 @@ defmodule Bonfire.GraphQL.Plugs.GraphQLContext do
 
   defp build_context(conn) do
     %{
-      current_account: conn.assigns[:current_account],
-      current_user: conn.assigns[:current_user],
-      auth_token: conn.assigns[:auth_token]
+      current_account: conn.assigns[:current_account] || conn.assigns[:current_account_id],
+      current_user: conn.assigns[:current_user] || conn.assigns[:current_user_id]
     }
   end
 end

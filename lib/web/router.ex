@@ -47,17 +47,19 @@ defmodule Bonfire.GraphQL.Router do
           get("/playground", Absinthe.Plug.GraphiQL,
             schema: @schema,
             interface: :playground,
+            default_url: "/api/graphql",
             json_codec: Jason,
             pipeline: {Bonfire.GraphQL.Pipeline, :default_pipeline},
-            default_url: "/api/graphql"
+            before_send: {__MODULE__, :absinthe_before_send}
           )
 
           forward("/", Absinthe.Plug.GraphiQL,
             schema: @schema,
             interface: :advanced,
+            default_url: "/api/graphql",
             json_codec: Jason,
             pipeline: {Bonfire.GraphQL.Pipeline, :default_pipeline},
-            default_url: "/api/graphql"
+            before_send: {__MODULE__, :absinthe_before_send}
           )
         end
 
@@ -68,16 +70,21 @@ defmodule Bonfire.GraphQL.Router do
             schema: @schema,
             interface: :playground,
             json_codec: Jason,
-            pipeline: {Bonfire.GraphQL.Pipeline, :default_pipeline}
+            pipeline: {Bonfire.GraphQL.Pipeline, :default_pipeline},
+            before_send: {__MODULE__, :absinthe_before_send}
           )
         end
       end
 
-      # session auth integration, see also login mutation in Bonfire.GraphQL.CommonSchema
+      # session auth integration, see also login mutation in Bonfire.GraphQL.CommonSchema and Bonfire.GraphQL.Plugs.GraphQLContext
       def absinthe_before_send(conn, %Absinthe.Blueprint{} = blueprint) do
+        IO.inspect(absinthe_before_send: blueprint.execution.context)
         if current_account = blueprint.execution.context[:current_account] do
-          put_session(conn, :current_account, current_account)
-          put_session(conn, :current_user, blueprint.execution.context[:current_user])
+          conn
+          |>
+          put_session(:current_account_id, Map.get(current_account, :id))
+          |>
+          put_session(:current_user_id, Map.get(blueprint.execution.context[:current_user], :id))
         else
           conn
         end
