@@ -5,8 +5,10 @@ defmodule Bonfire.GraphQL.CommonSchema do
   alias Bonfire.GraphQL.CommonResolver
 
   object :login_response do
-    field(:current_account, :json)
-    field(:current_user, :json)
+    # field(:current_account, :json)
+    # field(:current_user, :json)
+    field(:current_account_id, :string)
+    field(:current_username, :string)
   end
 
   object :common_queries do
