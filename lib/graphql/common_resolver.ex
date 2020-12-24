@@ -102,36 +102,4 @@ defmodule Bonfire.GraphQL.CommonResolver do
     end
   end
 
-  def login(_, %{email_or_username: email_or_username, password: password} = attrs, _) do
-    with {:ok, authed} <- Bonfire.Me.Identity.Accounts.login(attrs) do
-      account = hd(Map.get(authed, :accounted, []))
-      {:ok, %{current_account: account, current_user: Map.get(account, :user, nil)}}
-    else e ->
-      {:error, e}
-    end
-  end
-end
-
-# SPDX-License-Identifier: AGPL-3.0-only
-defimpl Jason.Encoder, for: [Bonfire.Data.Identity.Accounted, Bonfire.Data.Identity.Account, Bonfire.Data.Identity.User, Bonfire.Data.Identity.Character, Bonfire.Data.Social.Profile] do
-  def encode(struct, opts) do
-    # IO.inspect(input: struct)
-
-    Map.from_struct(struct)
-    |>
-    Map.drop([:__meta__])
-    |>
-    Enum.reduce(%{}, fn
-      ({k, %Ecto.Association.NotLoaded{}}, acc) -> acc
-      # ({__meta__, _}, acc) -> acc
-      ({k, %Bonfire.Data.Social.Profile{} = v}, acc) -> Map.put(acc, k, v)
-      ({k, %{__struct__: _} = sub_struct}, acc) -> acc #Map.put(acc, k, Jason.encode!(sub_struct))
-      ({k, v}, acc) ->
-        Map.put(acc, k, v)
-      (_, acc) ->
-       acc
-    end)
-    # |> IO.inspect()
-    |> Jason.Encode.map(opts)
-  end
 end

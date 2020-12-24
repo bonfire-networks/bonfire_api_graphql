@@ -18,21 +18,9 @@ defmodule Bonfire.GraphQL.CommonSchema do
     field :login, :login_response do
       arg(:email_or_username, non_null(:string))
       arg(:password, non_null(:string))
-      resolve(&CommonResolver.login/3)
 
-      middleware(fn resolution, _ ->
-        case resolution.value do
-          %{current_user: current_user, current_account: current_account} ->
-            Map.update!(
-              resolution,
-              :context,
-              &Map.merge(&1, %{current_account: current_account, current_user: current_user})
-            )
-
-          _ ->
-            resolution
-        end
-      end)
+      resolve(&Bonfire.GraphQL.Auth.login/3)
+      middleware(&Bonfire.GraphQL.Auth.set_context_from_resolution/2)
     end
 
     @desc "Delete more or less anything"

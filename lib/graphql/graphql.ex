@@ -61,7 +61,14 @@ defmodule Bonfire.GraphQL do
 
   def not_in_list_or_empty_page(info), do: not_in_list_or(info, &empty_page/0)
 
-  def current_user(%{context: %{current_user: current_user}}), do: current_user
+  def is_authenticated(%{context: %{current_account_id: current_account_id}}) when is_binary(current_account_id), do: :ok
+  def is_authenticated(_), do: not_logged_in()
+
+  def current_account(%{context: %{current_account: %{id: id} = current_account}}) when is_binary(id), do: current_account
+  def current_account(_), do: nil
+
+  def current_user(%{context: %{current_user: %{id: id} = current_user}}) when is_binary(id), do: current_user
+  def current_user(%{context: %{current_account_id: current_account_id, current_username: current_username}}) when is_binary(current_account_id) and is_binary(current_username), do: Bonfire.GraphQL.Auth.user_by(current_username, current_account_id)
   def current_user(_), do: nil
 
   def current_user_or(info, value), do: lazy_or(current_user(info), value)
