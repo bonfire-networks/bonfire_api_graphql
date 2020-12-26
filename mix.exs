@@ -12,6 +12,7 @@ defmodule Bonfire.GraphQL.MixProject do
       deps: Mess.deps [
         {:phoenix_live_reload, "~> 1.2", only: :dev},
         {:bonfire_me, git: "https://github.com/bonfire-ecosystem/bonfire_me", branch: "main", optional: true},
+        {:zest, "~> 0.1", only: :test},
       ]
     ]
   end
