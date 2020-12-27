@@ -85,7 +85,7 @@ defmodule Bonfire.GraphQL.CommonResolver do
   def is_deleted_edge(parent, _, _), do: {:ok, not is_nil(parent.deleted_at)}
 
   # FIXME
-  if Code.ensure_loaded?(CommonsPub.Contexts.Deletion) do
+  if Bonfire.Common.Utils.module_exists?(CommonsPub.Contexts.Deletion) do
     def delete(%{context_id: id}, info) do
       with {:ok, user} <- GraphQL.current_user_or_not_logged_in(info),
            {:ok, deleted} <- CommonsPub.Contexts.Deletion.trigger_soft_delete(id, user) do
