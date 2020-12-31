@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.GraphQL.CommonResolver do
-  alias Ecto.ULID
+  alias Pointers.ULID
   alias Bonfire.GraphQL
 
   alias Bonfire.GraphQL
@@ -77,6 +77,15 @@ defmodule Bonfire.GraphQL.CommonResolver do
   # def loaded_context(%Collection{}=collection), do: Repo.preload(collection, :character)
   # def loaded_context(%User{}=user), do: Repo.preload(user, :character)
   # def loaded_context(other), do: other
+
+  @doc "Returns the canonical url for a thing or character"
+  def canonical_url_edge(obj, _, _),
+    do: {:ok, Bonfire.Common.URIs.canonical_url(obj)}
+
+  @doc "Returns the username for a character"
+  def display_username_edge(object, _, _) do
+    {:ok, Bonfire.Me.Identity.Characters.display_username(object)}
+  end
 
   def is_public_edge(parent, _, _), do: {:ok, not is_nil(parent.published_at)}
   def is_local_edge(%{is_local: is_local}, _, _), do: {:ok, is_local}

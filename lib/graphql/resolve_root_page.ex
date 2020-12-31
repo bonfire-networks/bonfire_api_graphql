@@ -10,7 +10,7 @@ defmodule Bonfire.GraphQL.ResolveRootPage do
     :fetcher,
     :page_opts,
     :info,
-    cursor_validators: [&Ecto.ULID.cast/1],
+    cursor_validators: [&Pointers.ULID.cast/1],
     paging_opts: %{default_limit: 5, max_limit: 15}
   ]
 
