@@ -1,14 +1,14 @@
-# defmodule Bonfire.GraphQL.DevTools do
-#   use ActivityPubWeb, :controller
+defmodule Bonfire.GraphQL.DevTools do
+  use Bonfire.Web, :controller
 
-#   @schema Bonfire.Common.Config.get!(:graphql_schema_module)
+  @schema Bonfire.Common.Config.get!(:graphql_schema_module)
 
-#   def schema(conn, _params) do
-#     sdl = Absinthe.Schema.to_sdl(@schema)
-#     # "schema {
-#     #   query {...}
-#     # }"
+  def schema(conn, _params) do
+    sdl = Absinthe.Schema.to_sdl(@schema)
+    # "schema {
+    #   query {...}
+    # }"
 
-#     html(conn, sdl)
-#   end
-# end
+    text(conn, sdl)
+  end
+end

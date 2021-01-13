@@ -107,6 +107,7 @@ defmodule Bonfire.GraphQL.Test.GraphQLAssertions do
   def assert_optional_field(object, key, test) when is_map(object) and is_function(test, 1) do
     scope assert_field: key do
       case object do
+        %{^key => nil} -> object
         %{^key => value} -> Map.put(object, key, test.(value))
         _ -> object
       end
