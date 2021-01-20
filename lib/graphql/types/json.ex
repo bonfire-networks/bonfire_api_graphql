@@ -16,9 +16,16 @@ defmodule Bonfire.GraphQL.JSON do
 
   @spec decode(Input.String.t()) :: {:ok, term} | {:error, term}
   @spec decode(Input.Null.t()) :: {:ok, nil}
-  defp decode(%Input.String{value: value}), do: Jason.decode(value)
+  defp decode(%Input.String{value: value}) do
+    try do
+      {:ok, Jason.decode!(value)}
+    rescue e ->
+      IO.inspect(invalid_json: e)
+      :error
+    end
+  end
   defp decode(%Input.Null{}), do: {:ok, nil}
-  defp decode(_), do: {:error, :bad_input_type}
+  defp decode(_), do: :error
 
   defp encode(%Geo.Point{} = geo) do
     with {:ok, geo_json} <- Geo.JSON.encode(geo) do
