@@ -11,7 +11,8 @@ defmodule Bonfire.GraphQL.ResolveRootPage do
     :page_opts,
     :info,
     cursor_validators: [&Pointers.ULID.cast/1],
-    paging_opts: %{default_limit: 5, max_limit: 15}
+    paging_opts: %{default_limit: 5, max_limit: 15},
+    data_filters: []
   ]
 
   alias Bonfire.GraphQL
@@ -24,10 +25,11 @@ defmodule Bonfire.GraphQL.ResolveRootPage do
         page_opts: page_opts,
         info: info,
         paging_opts: opts,
-        cursor_validators: validators
+        cursor_validators: validators,
+        data_filters: data_filters
       }) do
     with {:ok, page_opts} <- GraphQL.full_page_opts(page_opts, validators, opts) do
-      info2 = Map.take(info, [:context])
+      info2 = Map.take(info, [:context]) |> Map.put(:data_filters, data_filters)
       apply(module, fetcher, [page_opts, info2])
     end
   end
