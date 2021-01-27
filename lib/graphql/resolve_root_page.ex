@@ -11,7 +11,7 @@ defmodule Bonfire.GraphQL.ResolveRootPage do
     :page_opts,
     :info,
     cursor_validators: [&Pointers.ULID.cast/1],
-    paging_opts: %{default_limit: 5, max_limit: 15}
+    paging_opts: %{default_limit: 10, max_limit: 100}
   ]
 
   alias Bonfire.GraphQL
