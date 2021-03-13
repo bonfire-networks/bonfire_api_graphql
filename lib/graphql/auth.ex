@@ -6,8 +6,8 @@ defmodule Bonfire.GraphQL.Auth do
   Resolver for login mutation for Bonfire.GraphQL.CommonSchema
   """
   def login(_, %{email_or_username: email_or_username, password: password} = attrs, _) do
-    if Bonfire.Common.Utils.module_exists?(Bonfire.Me.Identity.Accounts) do
-      with {:ok, account} <- Bonfire.Me.Identity.Accounts.login(attrs) do
+    if Bonfire.Common.Utils.module_exists?(Bonfire.Me.Accounts) do
+      with {:ok, account} <- Bonfire.Me.Accounts.login(attrs) do
         user = account |> repo().maybe_preload(:accounted) |> Map.get(:accounted, []) |> hd() |> Map.get(:user, nil)
         {:ok, %{current_account: account, current_user: user, current_account_id: Map.get(account, :id), current_username: username(user)}}
       else e ->
@@ -64,8 +64,8 @@ defmodule Bonfire.GraphQL.Auth do
   end
 
   def user_by(username, account_id) when is_binary(username) and is_binary(account_id) do
-    if Bonfire.Common.Utils.module_exists?(Bonfire.Me.Identity.Users) do
-        with {:ok, user} = Bonfire.Me.Identity.Users.for_switch_user(username, account_id) do
+    if Bonfire.Common.Utils.module_exists?(Bonfire.Me.Users) do
+        with {:ok, user} = Bonfire.Me.Users.for_switch_user(username, account_id) do
           user
         end
     # else {:error, "Your app's account/user modules are not integrated with GraphQL."}
@@ -73,8 +73,8 @@ defmodule Bonfire.GraphQL.Auth do
   end
 
   def account_by(account_id) when is_binary(account_id) do
-    if Bonfire.Common.Utils.module_exists?(Bonfire.Me.Identity.Accounts) do
-        with {:ok, a} = Bonfire.Me.Identity.Accounts.get_current(account_id) do
+    if Bonfire.Common.Utils.module_exists?(Bonfire.Me.Accounts) do
+        with {:ok, a} = Bonfire.Me.Accounts.get_current(account_id) do
           a
         end
     # else {:error, "Your app's account/user modules are not integrated with GraphQL."}
