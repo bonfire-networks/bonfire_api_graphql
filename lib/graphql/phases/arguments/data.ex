@@ -44,12 +44,12 @@ defmodule Bonfire.GraphQL.Phase.Arguments.Data do
   end
 
   def handle_node(%Argument{input_value: input} = node) do
-    # IO.inspect(input: input)
+    #IO.inspect(input: input)
     %{node | value: input.data}
   end
 
   def handle_node(%Value{data: %Cursor{data: _data}} = node) do
-    # IO.inspect(data: data)
+    #IO.inspect(data: data)
     node
   end
 

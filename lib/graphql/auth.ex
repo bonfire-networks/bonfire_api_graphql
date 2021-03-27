@@ -37,7 +37,7 @@ defmodule Bonfire.GraphQL.Auth do
   Sets session cookie based on the Absinthe context set in `set_context_from_resolution/2` (called from router's `absinthe_before_send/2` )
   """
   def set_session_from_context(conn, %Absinthe.Blueprint{execution: %{context: %{current_account_id: current_account_id} = context}}) when not is_nil(current_account_id) do
-    # IO.inspect(absinthe_before_send_set_session: context)
+    #IO.inspect(absinthe_before_send_set_session: context)
       conn
       |>
       Plug.Conn.put_session(:current_account_id, current_account_id)
@@ -53,8 +53,8 @@ defmodule Bonfire.GraphQL.Auth do
   Once authenticated, load the context based on session (called from `Bonfire.GraphQL.Plugs.GraphQLContext`)
   """
   def build_context_from_session(conn) do
-    # IO.inspect(session: Plug.Conn.get_session(conn))
-    # IO.inspect(assigns: conn.assigns)
+    #IO.inspect(session: Plug.Conn.get_session(conn))
+    #IO.inspect(assigns: conn.assigns)
     %{
       current_account_id: conn.assigns[:current_account_id] || Plug.Conn.get_session(conn, :current_account_id),
       current_username: conn.assigns[:current_username] || Plug.Conn.get_session(conn, :current_username),

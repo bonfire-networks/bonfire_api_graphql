@@ -26,8 +26,8 @@ defmodule Bonfire.GraphQL.ResolvePages do
   import Absinthe.Resolution.Helpers, only: [async: 1, batch: 3]
 
   def run(%ResolvePages{info: info} = rp) do
-    # IO.inspect(depth: GraphQL.list_depth(info))
-    # IO.inspect(info: Map.take(info, [:context]))
+    #IO.inspect(depth: GraphQL.list_depth(info))
+    #IO.inspect(info: Map.take(info, [:context]))
     run(GraphQL.list_depth(info), Map.take(info, [:context]), rp)
   end
 

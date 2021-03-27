@@ -101,7 +101,7 @@ defmodule Bonfire.GraphQL.CommonResolver do
         {:ok, deleted}
       else
         e ->
-          # IO.inspect(cannot_delete: e)
+          #IO.inspect(cannot_delete: e)
           GraphQL.not_permitted("delete")
       end
     end
