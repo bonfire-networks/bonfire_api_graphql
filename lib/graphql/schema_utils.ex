@@ -13,7 +13,7 @@ defmodule Bonfire.GraphQL.SchemaUtils do
     schemas = Bonfire.Common.Pointers.list_pointable_schemas()
 
     Enum.reduce(schemas, [], fn schema, acc ->
-      if Bonfire.Common.Utils.module_exists?(schema) and function_exported?(schema, :type, 0) and
+      if Bonfire.Common.Utils.module_enabled?(schema) and function_exported?(schema, :type, 0) and
            !is_nil(apply(schema, :type, [])) do
         Enum.concat(acc, [apply(schema, :type, [])])
       else
