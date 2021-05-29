@@ -10,7 +10,7 @@ defmodule Bonfire.GraphQL.SchemaUtils do
   end
 
   def context_types() do
-    schemas = Bonfire.Common.Pointers.list_pointable_schemas()
+    schemas = Bonfire.Common.Pointers.Tables.list_schemas()
 
     Enum.reduce(schemas, [], fn schema, acc ->
       if Bonfire.Common.Utils.module_enabled?(schema) and function_exported?(schema, :type, 0) and
