@@ -70,7 +70,9 @@ defmodule Bonfire.GraphQL do
   def current_account(_), do: nil
 
   def current_user(%{context: %{current_user: %{id: id} = current_user}}) when is_binary(id), do: current_user
+  def current_user(%{context: %{__context__: %{current_user: %{id: id} = current_user}}}) when is_binary(id), do: current_user
   def current_user(%{context: %{current_account_id: current_account_id, current_username: current_username}}) when is_binary(current_account_id) and is_binary(current_username), do: Bonfire.GraphQL.Auth.user_by(current_username, current_account_id)
+  def current_user(%{context: %{__context__: %{current_account_id: current_account_id, current_username: current_username}}}) when is_binary(current_account_id) and is_binary(current_username), do: Bonfire.GraphQL.Auth.user_by(current_username, current_account_id)
   # def current_user(debug), do: IO.inspect(current_user_debug: debug)
   def current_user(_), do: nil
 
