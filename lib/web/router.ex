@@ -40,7 +40,7 @@ defmodule Bonfire.GraphQL.Router do
             schema: @schema,
             interface: :simple,
             json_codec: Jason,
-            pipeline: {Bonfire.GraphQL.Pipeline, :default_pipeline},
+            pipeline: {Bonfire.GraphQL.PlugPipelines, :default_pipeline},
             default_url: "/api/graphql"
           )
 
@@ -49,7 +49,7 @@ defmodule Bonfire.GraphQL.Router do
             interface: :playground,
             default_url: "/api/graphql",
             json_codec: Jason,
-            pipeline: {Bonfire.GraphQL.Pipeline, :default_pipeline},
+            pipeline: {Bonfire.GraphQL.PlugPipelines, :default_pipeline},
             before_send: {__MODULE__, :absinthe_before_send}
           )
 
@@ -58,7 +58,7 @@ defmodule Bonfire.GraphQL.Router do
             interface: :advanced,
             default_url: "/api/graphql",
             json_codec: Jason,
-            pipeline: {Bonfire.GraphQL.Pipeline, :default_pipeline},
+            pipeline: {Bonfire.GraphQL.PlugPipelines, :default_pipeline},
             before_send: {__MODULE__, :absinthe_before_send}
           )
         end
@@ -70,7 +70,7 @@ defmodule Bonfire.GraphQL.Router do
             schema: @schema,
             interface: :playground,
             json_codec: Jason,
-            pipeline: {Bonfire.GraphQL.Pipeline, :default_pipeline},
+            pipeline: {Bonfire.GraphQL.PlugPipelines, :default_pipeline},
             before_send: {__MODULE__, :absinthe_before_send}
           )
         end
