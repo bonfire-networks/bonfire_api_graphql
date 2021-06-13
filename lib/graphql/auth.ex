@@ -65,7 +65,7 @@ defmodule Bonfire.GraphQL.Auth do
 
   def user_by(username, account_id) when is_binary(username) and is_binary(account_id) do
     if Bonfire.Common.Utils.module_enabled?(Bonfire.Me.Users) do
-        with {:ok, user} = Bonfire.Me.Users.for_switch_user(username, account_id) do
+        with {:ok, user} = Bonfire.Me.Users.by_username_and_account(username, account_id) do
           user
         end
     # else {:error, "Your app's account/user modules are not integrated with GraphQL."}
