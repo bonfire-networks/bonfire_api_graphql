@@ -8,7 +8,7 @@ defmodule Bonfire.GraphQL.PlugPipelines do
       Phase.Document.Execution.Resolution,
       Bonfire.GraphQL.Phase.ExecutionResolution
     )
-    |> Pipeline.insert_after(Phase.Schema.TypeImports, __MODULE__)
+    # |> Pipeline.insert_after(Phase.Schema.TypeImports, __MODULE__)
     # |> Pipeline.insert_before(Phase.Document.Result, Bonfire.GraphQL.Phase.Debug)
     # |> Pipeline.insert_before(Phase.Document.Arguments.Parse, Arguments.Parse)
     # |> Pipeline.insert_before(Phase.Document.Arguments.Parse, Arguments.Debug)

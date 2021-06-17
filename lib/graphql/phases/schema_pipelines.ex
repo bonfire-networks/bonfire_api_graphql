@@ -5,7 +5,7 @@ defmodule Bonfire.GraphQL.SchemaPipelines do
   # to run on the schema
   def pipeline(pipeline) do
     pipeline
-    |> Pipeline.insert_after(Phase.Schema.TypeImports, __MODULE__)
+    # |> Pipeline.insert_after(Phase.Schema.TypeImports, __MODULE__)
     # |> Pipeline.insert_before(Phase.Document.Result, Bonfire.GraphQL.Phase.Debug)
     # |> Pipeline.insert_before(Phase.Document.Arguments.Parse, Arguments.Parse)
     # |> Pipeline.insert_before(Phase.Document.Arguments.Parse, Arguments.Debug)
