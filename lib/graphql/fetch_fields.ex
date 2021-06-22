@@ -29,7 +29,7 @@ defmodule Bonfire.GraphQL.FetchFields do
         filters: filters
       }) do
     apply(queries, :query, [query, filters])
-    |> repo().all()
+    |> repo().many()
     |> Fields.new(group_fn, map_fn)
   end
 end
