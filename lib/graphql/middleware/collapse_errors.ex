@@ -19,6 +19,7 @@ defmodule Bonfire.GraphQL.Middleware.CollapseErrors do
   def collapse(other, extra), do: Bonfire.Fail.Error.error(other, extra) |> Map.from_struct()
 
   defp extract_messages(changeset) do
+    # IO.inspect(changeset: changeset)
     messages = ChangesetParser.extract_messages(changeset)
 
     for message <- messages do
