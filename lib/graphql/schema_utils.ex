@@ -1,12 +1,17 @@
 defmodule Bonfire.GraphQL.SchemaUtils do
   def hydrations_merge(hydrators) do
-    Enum.reduce(hydrators, %{}, fn hydrate_fn, hydrated ->
-      hydrate_merge(hydrated, hydrate_fn.())
+    Enum.reduce(hydrators, %{}, fn mod,
+    hydrated ->
+      hydrate_merge(hydrated, maybe_hydrate(mod))
     end)
   end
 
   defp hydrate_merge(a, b) do
     Map.merge(a, b, fn _, a, b -> Map.merge(a, b) end)
+  end
+
+  defp maybe_hydrate(mod) do
+    if Bonfire.Common.Utils.module_enabled?(mod), do: mod.hydrate(), else: %{}
   end
 
   def context_types() do
