@@ -7,8 +7,7 @@ defmodule Bonfire.GraphQL.Plugs.GraphQLContext do
   def init(opts), do: opts
 
   def call(conn, _) do
-    context = Bonfire.GraphQL.Auth.build_context_from_session(conn)
+    context = Bonfire.GraphQL.Auth.build_context(conn)
     Absinthe.Plug.put_options(conn, context: context)
   end
-
 end

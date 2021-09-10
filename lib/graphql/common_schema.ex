@@ -1,4 +1,3 @@
-
 defmodule Bonfire.GraphQL.CommonSchema do
   use Absinthe.Schema.Notation
 
@@ -7,6 +6,7 @@ defmodule Bonfire.GraphQL.CommonSchema do
   object :login_response do
     # field(:current_account, :json)
     # field(:current_user, :json)
+    field(:token, :string)
     field(:current_account_id, :string)
     field(:current_username, :string)
   end
@@ -15,7 +15,6 @@ defmodule Bonfire.GraphQL.CommonSchema do
   end
 
   object :common_mutations do
-
     @desc "Authenticate an account / user"
     field :login, :login_response do
       arg(:email_or_username, non_null(:string))
@@ -40,5 +39,4 @@ defmodule Bonfire.GraphQL.CommonSchema do
     field(:has_previous_page, :boolean)
     field(:has_next_page, :boolean)
   end
-
 end
