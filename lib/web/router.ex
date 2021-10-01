@@ -68,7 +68,6 @@ defmodule Bonfire.GraphQL.Router do
 
           forward("/", Absinthe.Plug,
             schema: @schema,
-            interface: :playground,
             json_codec: Jason,
             pipeline: {Bonfire.GraphQL.PlugPipelines, :default_pipeline},
             before_send: {__MODULE__, :absinthe_before_send}
