@@ -14,10 +14,6 @@ defmodule Bonfire.GraphQL.CommonResolver do
     ResolvePages
   }
 
-  # alias CommonsPub.Likes.Like
-  # alias CommonsPub.Follows.Follow
-  # alias CommonsPub.Flags.Flag
-  # alias CommonsPub.Threads.Comment
   alias Bonfire.Common.Pointers
   # alias CommonsPub.Common
 
