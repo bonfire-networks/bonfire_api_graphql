@@ -9,7 +9,11 @@ defmodule Bonfire.GraphQL.Auth do
     if Bonfire.Common.Utils.module_enabled?(Bonfire.Me.Accounts) do
       with {:ok, account} <- Bonfire.Me.Accounts.login(attrs) do
         user = account |> repo().maybe_preload(:accounted) |> Map.get(:accounted, []) |> hd() |> Map.get(:user, nil)
-        {:ok, %{current_account: account, current_user: user, current_account_id: Map.get(account, :id), current_username: username(user)}}
+        {:ok, Map.merge(user, %{
+              # current_account: account,
+              # current_user: user,
+              current_account_id: Map.get(account, :id),
+              current_username: username(user) } ) }
       else e ->
         {:error, e}
       end
