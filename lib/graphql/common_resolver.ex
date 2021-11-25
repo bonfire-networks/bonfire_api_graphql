@@ -80,8 +80,7 @@ defmodule Bonfire.GraphQL.CommonResolver do
 
   @doc "Returns the username for a character"
   def display_username_edge(object, _, _) do
-      {:ok, Bonfire.Common.maybe_apply(Bonfire.Me.Characters, :display_username, object)}
-    end
+    {:ok, Bonfire.Common.maybe_apply(Bonfire.Me.Characters, :display_username, object)}
   end
 
   def is_public_edge(parent, _, _), do: {:ok, not is_nil(parent.published_at)}
