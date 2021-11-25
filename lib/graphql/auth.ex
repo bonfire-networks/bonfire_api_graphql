@@ -1,6 +1,7 @@
 defmodule Bonfire.GraphQL.Auth do
 
   import Bonfire.Common.Config, only: [repo: 0]
+  alias Bonfire.GraphQL
 
   @doc """
   Resolver for login mutation for Bonfire.GraphQL.CommonSchema
@@ -10,10 +11,11 @@ defmodule Bonfire.GraphQL.Auth do
       with {:ok, account} <- Bonfire.Me.Accounts.login(attrs) do
         user = account |> repo().maybe_preload(:accounted) |> Map.get(:accounted, []) |> hd() |> Map.get(:user, nil)
         {:ok, Map.merge(user, %{
-              # current_account: account,
-              # current_user: user,
+              current_account: account,
+              current_user: user,
               current_account_id: Map.get(account, :id),
-              current_username: username(user) } ) }
+              current_username: username(user)
+            } ) }
       else e ->
         {:error, e}
       end
@@ -29,7 +31,12 @@ defmodule Bonfire.GraphQL.Auth do
     Map.update!(
       resolution,
       :context,
-      &Map.merge(&1, %{current_account: current_account, current_user: current_user, current_account_id: current_account_id, current_username: current_username})
+      &Map.merge(&1, %{
+        current_account: current_account,
+        current_user: current_user,
+        current_account_id: current_account_id,
+        current_username: current_username
+      })
     )
   end
 
@@ -59,12 +66,16 @@ defmodule Bonfire.GraphQL.Auth do
   def build_context_from_session(conn) do
     #IO.inspect(session: Plug.Conn.get_session(conn))
     #IO.inspect(assigns: conn.assigns)
-    %{
+    context = %{
       current_account_id: conn.assigns[:current_account_id] || Plug.Conn.get_session(conn, :current_account_id),
       current_username: conn.assigns[:current_username] || Plug.Conn.get_session(conn, :current_username),
       current_account: conn.assigns[:current_account],
       current_user: conn.assigns[:current_user]
     }
+
+    Map.merge(context, %{ # load the user from DB here once and for all
+      current_user: GraphQL.current_user(context)
+    })
   end
 
   def user_by(username, account_id) when is_binary(username) and is_binary(account_id) do
