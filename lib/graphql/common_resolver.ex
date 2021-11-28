@@ -39,7 +39,7 @@ defmodule Bonfire.GraphQL.CommonResolver do
 
   def fetch_context_edge(_, ids) do
     {:ok, ptrs} = Pointers.many(id: List.flatten(ids))
-    Fields.new(Pointers.follow!(ptrs), &Map.get(&1, :id))
+    Fields.new(Pointers.list!(ids), &Map.get(&1, :id))
   end
 
   def context_edges(%{context_ids: ids}, %{} = page_opts, info) do
@@ -52,21 +52,8 @@ defmodule Bonfire.GraphQL.CommonResolver do
     })
   end
 
-  def fetch_context_edges(_page_opts, _info, pointers)
-      when is_list(pointers) and length(pointers) > 0 and is_struct(hd(pointers)) do
-    # means we're already being passed pointers? instead of ids
-    follow_context_edges(pointers)
-  end
-
-  def fetch_context_edges(_page_opts, _info, ids) do
-    flattened_ids = List.flatten(ids)
-    {:ok, pointers} = Pointers.many(id: flattened_ids)
-    follow_context_edges(pointers)
-  end
-
-  def follow_context_edges(pointers) do
-    contexts = Pointers.follow!(pointers)
-    {:ok, contexts}
+  def fetch_context_edges(_page_opts, _info, pointers) do
+    {:ok, Pointers.list!(pointers)}
   end
 
   # def loaded_context(%Community{}=community), do: Repo.preload(community, :character)
