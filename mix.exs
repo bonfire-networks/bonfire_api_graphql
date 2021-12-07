@@ -11,7 +11,7 @@ defmodule Bonfire.GraphQL.MixProject do
       compilers: [:phoenix, :gettext] ++ Mix.compilers(),
       deps: Mess.deps [
         {:phoenix_live_reload, "~> 1.2", only: :dev},
-        {:bonfire_me, git: "https://github.com/bonfire-networks/bonfire_me", branch: "main", optional: true},
+        # {:bonfire_me, git: "https://github.com/bonfire-networks/bonfire_me", branch: "main", optional: true},
         {:grumble, "~> 0.1.3", only: [:dev, :test], optional: true}
       ]
     ]

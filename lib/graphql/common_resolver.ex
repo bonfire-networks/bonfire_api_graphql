@@ -14,10 +14,6 @@ defmodule Bonfire.GraphQL.CommonResolver do
     ResolvePages
   }
 
-  # alias CommonsPub.Likes.Like
-  # alias CommonsPub.Follows.Follow
-  # alias CommonsPub.Flags.Flag
-  # alias CommonsPub.Threads.Comment
   alias Bonfire.Common.Pointers
   # alias CommonsPub.Common
 
@@ -43,7 +39,7 @@ defmodule Bonfire.GraphQL.CommonResolver do
 
   def fetch_context_edge(_, ids) do
     {:ok, ptrs} = Pointers.many(id: List.flatten(ids))
-    Fields.new(Pointers.follow!(ptrs), &Map.get(&1, :id))
+    Fields.new(Pointers.list!(ids), &Map.get(&1, :id))
   end
 
   def context_edges(%{context_ids: ids}, %{} = page_opts, info) do
@@ -56,21 +52,8 @@ defmodule Bonfire.GraphQL.CommonResolver do
     })
   end
 
-  def fetch_context_edges(_page_opts, _info, pointers)
-      when is_list(pointers) and length(pointers) > 0 and is_struct(hd(pointers)) do
-    # means we're already being passed pointers? instead of ids
-    follow_context_edges(pointers)
-  end
-
-  def fetch_context_edges(_page_opts, _info, ids) do
-    flattened_ids = List.flatten(ids)
-    {:ok, pointers} = Pointers.many(id: flattened_ids)
-    follow_context_edges(pointers)
-  end
-
-  def follow_context_edges(pointers) do
-    contexts = Pointers.follow!(pointers)
-    {:ok, contexts}
+  def fetch_context_edges(_page_opts, _info, pointers) do
+    {:ok, Pointers.list!(pointers)}
   end
 
   # def loaded_context(%Community{}=community), do: Repo.preload(community, :character)
@@ -84,7 +67,7 @@ defmodule Bonfire.GraphQL.CommonResolver do
 
   @doc "Returns the username for a character"
   def display_username_edge(object, _, _) do
-    {:ok, Bonfire.Me.Characters.display_username(object)}
+    {:ok, Bonfire.Common.Utils.maybe_apply(Bonfire.Me.Characters, :display_username, object)}
   end
 
   def is_public_edge(parent, _, _), do: {:ok, not is_nil(parent.published_at)}

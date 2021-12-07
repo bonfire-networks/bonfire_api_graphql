@@ -1,5 +1,7 @@
 defmodule Bonfire.GraphQL.Auth do
   import Bonfire.Common.Config, only: [repo: 0]
+  alias Bonfire.GraphQL
+  alias Bonfire.Common.Utils
 
   def token_new(id) do
     Phoenix.Token.encrypt(Bonfire.Web.Endpoint, secret(), id)
@@ -50,7 +52,12 @@ defmodule Bonfire.GraphQL.Auth do
     Map.update!(
       resolution,
       :context,
-      &Map.merge(&1, %{current_account: current_account, current_user: current_user, current_account_id: current_account_id, current_username: current_username})
+      &Map.merge(&1, %{
+        current_account: current_account,
+        current_user: current_user,
+        current_account_id: current_account_id,
+        current_username: current_username
+      })
     )
   end
 
@@ -116,29 +123,27 @@ defmodule Bonfire.GraphQL.Auth do
   defp build_context_from_session(conn) do
     #IO.inspect(session: Plug.Conn.get_session(conn))
     #IO.inspect(assigns: conn.assigns)
-    %{
+    context = %{
       current_account_id: conn.assigns[:current_account_id] || Plug.Conn.get_session(conn, :current_account_id),
       current_username: conn.assigns[:current_username] || Plug.Conn.get_session(conn, :current_username),
       current_account: conn.assigns[:current_account],
       current_user: conn.assigns[:current_user]
     }
+
+    Map.merge(context, %{ # load the user from DB here once and for all
+      current_user: GraphQL.current_user(context)
+    })
   end
 
   def user_by(username, account_id) when is_binary(username) and is_binary(account_id) do
-    if Bonfire.Common.Utils.module_enabled?(Bonfire.Me.Users) do
-        with {:ok, user} = Bonfire.Me.Users.by_username_and_account(username, account_id) do
-          user
-        end
-    # else {:error, "Your app's account/user modules are not integrated with GraphQL."}
+    with {:ok, u} = Utils.maybe_apply(Bonfire.Me.Users, :by_username_and_account, [username, account_id]) do
+      u
     end
   end
 
   def account_by(account_id) when is_binary(account_id) do
-    if Bonfire.Common.Utils.module_enabled?(Bonfire.Me.Accounts) do
-        with {:ok, a} = Bonfire.Me.Accounts.get_current(account_id) do
-          a
-        end
-    # else {:error, "Your app's account/user modules are not integrated with GraphQL."}
+    with {:ok, a} = Utils.maybe_apply(Bonfire.Me.Accounts, :get_current, account_id) do
+      a
     end
   end
 

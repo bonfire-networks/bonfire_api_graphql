@@ -1,14 +1,16 @@
 defmodule Bonfire.GraphQL.CommonSchema do
   use Absinthe.Schema.Notation
-
+  import Absinthe.Resolution.Helpers
   alias Bonfire.GraphQL.CommonResolver
 
+
   object :login_response do
-    # field(:current_account, :json)
-    # field(:current_user, :json)
     field(:token, :string)
+    # field(:current_account, :json)
+    field(:current_user, :user)
     field(:current_account_id, :string)
     field(:current_username, :string)
+
   end
 
   object :common_queries do
@@ -30,6 +32,12 @@ defmodule Bonfire.GraphQL.CommonSchema do
       resolve(&CommonResolver.delete/2)
     end
 
+  end
+
+  input_object :paginate do
+    field :limit, :integer
+    field :before, list_of(non_null(:cursor))
+    field :after, list_of(non_null(:cursor))
   end
 
   @desc "Cursors for pagination"

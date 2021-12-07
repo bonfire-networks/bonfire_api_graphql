@@ -5,6 +5,8 @@ defmodule Bonfire.GraphQL.Router do
 
       @schema Bonfire.GraphQL.Schema
 
+      pipeline = {Bonfire.GraphQL.PlugPipelines, :default_pipeline}
+
       @doc """
       Used to serve the GraphiQL API browser
       """
@@ -40,7 +42,8 @@ defmodule Bonfire.GraphQL.Router do
             schema: @schema,
             interface: :simple,
             json_codec: Jason,
-            pipeline: {Bonfire.GraphQL.PlugPipelines, :default_pipeline},
+            pipeline: pipeline,
+            socket: Bonfire.GraphQL.UserSocket,
             default_url: "/api/graphql"
           )
 
@@ -49,7 +52,8 @@ defmodule Bonfire.GraphQL.Router do
             interface: :playground,
             default_url: "/api/graphql",
             json_codec: Jason,
-            pipeline: {Bonfire.GraphQL.PlugPipelines, :default_pipeline},
+            pipeline: pipeline,
+            socket: Bonfire.GraphQL.UserSocket,
             before_send: {__MODULE__, :absinthe_before_send}
           )
 
@@ -58,7 +62,8 @@ defmodule Bonfire.GraphQL.Router do
             interface: :advanced,
             default_url: "/api/graphql",
             json_codec: Jason,
-            pipeline: {Bonfire.GraphQL.PlugPipelines, :default_pipeline},
+            pipeline: pipeline,
+            socket: Bonfire.GraphQL.UserSocket,
             before_send: {__MODULE__, :absinthe_before_send}
           )
         end
@@ -70,6 +75,7 @@ defmodule Bonfire.GraphQL.Router do
             schema: @schema,
             json_codec: Jason,
             pipeline: {Bonfire.GraphQL.PlugPipelines, :default_pipeline},
+            socket: Bonfire.GraphQL.UserSocket,
             before_send: {__MODULE__, :absinthe_before_send}
           )
         end

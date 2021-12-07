@@ -95,10 +95,18 @@ defmodule Bonfire.GraphQL.QueryHelper do
     |> get_fields(schema, nesting)
   end
 
-  # We don't include any other objects in the list when we've reached the end of our nesting,
+  # We include only the ID of sub-objects in the list when we've reached the end of our nesting
+  def get_fields(%{fields: %{id: id_field}}, _, 0) do
+    # IO.inspect(get_fields: id_field)
+    # :reject
+    ["id"]
+  end
+
+  # We don't include any *other* objects in the list when we've reached the end of our nesting,
   # otherwise the resulting document would be invalid because we need to select sub-fields of
   # all objects.
-  def get_fields(%{fields: _}, _, 0) do
+  def get_fields(%{fields: fields}, _, 0) do
+    # IO.inspect(get_fields: fields)
     :reject
   end
 
