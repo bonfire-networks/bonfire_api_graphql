@@ -18,12 +18,20 @@ defmodule Bonfire.GraphQL.CommonSchema do
 
   object :common_mutations do
 
-    @desc "Authenticate an account / user"
+    @desc "Authenticate an account and/or user"
     field :login, :login_response do
       arg(:email_or_username, non_null(:string))
       arg(:password, non_null(:string))
 
       resolve(&Bonfire.GraphQL.Auth.login/3)
+      middleware(&Bonfire.GraphQL.Auth.set_context_from_resolution/2)
+    end
+
+    @desc "Switch to a user (among those from the authenticated account)"
+    field :select_user, :login_response do
+      arg(:username, non_null(:string))
+
+      resolve(&Bonfire.GraphQL.Auth.select_user/3)
       middleware(&Bonfire.GraphQL.Auth.set_context_from_resolution/2)
     end
 
