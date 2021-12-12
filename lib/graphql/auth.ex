@@ -45,6 +45,22 @@ defmodule Bonfire.GraphQL.Auth do
     end
   end
 
+  def select_user(_, %{username: username} = attrs, info) do
+    account = GraphQL.current_account(info)
+    if account do
+      with {:ok, user} <- Utils.maybe_apply(Bonfire.Me.Users, :by_username_and_account, [username, account]) do
+        {:ok, Map.merge(user, %{
+                current_account: account,
+                current_account_id: Map.get(account, :id),
+                current_user: user,
+                current_username: username(user)
+              } ) }
+      end
+    else
+      {:error, "Not authenticated"}
+    end
+  end
+
   @doc """
   Puts the account/user data in Absinthe context (runs after on `login/3` resolver)
   """
@@ -60,6 +76,7 @@ defmodule Bonfire.GraphQL.Auth do
       })
     )
   end
+
 
   def set_context_from_resolution(resolution, _) do
     resolution
@@ -142,9 +159,7 @@ defmodule Bonfire.GraphQL.Auth do
   end
 
   def account_by(account_id) when is_binary(account_id) do
-    with {:ok, a} = Utils.maybe_apply(Bonfire.Me.Accounts, :get_current, account_id) do
-      a
-    end
+    Utils.maybe_apply(Bonfire.Me.Accounts, :get_current, account_id)
   end
 
   def username(%{current_user: current_user}) do
