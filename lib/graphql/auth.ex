@@ -153,7 +153,7 @@ defmodule Bonfire.GraphQL.Auth do
   end
 
   def user_by(username, account_id) when is_binary(username) and is_binary(account_id) do
-    with {:ok, u} = Utils.maybe_apply(Bonfire.Me.Users, :by_username_and_account, [username, account_id]) do
+    with {:ok, u} <- Utils.maybe_apply(Bonfire.Me.Users, :by_username_and_account, [username, account_id]) do
       u
     end
   end
