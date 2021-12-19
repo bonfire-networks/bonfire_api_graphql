@@ -19,29 +19,36 @@ defmodule Bonfire.GraphQL.Auth do
   Resolver for login mutation for Bonfire.GraphQL.CommonSchema
   """
   def login(_, %{email_or_username: email_or_username, password: password} = attrs, _) do
-    if Bonfire.Common.Utils.module_enabled?(Bonfire.Me.Accounts) do
-      with {:ok, account} <- Bonfire.Me.Accounts.login(attrs) do
-        user =
-          account
-          |> repo().maybe_preload(accounted: :user)
-          |> Map.get(:accounted, [])
-          |> hd()
-          |> Map.get(:user, nil)
-        id = Map.get(account, :id)
-
-        {:ok,
-         %{
-           current_account: account,
-           current_user: user,
-           current_account_id: id,
-           current_username: username(user),
-           token: token_new(id),
-         }}
+    if Utils.module_enabled?(Bonfire.Me.Accounts) do
+      with {:ok, account} <- Utils.maybe_apply(Bonfire.Me.Accounts, :login, attrs) do
+        user = account |> repo().maybe_preload(:accounted) |> Map.get(:accounted, []) |> hd() |> Map.get(:user, nil)
+        {:ok, Map.merge(user, %{
+              current_account: account,
+              current_account_id: Map.get(account, :id),
+              current_user: user,
+              current_username: username(user)
+            } ) }
       else e ->
         {:error, e}
       end
     else
       {:error, "Your app's authentication is not integrated with this GraphQL mutation."}
+    end
+  end
+
+  def select_user(_, %{username: username} = attrs, info) do
+    account = GraphQL.current_account(info)
+    if account do
+      with {:ok, user} <- Utils.maybe_apply(Bonfire.Me.Users, :by_username_and_account, [username, account]) do
+        {:ok, Map.merge(user, %{
+                current_account: account,
+                current_account_id: Map.get(account, :id),
+                current_user: user,
+                current_username: username(user)
+              } ) }
+      end
+    else
+      {:error, "Not authenticated"}
     end
   end
 
@@ -60,6 +67,7 @@ defmodule Bonfire.GraphQL.Auth do
       })
     )
   end
+
 
   def set_context_from_resolution(resolution, _) do
     resolution
@@ -136,15 +144,13 @@ defmodule Bonfire.GraphQL.Auth do
   end
 
   def user_by(username, account_id) when is_binary(username) and is_binary(account_id) do
-    with {:ok, u} = Utils.maybe_apply(Bonfire.Me.Users, :by_username_and_account, [username, account_id]) do
+    with {:ok, u} <- Utils.maybe_apply(Bonfire.Me.Users, :by_username_and_account, [username, account_id]) do
       u
     end
   end
 
   def account_by(account_id) when is_binary(account_id) do
-    with {:ok, a} = Utils.maybe_apply(Bonfire.Me.Accounts, :get_current, account_id) do
-      a
-    end
+    Utils.maybe_apply(Bonfire.Me.Accounts, :get_current, account_id)
   end
 
   def username(%{current_user: current_user}) do
@@ -154,4 +160,6 @@ defmodule Bonfire.GraphQL.Auth do
   def username(user) do
     Bonfire.Common.Utils.e(user, :character, :username, nil)
   end
+
+
 end

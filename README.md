@@ -1,4 +1,4 @@
-# Bonfire:Common
+# Bonfire.API.GraphQL
 
 An library for [Bonfire](https://bonfire.cafe/) that contains:
 
