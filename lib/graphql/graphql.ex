@@ -5,7 +5,7 @@ defmodule Bonfire.GraphQL do
   alias Absinthe.Resolution
   alias Bonfire.GraphQL.Page
   alias Bonfire.Common.Enums
-  import Bonfire.Repo.Query, only: [match_admin: 0]
+  import Bonfire.Repo.Common, only: [match_admin: 0]
   import Bonfire.Fail.Error
 
   def reverse_path(info) do
