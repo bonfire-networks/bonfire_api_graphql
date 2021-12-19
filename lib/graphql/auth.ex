@@ -22,11 +22,14 @@ defmodule Bonfire.GraphQL.Auth do
     if Utils.module_enabled?(Bonfire.Me.Accounts) do
       with {:ok, account} <- Utils.maybe_apply(Bonfire.Me.Accounts, :login, attrs) do
         user = account |> repo().maybe_preload(:accounted) |> Map.get(:accounted, []) |> hd() |> Map.get(:user, nil)
+        id = Map.get(account, :id)
+
         {:ok, Map.merge(user, %{
               current_account: account,
-              current_account_id: Map.get(account, :id),
+              current_account_id: id,
               current_user: user,
-              current_username: username(user)
+              current_username: username(user),
+              token: token_new(id)
             } ) }
       else e ->
         {:error, e}
