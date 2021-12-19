@@ -19,24 +19,15 @@ defmodule Bonfire.GraphQL.Auth do
   Resolver for login mutation for Bonfire.GraphQL.CommonSchema
   """
   def login(_, %{email_or_username: email_or_username, password: password} = attrs, _) do
-    if Bonfire.Common.Utils.module_enabled?(Bonfire.Me.Accounts) do
-      with {:ok, account} <- Bonfire.Me.Accounts.login(attrs) do
-        user =
-          account
-          |> repo().maybe_preload(accounted: :user)
-          |> Map.get(:accounted, [])
-          |> hd()
-          |> Map.get(:user, nil)
-        id = Map.get(account, :id)
-
-        {:ok,
-         %{
-           current_account: account,
-           current_user: user,
-           current_account_id: id,
-           current_username: username(user),
-           token: token_new(id),
-         }}
+    if Utils.module_enabled?(Bonfire.Me.Accounts) do
+      with {:ok, account} <- Utils.maybe_apply(Bonfire.Me.Accounts, :login, attrs) do
+        user = account |> repo().maybe_preload(:accounted) |> Map.get(:accounted, []) |> hd() |> Map.get(:user, nil)
+        {:ok, Map.merge(user, %{
+              current_account: account,
+              current_account_id: Map.get(account, :id),
+              current_user: user,
+              current_username: username(user)
+            } ) }
       else e ->
         {:error, e}
       end
