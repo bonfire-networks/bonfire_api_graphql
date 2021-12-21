@@ -20,11 +20,11 @@ defmodule Bonfire.GraphQL.Auth do
   """
   def login(_, %{email_or_username: email_or_username, password: password} = attrs, _) do
     if Utils.module_enabled?(Bonfire.Me.Accounts) do
-      with {:ok, account} <- Utils.maybe_apply(Bonfire.Me.Accounts, :login, attrs) do
-        user = account |> repo().maybe_preload(:accounted) |> Map.get(:accounted, []) |> hd() |> Map.get(:user, nil)
+      with {:ok, account, user} <- Utils.maybe_apply(Bonfire.Me.Accounts, :login, attrs) do
+        # user = account |> repo().maybe_preload(:accounted) |> Map.get(:accounted, []) |> hd() |> Map.get(:user, nil)
         id = Map.get(account, :id)
 
-        {:ok, Map.merge(user, %{
+        {:ok, Map.merge(user || %{}, %{
               current_account: account,
               current_account_id: id,
               current_user: user,
