@@ -1,6 +1,7 @@
 defmodule Bonfire.GraphQL.Auth do
-
   import Bonfire.Common.Config, only: [repo: 0]
+  require Logger
+
   alias Bonfire.GraphQL
   alias Bonfire.Common.Utils
 
