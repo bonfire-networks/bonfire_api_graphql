@@ -1,5 +1,7 @@
 defmodule Bonfire.GraphQL.Auth do
   import Bonfire.Common.Config, only: [repo: 0]
+  require Logger
+
   alias Bonfire.GraphQL
   alias Bonfire.Common.Utils
 
@@ -71,8 +73,21 @@ defmodule Bonfire.GraphQL.Auth do
     )
   end
 
+  def set_context_from_resolution(%{value: %{current_account: current_account, current_account_id: current_account_id}} = resolution, _) do
+    Map.update!(
+      resolution,
+      :context,
+      &Map.merge(&1, %{
+        current_account: current_account,
+        current_user: nil,
+        current_account_id: current_account_id,
+        current_username: nil
+      })
+    )
+  end
 
   def set_context_from_resolution(resolution, _) do
+    Logger.debug("Auth.set_context_from_resolution: no matching pattern")
     resolution
   end
 
