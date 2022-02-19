@@ -12,7 +12,7 @@ defmodule Bonfire.GraphQL.Phase.ExecutionResolution do
 
   use Absinthe.Phase
 
-  require Logger
+  import Where
 
   def run(bp_root, options \\ []) do
     Absinthe.Phase.Document.Execution.Resolution.run(bp_root, options)
@@ -48,8 +48,8 @@ defmodule Bonfire.GraphQL.Phase.ExecutionResolution do
   end
 
   defp debug_log(msg, exception, stacktrace, kind) do
-    Logger.error(msg)
-    Logger.error(Exception.format_banner(kind, exception, stacktrace))
+    error(msg)
+    error(Exception.format_banner(kind, exception, stacktrace))
     IO.puts(Exception.format_exit(exception))
     IO.puts(Exception.format_stacktrace(stacktrace))
 

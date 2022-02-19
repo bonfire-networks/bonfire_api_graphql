@@ -1,6 +1,6 @@
 defmodule Bonfire.GraphQL.Auth do
   import Bonfire.Common.Config, only: [repo: 0]
-  require Logger
+  import Where
 
   alias Bonfire.GraphQL
   alias Bonfire.Common.Utils
@@ -72,7 +72,7 @@ defmodule Bonfire.GraphQL.Auth do
   end
 
   def set_context_from_resolution(resolution, _) do
-    Logger.debug("Auth.set_context_from_resolution: no matching pattern")
+    debug("Auth.set_context_from_resolution: no matching pattern")
     resolution
   end
 

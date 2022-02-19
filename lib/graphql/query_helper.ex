@@ -9,7 +9,7 @@ defmodule Bonfire.GraphQL.QueryHelper do
   Adapted from https://github.com/devonestes/assertions (MIT license)
   """
 
-  require Logger
+  import Where
 
   @spec run_query_id(any(), module(), atom(), non_neg_integer(), Keyword.t(), boolean()) ::
           String.t()
@@ -230,7 +230,7 @@ defmodule Bonfire.GraphQL.QueryHelper do
   def camelize(type), do: Absinthe.Utils.camelize(to_string(type), lower: true)
 
   def maybe_debug(q, %{errors: errors} = obj, _) do
-    Logger.warn("The below GraphQL query had some errors in the response:")
+    warn("The below GraphQL query had some errors in the response:")
     IO.inspect(errors: errors)
     maybe_debug(q, Map.get(obj, :data), true)
   end
