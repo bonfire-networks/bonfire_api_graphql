@@ -15,8 +15,8 @@ defmodule Bonfire.GraphQL.Middleware.CollapseErrors do
 
   def collapse(%{__struct__: _} = struct), do: Map.from_struct(struct)
 
-  def collapse(other), do: Bonfire.Fail.Error.error(other) |> collapse()
-  def collapse(other, extra), do: Bonfire.Fail.Error.error(other, extra) |> Map.from_struct()
+  def collapse(other), do: Bonfire.Fail.fail(other) |> collapse()
+  def collapse(other, extra), do: Bonfire.Fail.fail(other, extra) |> Map.from_struct()
 
   defp extract_messages(changeset) do
     # IO.inspect(changeset: changeset)
