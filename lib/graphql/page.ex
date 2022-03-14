@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.GraphQL.Page do
+defmodule Bonfire.API.GraphQL.Page do
   @enforce_keys ~w(page_info total_count edges)a
   defstruct @enforce_keys
 
-  alias Bonfire.GraphQL.{Page, PageInfo}
+  alias Bonfire.API.GraphQL.{Page, PageInfo}
 
   @type t :: %Page{
           page_info: PageInfo.t(),

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.GraphQL.Middleware.RenderLists do
+defmodule Bonfire.API.GraphQL.Middleware.RenderLists do
   @behaviour Absinthe.Middleware
 
   def call(resolution, _) do

@@ -1,12 +1,12 @@
-defmodule Bonfire.GraphQL.Auth do
+defmodule Bonfire.API.GraphQL.Auth do
   import Bonfire.Common.Config, only: [repo: 0]
   import Where
 
-  alias Bonfire.GraphQL
+  alias Bonfire.API.GraphQL
   alias Bonfire.Common.Utils
 
   @doc """
-  Resolver for login mutation for Bonfire.GraphQL.CommonSchema
+  Resolver for login mutation for Bonfire.API.GraphQL.CommonSchema
   """
   def login(_, %{email_or_username: email_or_username, password: password} = attrs, _) do
     if Utils.module_enabled?(Bonfire.Me.Accounts) do
@@ -93,7 +93,7 @@ defmodule Bonfire.GraphQL.Auth do
   end
 
   @doc """
-  Once authenticated, load the context based on session (called from `Bonfire.GraphQL.Plugs.GraphQLContext`)
+  Once authenticated, load the context based on session (called from `Bonfire.API.GraphQL.Plugs.GraphQLContext`)
   """
   def build_context_from_session(conn) do
     #IO.inspect(session: Plug.Conn.get_session(conn))

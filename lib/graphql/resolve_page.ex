@@ -1,4 +1,4 @@
-defmodule Bonfire.GraphQL.ResolvePage do
+defmodule Bonfire.API.GraphQL.ResolvePage do
   @moduledoc """
   Encapsulates the flow of resolving a page in the presence of a
   single parent. We also currently use this as a stopgap while we
@@ -16,8 +16,8 @@ defmodule Bonfire.GraphQL.ResolvePage do
     paging_opts: %{default_limit: 10}
   ]
 
-  alias Bonfire.GraphQL
-  alias Bonfire.GraphQL.ResolvePage
+  alias Bonfire.API.GraphQL
+  alias Bonfire.API.GraphQL.ResolvePage
 
   def run(%ResolvePage{
         module: module,

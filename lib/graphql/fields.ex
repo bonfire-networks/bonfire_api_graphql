@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.GraphQL.Fields do
+defmodule Bonfire.API.GraphQL.Fields do
   @enforce_keys ~w(data)a
   defstruct @enforce_keys
 
   alias Bonfire.Common.Enums
-  alias Bonfire.GraphQL.Fields
+  alias Bonfire.API.GraphQL.Fields
 
   @type t :: %Fields{data: map}
 

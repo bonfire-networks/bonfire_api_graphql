@@ -1,5 +1,5 @@
 Code.eval_file("mess.exs")
-defmodule Bonfire.GraphQL.MixProject do
+defmodule Bonfire.API.GraphQL.MixProject do
   use Mix.Project
 
   def project do

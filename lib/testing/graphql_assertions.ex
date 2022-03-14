@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.GraphQL.Test.GraphQLAssertions do
+defmodule Bonfire.API.GraphQL.Test.GraphQLAssertions do
 
   alias Pointers.ULID
   import ExUnit.Assertions

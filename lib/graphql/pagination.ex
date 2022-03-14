@@ -1,4 +1,4 @@
-defmodule Bonfire.GraphQL.Pagination do
+defmodule Bonfire.API.GraphQL.Pagination do
   import Bonfire.Common.Config, only: [repo: 0]
 
   def page(
@@ -22,7 +22,7 @@ defmodule Bonfire.GraphQL.Pagination do
     count_q = apply(queries, :filter, [base_q, count_filters])
 
     with {:ok, [data, counts]} <- repo().transact_many(all: data_q, count: count_q) do
-      {:ok, Bonfire.GraphQL.Page.new(data, counts, cursor_fn, page_opts)}
+      {:ok, Bonfire.API.GraphQL.Page.new(data, counts, cursor_fn, page_opts)}
     end
   end
 
@@ -45,7 +45,7 @@ defmodule Bonfire.GraphQL.Pagination do
     {data_q, count_q} = apply(queries, :queries, queries_args)
 
     with {:ok, [data, counts]} <- repo().transact_many(all: data_q, all: count_q) do
-      {:ok, Bonfire.GraphQL.Page.new(data, counts, cursor_fn, page_opts)}
+      {:ok, Bonfire.API.GraphQL.Page.new(data, counts, cursor_fn, page_opts)}
     end
   end
 
@@ -70,7 +70,7 @@ defmodule Bonfire.GraphQL.Pagination do
     {data_q, count_q} = apply(queries, :queries, queries_args)
 
     with {:ok, [data, counts]} <- repo().transact_many(all: data_q, all: count_q) do
-      {:ok, Bonfire.GraphQL.Pages.new(data, counts, cursor_fn, group_fn, page_opts)}
+      {:ok, Bonfire.API.GraphQL.Pages.new(data, counts, cursor_fn, group_fn, page_opts)}
     end
   end
 

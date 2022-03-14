@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.GraphQL.FetchPage do
+defmodule Bonfire.API.GraphQL.FetchPage do
   @enforce_keys [:queries, :query, :page_opts]
   defstruct [
     :queries,
@@ -15,7 +15,7 @@ defmodule Bonfire.GraphQL.FetchPage do
   ]
 
   import Bonfire.Common.Config, only: [repo: 0]
-  alias Bonfire.GraphQL.{Page, FetchPage}
+  alias Bonfire.API.GraphQL.{Page, FetchPage}
 
 
   @doc false

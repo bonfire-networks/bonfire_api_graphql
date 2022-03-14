@@ -1,8 +1,8 @@
 
-defmodule Bonfire.GraphQL.CommonSchema do
+defmodule Bonfire.API.GraphQL.CommonSchema do
   use Absinthe.Schema.Notation
   import Absinthe.Resolution.Helpers
-  alias Bonfire.GraphQL.CommonResolver
+  alias Bonfire.API.GraphQL.CommonResolver
 
 
   object :login_response do
@@ -23,16 +23,16 @@ defmodule Bonfire.GraphQL.CommonSchema do
       arg(:email_or_username, non_null(:string))
       arg(:password, non_null(:string))
 
-      resolve(&Bonfire.GraphQL.Auth.login/3)
-      middleware(&Bonfire.GraphQL.Auth.set_context_from_resolution/2)
+      resolve(&Bonfire.API.GraphQL.Auth.login/3)
+      middleware(&Bonfire.API.GraphQL.Auth.set_context_from_resolution/2)
     end
 
     @desc "Switch to a user (among those from the authenticated account)"
     field :select_user, :login_response do
       arg(:username, non_null(:string))
 
-      resolve(&Bonfire.GraphQL.Auth.select_user/3)
-      middleware(&Bonfire.GraphQL.Auth.set_context_from_resolution/2)
+      resolve(&Bonfire.API.GraphQL.Auth.select_user/3)
+      middleware(&Bonfire.API.GraphQL.Auth.set_context_from_resolution/2)
     end
 
     @desc "Delete more or less anything"

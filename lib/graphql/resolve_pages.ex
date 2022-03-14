@@ -1,11 +1,11 @@
-defmodule Bonfire.GraphQL.ResolvePages do
+defmodule Bonfire.API.GraphQL.ResolvePages do
   @moduledoc """
   Encapsulates the flow of resolving a page in the presence of a
   single parent. We also currently use this as a stopgap while we
   finish implementing some things, trading speed for correctness.
   """
 
-  alias Bonfire.GraphQL.Fields
+  alias Bonfire.API.GraphQL.Fields
 
   @enforce_keys [:module, :fetcher, :context, :page_opts, :info]
   defstruct [
@@ -21,8 +21,8 @@ defmodule Bonfire.GraphQL.ResolvePages do
     getter_fn: &Fields.getter/1
   ]
 
-  alias Bonfire.GraphQL
-  alias Bonfire.GraphQL.ResolvePages
+  alias Bonfire.API.GraphQL
+  alias Bonfire.API.GraphQL.ResolvePages
   import Absinthe.Resolution.Helpers, only: [async: 1, batch: 3]
 
   def run(%ResolvePages{info: info} = rp) do

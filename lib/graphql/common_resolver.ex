@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.GraphQL.CommonResolver do
+defmodule Bonfire.API.GraphQL.CommonResolver do
   alias Pointers.ULID
-  alias Bonfire.GraphQL
+  alias Bonfire.API.GraphQL
 
-  alias Bonfire.GraphQL
+  alias Bonfire.API.GraphQL
 
-  alias Bonfire.GraphQL.{
+  alias Bonfire.API.GraphQL.{
     Fields,
     # Pages,
     # FetchFields,

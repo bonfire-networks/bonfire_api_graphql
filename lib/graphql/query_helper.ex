@@ -1,4 +1,4 @@
-defmodule Bonfire.GraphQL.QueryHelper do
+defmodule Bonfire.API.GraphQL.QueryHelper do
   @moduledoc """
   Helpful functions for preparing to query or test Absinthe applications.
 

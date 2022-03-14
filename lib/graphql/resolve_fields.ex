@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.GraphQL.ResolveFields do
+defmodule Bonfire.API.GraphQL.ResolveFields do
   @moduledoc """
   Encapsulates the flow for resolving a field for potentially multiple
   parents.
   """
 
-  alias Bonfire.GraphQL.{Fields, ResolveFields}
+  alias Bonfire.API.GraphQL.{Fields, ResolveFields}
   import Absinthe.Resolution.Helpers, only: [batch: 3]
 
   @enforce_keys [:module, :fetcher, :context, :info]

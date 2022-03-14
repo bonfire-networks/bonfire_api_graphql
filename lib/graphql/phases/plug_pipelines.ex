@@ -1,5 +1,5 @@
-defmodule Bonfire.GraphQL.PlugPipelines do
-  # alias Bonfire.GraphQL.Phase.Arguments
+defmodule Bonfire.API.GraphQL.PlugPipelines do
+  # alias Bonfire.API.GraphQL.Phase.Arguments
   alias Absinthe.{Phase, Pipeline}
 
   def default_pipeline(config, opts) do
@@ -7,11 +7,11 @@ defmodule Bonfire.GraphQL.PlugPipelines do
 
     # |> Pipeline.replace( # FIXME: this breaks triggering subscription notifications
     #   Phase.Document.Execution.Resolution,
-    #   Bonfire.GraphQL.Phase.ExecutionResolution
+    #   Bonfire.API.GraphQL.Phase.ExecutionResolution
     # )
 
     # |> Pipeline.insert_after(Phase.Schema.TypeImports, __MODULE__)
-    # |> Pipeline.insert_before(Phase.Document.Result, Bonfire.GraphQL.Phase.Debug)
+    # |> Pipeline.insert_before(Phase.Document.Result, Bonfire.API.GraphQL.Phase.Debug)
     # |> Pipeline.insert_before(Phase.Document.Arguments.Parse, Arguments.Parse)
     # |> Pipeline.insert_before(Phase.Document.Arguments.Parse, Arguments.Debug)
     # |> Pipeline.insert_after(Phase.Document.Arguments.Parse, Arguments.Debug)

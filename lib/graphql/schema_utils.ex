@@ -1,4 +1,4 @@
-defmodule Bonfire.GraphQL.SchemaUtils do
+defmodule Bonfire.API.GraphQL.SchemaUtils do
   def hydrations_merge(hydrators) do
     Enum.reduce(hydrators, %{}, fn mod,
     hydrated ->

@@ -1,11 +1,11 @@
-defmodule Bonfire.GraphQL.Router do
+defmodule Bonfire.API.GraphQL.Router do
   defmacro __using__(_) do
     quote do
       import Redirect
 
-      @schema Bonfire.GraphQL.Schema
+      @schema Bonfire.API.GraphQL.Schema
 
-      pipeline = {Bonfire.GraphQL.PlugPipelines, :default_pipeline}
+      pipeline = {Bonfire.API.GraphQL.PlugPipelines, :default_pipeline}
 
       @doc """
       Used to serve the GraphiQL API browser
@@ -24,7 +24,7 @@ defmodule Bonfire.GraphQL.Router do
       pipeline :graphql do
         plug(:accepts, ["json"])
         plug(:fetch_session)
-        plug(Bonfire.GraphQL.Plugs.GraphQLContext)
+        plug(Bonfire.API.GraphQL.Plugs.GraphQLContext)
       end
 
       scope "/api" do
@@ -32,7 +32,7 @@ defmodule Bonfire.GraphQL.Router do
         # TODO: choose default UI in config
         redirect("/", "/api/explore", :temporary)
 
-        get("/schema", Bonfire.GraphQL.DevTools, :schema)
+        get("/schema", Bonfire.API.GraphQL.DevTools, :schema)
 
         scope "/explore" do
           pipe_through(:api_browser)
@@ -43,7 +43,7 @@ defmodule Bonfire.GraphQL.Router do
             interface: :simple,
             json_codec: Jason,
             pipeline: pipeline,
-            socket: Bonfire.GraphQL.UserSocket,
+            socket: Bonfire.API.GraphQL.UserSocket,
             default_url: "/api/graphql"
           )
 
@@ -53,7 +53,7 @@ defmodule Bonfire.GraphQL.Router do
             default_url: "/api/graphql",
             json_codec: Jason,
             pipeline: pipeline,
-            socket: Bonfire.GraphQL.UserSocket,
+            socket: Bonfire.API.GraphQL.UserSocket,
             before_send: {__MODULE__, :absinthe_before_send}
           )
 
@@ -63,7 +63,7 @@ defmodule Bonfire.GraphQL.Router do
             default_url: "/api/graphql",
             json_codec: Jason,
             pipeline: pipeline,
-            socket: Bonfire.GraphQL.UserSocket,
+            socket: Bonfire.API.GraphQL.UserSocket,
             before_send: {__MODULE__, :absinthe_before_send}
           )
         end
@@ -74,15 +74,15 @@ defmodule Bonfire.GraphQL.Router do
           forward("/", Absinthe.Plug,
             schema: @schema,
             json_codec: Jason,
-            pipeline: {Bonfire.GraphQL.PlugPipelines, :default_pipeline},
-            socket: Bonfire.GraphQL.UserSocket,
+            pipeline: {Bonfire.API.GraphQL.PlugPipelines, :default_pipeline},
+            socket: Bonfire.API.GraphQL.UserSocket,
             before_send: {__MODULE__, :absinthe_before_send}
           )
         end
       end
 
       # Auth integration
-      def absinthe_before_send(conn, blueprint), do: Bonfire.GraphQL.Auth.set_session_from_context(conn, blueprint)
+      def absinthe_before_send(conn, blueprint), do: Bonfire.API.GraphQL.Auth.set_session_from_context(conn, blueprint)
 
     end
   end
