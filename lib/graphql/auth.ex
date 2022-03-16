@@ -3,13 +3,13 @@ defmodule Bonfire.API.GraphQL.Auth do
   import Where
 
   alias Bonfire.API.GraphQL
-  alias Bonfire.Common.Utils
+  use Bonfire.Common.Utils
 
   @doc """
   Resolver for login mutation for Bonfire.API.GraphQL.CommonSchema
   """
   def login(_, %{email_or_username: email_or_username, password: password} = attrs, _) do
-    if Utils.module_enabled?(Bonfire.Me.Accounts) do
+    if module_enabled?(Bonfire.Me.Accounts) do
       with {:ok, account, user} <- Utils.maybe_apply(Bonfire.Me.Accounts, :login, attrs) do
         # user = account |> repo().maybe_preload(:accounted) |> Map.get(:accounted, []) |> hd() |> Map.get(:user, nil)
         {:ok, Map.merge(user || %{}, %{

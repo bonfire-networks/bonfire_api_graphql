@@ -11,14 +11,14 @@ defmodule Bonfire.API.GraphQL.SchemaUtils do
   end
 
   defp maybe_hydrate(mod) do
-    if Bonfire.Common.Utils.module_enabled?(mod), do: mod.hydrate(), else: %{}
+    if Bonfire.Common.Extend.module_enabled?(mod), do: mod.hydrate(), else: %{}
   end
 
   def context_types() do
     schemas = Bonfire.Common.Pointers.Tables.list_schemas()
 
     Enum.reduce(schemas, [], fn schema, acc ->
-      if Bonfire.Common.Utils.module_enabled?(schema) and function_exported?(schema, :type, 0) and
+      if Bonfire.Common.Extend.module_enabled?(schema) and function_exported?(schema, :type, 0) and
            !is_nil(apply(schema, :type, [])) do
         Enum.concat(acc, [apply(schema, :type, [])])
       else
