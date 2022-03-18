@@ -1,6 +1,5 @@
 Bonfire.Common.Config.require_extension_config!(:bonfire_api_graphql)
 
-  # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.API.GraphQL do
   alias Absinthe.Resolution
   alias Bonfire.API.GraphQL.Page
