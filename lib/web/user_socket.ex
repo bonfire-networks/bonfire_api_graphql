@@ -1,7 +1,7 @@
-defmodule Bonfire.GraphQL.UserSocket do
+defmodule Bonfire.API.GraphQL.UserSocket do
   use Phoenix.Socket
   use Absinthe.Phoenix.Socket,
-    schema: Bonfire.GraphQL.Schema
+    schema: Bonfire.API.GraphQL.Schema
 
   # Deprecated in Phoenix v1.4
   transport :websocket, Phoenix.Transports.WebSocket

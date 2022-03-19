@@ -1,5 +1,5 @@
 # Tweaked from absinthe
-defmodule Bonfire.GraphQL.Phase.Arguments.FlagInvalid do
+defmodule Bonfire.API.GraphQL.Phase.Arguments.FlagInvalid do
   @moduledoc false
 
   # Marks arguments as bad if they have any invalid children.
@@ -7,7 +7,7 @@ defmodule Bonfire.GraphQL.Phase.Arguments.FlagInvalid do
   # This is later used by the ArgumentsOfCorrectType phase.
 
   alias Absinthe.{Blueprint, Phase}
-  alias Bonfire.GraphQL.Cursor
+  alias Bonfire.API.GraphQL.Cursor
   use Absinthe.Phase
 
   @doc """

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.GraphQL.ResolveRootPage do
+defmodule Bonfire.API.GraphQL.ResolveRootPage do
   @moduledoc """
   Encapsulates the flow of resolving a page in the absence of parents.
   """
@@ -14,9 +14,9 @@ defmodule Bonfire.GraphQL.ResolveRootPage do
     paging_opts: %{default_limit: 10, max_limit: 100}
   ]
 
-  alias Bonfire.GraphQL
-  alias Bonfire.GraphQL.ResolveRootPage
-  alias Bonfire.GraphQL
+  alias Bonfire.API.GraphQL
+  alias Bonfire.API.GraphQL.ResolveRootPage
+  alias Bonfire.API.GraphQL
 
   def run(%ResolveRootPage{
         module: module,

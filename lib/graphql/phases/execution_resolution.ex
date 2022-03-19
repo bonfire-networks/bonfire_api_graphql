@@ -1,5 +1,5 @@
 # this code is based on Absinthe library: Absinthe.Phase.Document.Execution.Resolution
-defmodule Bonfire.GraphQL.Phase.ExecutionResolution do
+defmodule Bonfire.API.GraphQL.Phase.ExecutionResolution do
   @moduledoc false
 
   # Runs resolution functions in a blueprint.
@@ -12,7 +12,7 @@ defmodule Bonfire.GraphQL.Phase.ExecutionResolution do
 
   use Absinthe.Phase
 
-  require Logger
+  import Where
 
   def run(bp_root, options \\ []) do
     Absinthe.Phase.Document.Execution.Resolution.run(bp_root, options)
@@ -48,12 +48,12 @@ defmodule Bonfire.GraphQL.Phase.ExecutionResolution do
   end
 
   defp debug_log(msg, exception, stacktrace, kind) do
-    Logger.error(msg)
-    Logger.error(Exception.format_banner(kind, exception, stacktrace))
+    error(msg)
+    error(Exception.format_banner(kind, exception, stacktrace))
     IO.puts(Exception.format_exit(exception))
     IO.puts(Exception.format_stacktrace(stacktrace))
 
-    if Bonfire.Common.Utils.module_enabled?(Sentry), do: Sentry.capture_exception(
+    if Bonfire.Common.Extend.module_enabled?(Sentry), do: Sentry.capture_exception(
       exception,
       stacktrace: stacktrace
     )

@@ -1,4 +1,4 @@
-defmodule Bonfire.GraphQL.Middleware.Debug do
+defmodule Bonfire.API.GraphQL.Middleware.Debug do
   alias Absinthe.Resolution
 
   def call(resolution, :start) do

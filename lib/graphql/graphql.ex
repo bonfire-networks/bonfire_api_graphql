@@ -1,12 +1,11 @@
 Bonfire.Common.Config.require_extension_config!(:bonfire_api_graphql)
 
-  # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.GraphQL do
+defmodule Bonfire.API.GraphQL do
   alias Absinthe.Resolution
-  alias Bonfire.GraphQL.Page
+  alias Bonfire.API.GraphQL.Page
   alias Bonfire.Common.Enums
   import Bonfire.Repo.Common, only: [match_admin: 0]
-  import Bonfire.Fail.Error
+  import Bonfire.Fail
 
   def reverse_path(info) do
     Enum.reverse(Resolution.path(info))
@@ -66,13 +65,13 @@ defmodule Bonfire.GraphQL do
   def is_authenticated(_), do: not_logged_in()
 
   def current_account(%{context: %{current_account: %{id: id} = current_account}}) when is_binary(id), do: current_account
-  def current_account(%{context: %{current_account_id: current_account_id}}) when is_binary(current_account_id), do: Bonfire.GraphQL.Auth.account_by(current_account_id)
+  def current_account(%{context: %{current_account_id: current_account_id}}) when is_binary(current_account_id), do: Bonfire.API.GraphQL.Auth.account_by(current_account_id)
   def current_account(_), do: nil
 
   def current_user(%{context: context}), do: current_user(context)
   def current_user(%{__context__: context}), do: current_user(context)
   def current_user(%{current_user: %{id: id} = current_user}) when is_binary(id), do: current_user
-  def current_user(%{current_account_id: current_account_id, current_username: current_username}) when is_binary(current_account_id) and is_binary(current_username), do: Bonfire.GraphQL.Auth.user_by(current_username, current_account_id)
+  def current_user(%{current_account_id: current_account_id, current_username: current_username}) when is_binary(current_account_id) and is_binary(current_username), do: Bonfire.API.GraphQL.Auth.user_by(current_username, current_account_id)
   # def current_user(debug), do: IO.inspect(current_user_debug: debug)
   def current_user(_), do: nil
 
@@ -157,7 +156,7 @@ defmodule Bonfire.GraphQL do
 
   def not_logged_in(), do: {:error, :needs_login}
 
-  def not_permitted(verb \\ "do"), do: {:error, error(:unauthorized, verb)}
+  def not_permitted(verb \\ "do"), do: {:error, fail(:unauthorized, verb)}
 
   def not_found(), do: {:error, :not_found}
 

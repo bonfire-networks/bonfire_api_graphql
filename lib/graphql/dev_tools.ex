@@ -1,4 +1,4 @@
-defmodule Bonfire.GraphQL.DevTools do
+defmodule Bonfire.API.GraphQL.DevTools do
   use Bonfire.Web, :controller
 
   @schema Bonfire.Common.Config.get!(:graphql_schema_module)

@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.GraphQL.CommonResolver do
+defmodule Bonfire.API.GraphQL.CommonResolver do
   alias Pointers.ULID
-  alias Bonfire.GraphQL
+  alias Bonfire.API.GraphQL
 
-  alias Bonfire.GraphQL
+  alias Bonfire.API.GraphQL
 
-  alias Bonfire.GraphQL.{
+  alias Bonfire.API.GraphQL.{
     Fields,
     # Pages,
     # FetchFields,
@@ -77,7 +77,7 @@ defmodule Bonfire.GraphQL.CommonResolver do
   def is_deleted_edge(parent, _, _), do: {:ok, not is_nil(parent.deleted_at)}
 
   # FIXME
-  if Bonfire.Common.Utils.module_enabled?(Bonfire.Repo.Delete) do
+  if Bonfire.Common.Extend.module_enabled?(Bonfire.Repo.Delete) do
     def delete(%{context_id: id}, info) do
       with {:ok, user} <- GraphQL.current_user_or_not_logged_in(info),
            {:ok, deleted} <- Bonfire.Repo.Delete.trigger_soft_delete(id, user) do

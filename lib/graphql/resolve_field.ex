@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.GraphQL.ResolveField do
+defmodule Bonfire.API.GraphQL.ResolveField do
   @moduledoc """
   Encapsulates the flow for resolving a field in the absence of
   multiple parents.
@@ -9,7 +9,7 @@ defmodule Bonfire.GraphQL.ResolveField do
   defstruct @enforce_keys
 
 
-  def run(%Bonfire.GraphQL.ResolveField{
+  def run(%Bonfire.API.GraphQL.ResolveField{
         module: module,
         fetcher: fetcher,
         context: context,

@@ -1,4 +1,4 @@
-defmodule Bonfire.GraphQL.SchemaPipelines do
+defmodule Bonfire.API.GraphQL.SchemaPipelines do
   alias Absinthe.{Phase, Pipeline, Blueprint}
 
   # Add this module to the pipeline of phases
@@ -6,7 +6,7 @@ defmodule Bonfire.GraphQL.SchemaPipelines do
   def pipeline(pipeline) do
     pipeline
     # |> Pipeline.insert_after(Phase.Schema.TypeImports, __MODULE__)
-    # |> Pipeline.insert_before(Phase.Document.Result, Bonfire.GraphQL.Phase.Debug)
+    # |> Pipeline.insert_before(Phase.Document.Result, Bonfire.API.GraphQL.Phase.Debug)
     # |> Pipeline.insert_before(Phase.Document.Arguments.Parse, Arguments.Parse)
     # |> Pipeline.insert_before(Phase.Document.Arguments.Parse, Arguments.Debug)
     # |> Pipeline.insert_after(Phase.Document.Arguments.Parse, Arguments.Debug)

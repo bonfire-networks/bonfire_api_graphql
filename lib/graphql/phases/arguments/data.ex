@@ -1,4 +1,4 @@
-defmodule Bonfire.GraphQL.Phase.Arguments.Data do
+defmodule Bonfire.API.GraphQL.Phase.Arguments.Data do
   @moduledoc false
 
   # Populate all arguments in the document with their provided data values:
@@ -26,7 +26,7 @@ defmodule Bonfire.GraphQL.Phase.Arguments.Data do
   alias Absinthe.Blueprint.Document.Field
   alias Absinthe.{Blueprint}
   use Absinthe.Phase
-  alias Bonfire.GraphQL.Cursor
+  alias Bonfire.API.GraphQL.Cursor
 
   def run(input, _options \\ []) do
     # By using a postwalk we can worry about leaf nodes first (scalars, enums),

@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.GraphQL.Pages do
+defmodule Bonfire.API.GraphQL.Pages do
   @enforce_keys ~w(data counts cursor_fn page_opts)a
   defstruct @enforce_keys
 
-  alias Bonfire.GraphQL.{Page, Pages}
+  alias Bonfire.API.GraphQL.{Page, Pages}
 
   @type data :: %{term => term}
   @type counts :: %{term => non_neg_integer}

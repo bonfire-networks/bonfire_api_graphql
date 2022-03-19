@@ -1,9 +1,9 @@
-defmodule Bonfire.GraphQL.Auth do
+defmodule Bonfire.API.GraphQL.Auth do
   import Bonfire.Common.Config, only: [repo: 0]
-  require Logger
+  import Where
 
-  alias Bonfire.GraphQL
-  alias Bonfire.Common.Utils
+  alias Bonfire.API.GraphQL
+  use Bonfire.Common.Utils
 
   def token_new(id) do
     Phoenix.Token.encrypt(Bonfire.Web.Endpoint, secret(), id)
@@ -18,10 +18,10 @@ defmodule Bonfire.GraphQL.Auth do
   end
 
   @doc """
-  Resolver for login mutation for Bonfire.GraphQL.CommonSchema
+  Resolver for login mutation for Bonfire.API.GraphQL.CommonSchema
   """
   def login(_, %{email_or_username: email_or_username, password: password} = attrs, _) do
-    if Utils.module_enabled?(Bonfire.Me.Accounts) do
+    if module_enabled?(Bonfire.Me.Accounts) do
       with {:ok, account, user} <- Utils.maybe_apply(Bonfire.Me.Accounts, :login, attrs) do
         # user = account |> repo().maybe_preload(:accounted) |> Map.get(:accounted, []) |> hd() |> Map.get(:user, nil)
         id = Map.get(account, :id)
@@ -87,7 +87,7 @@ defmodule Bonfire.GraphQL.Auth do
   end
 
   def set_context_from_resolution(resolution, _) do
-    Logger.debug("Auth.set_context_from_resolution: no matching pattern")
+    debug("Auth.set_context_from_resolution: no matching pattern")
     resolution
   end
 
@@ -144,7 +144,7 @@ defmodule Bonfire.GraphQL.Auth do
   end
 
   @doc """
-  Once authenticated, load the context based on session (called from `Bonfire.GraphQL.Plugs.GraphQLContext`)
+  Once authenticated, load the context based on session (called from `Bonfire.API.GraphQL.Plugs.GraphQLContext`)
   """
   defp build_context_from_session(conn) do
     #IO.inspect(session: Plug.Conn.get_session(conn))

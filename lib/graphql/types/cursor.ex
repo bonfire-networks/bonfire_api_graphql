@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.GraphQL.Cursor do
+defmodule Bonfire.API.GraphQL.Cursor do
   defstruct data: nil, normalized: nil, raw: nil, errors: [], flags: %{}, open_ended: false
 
   use Absinthe.Schema.Notation

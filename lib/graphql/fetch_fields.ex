@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-defmodule Bonfire.GraphQL.FetchFields do
+defmodule Bonfire.API.GraphQL.FetchFields do
   @enforce_keys [:queries, :query, :group_fn]
   defstruct [
     :queries,
@@ -11,7 +11,7 @@ defmodule Bonfire.GraphQL.FetchFields do
 
   import Bonfire.Common.Config, only: [repo: 0]
 
-  alias Bonfire.GraphQL.{Fields, FetchFields}
+  alias Bonfire.API.GraphQL.{Fields, FetchFields}
 
   @type t :: %FetchFields{
           queries: atom,
