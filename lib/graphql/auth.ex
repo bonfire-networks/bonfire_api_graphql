@@ -120,8 +120,10 @@ defmodule Bonfire.API.GraphQL.Auth do
           accnt
           |> repo().maybe_preload(accounted: :user)
           |> Map.get(:accounted, [])
-          |> hd()
-          |> Map.get(:user, nil)
+          |> case do
+            [x | _] -> Map.get(x, :user, nil)
+            [] -> nil
+          end
 
         %{
           current_user: user,
