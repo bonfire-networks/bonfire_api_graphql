@@ -111,7 +111,7 @@ defmodule Bonfire.API.GraphQL.Auth do
   end
 
   defp build_context_from_token(conn, val) do
-    if Bonfire.Common.Utils.module_enabled?(Bonfire.Me.Accounts) do
+    if module_enabled?(Bonfire.Me.Accounts) do
       with [scheme, token] <- String.split(val, " ", parts: 2),
       "bearer" <- String.downcase(scheme, :ascii),
       {:ok, id} <- token_verify(token),
