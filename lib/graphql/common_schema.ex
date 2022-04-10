@@ -1,23 +1,20 @@
-
 defmodule Bonfire.API.GraphQL.CommonSchema do
   use Absinthe.Schema.Notation
   import Absinthe.Resolution.Helpers
   alias Bonfire.API.GraphQL.CommonResolver
 
-
   object :login_response do
+    field(:token, :string)
     # field(:current_account, :json)
     field(:current_user, :user)
     field(:current_account_id, :string)
     field(:current_username, :string)
-
   end
 
   object :common_queries do
   end
 
   object :common_mutations do
-
     @desc "Authenticate an account and/or user"
     field :login, :login_response do
       arg(:email_or_username, non_null(:string))
@@ -40,7 +37,6 @@ defmodule Bonfire.API.GraphQL.CommonSchema do
       arg(:context_id, non_null(:string))
       resolve(&CommonResolver.delete/2)
     end
-
   end
 
   input_object :paginate do
@@ -51,7 +47,6 @@ defmodule Bonfire.API.GraphQL.CommonSchema do
 
   @desc "Cursors for pagination"
   object :page_info do
-
     @desc "Cursor pointing to the first of the results returned, to be used with `before` query parameter if the backend supports reverse pagination."
     field(:start_cursor, list_of(non_null(:cursor)))
 
@@ -66,7 +61,5 @@ defmodule Bonfire.API.GraphQL.CommonSchema do
 
     @desc "Returns the total result count, if it can be determined."
     field(:total_count, :integer)
-
   end
-
 end

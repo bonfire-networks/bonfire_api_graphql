@@ -5,6 +5,18 @@ defmodule Bonfire.API.GraphQL.Auth do
   alias Bonfire.API.GraphQL
   use Bonfire.Common.Utils
 
+  def token_new(id) do
+    Phoenix.Token.encrypt(Bonfire.Web.Endpoint, secret(), id)
+  end
+
+  def token_verify(token) do
+    Phoenix.Token.decrypt(Bonfire.Web.Endpoint, secret(), token)
+  end
+
+  defp secret() do
+    Application.fetch_env!(:bonfire, :encryption_salt)
+  end
+
   @doc """
   Resolver for login mutation for Bonfire.API.GraphQL.CommonSchema
   """
@@ -12,11 +24,14 @@ defmodule Bonfire.API.GraphQL.Auth do
     if module_enabled?(Bonfire.Me.Accounts) do
       with {:ok, account, user} <- Utils.maybe_apply(Bonfire.Me.Accounts, :login, attrs) do
         # user = account |> repo().maybe_preload(:accounted) |> Map.get(:accounted, []) |> hd() |> Map.get(:user, nil)
+        id = Map.get(account, :id)
+
         {:ok, Map.merge(user || %{}, %{
               current_account: account,
-              current_account_id: Map.get(account, :id),
+              current_account_id: id,
               current_user: user,
-              current_username: username(user)
+              current_username: username(user),
+              token: token_new(id)
             } ) }
       else e ->
         {:error, e}
@@ -82,20 +97,58 @@ defmodule Bonfire.API.GraphQL.Auth do
   def set_session_from_context(conn, %Absinthe.Blueprint{execution: %{context: %{current_account_id: current_account_id} = context}}) when not is_nil(current_account_id) do
     #IO.inspect(absinthe_before_send_set_session: context)
       conn
-      |>
-      Plug.Conn.put_session(:current_account_id, current_account_id)
-      |>
-      Plug.Conn.put_session(:current_username, Map.get(context, :current_username))
+      |> Plug.Conn.put_session(:current_account_id, current_account_id)
+      |> Plug.Conn.put_session(:current_username, Map.get(context, :current_username))
   end
 
-  def set_session_from_context(conn, _) do
-    conn
+  def set_session_from_context(conn, _), do: conn
+
+  def build_context(conn) do
+    case Plug.Conn.get_req_header(conn, "authorization") do
+      [] -> build_context_from_session(conn)
+      [val | _] -> build_context_from_token(conn, val)
+    end
+  end
+
+  defp build_context_from_token(conn, val) do
+    if module_enabled?(Bonfire.Me.Accounts) do
+      with [scheme, token] <- String.split(val, " ", parts: 2),
+      "bearer" <- String.downcase(scheme, :ascii),
+      {:ok, id} <- token_verify(token),
+      {:ok, accnt} <- Bonfire.Me.Accounts.fetch_current(id) do
+        user =
+          accnt
+          |> repo().maybe_preload(accounted: :user)
+          |> Map.get(:accounted, [])
+          |> case do
+            [x | _] -> Map.get(x, :user, nil)
+            [] -> nil
+          end
+
+        %{
+          current_user: user,
+          current_username: username(user),
+          current_account: accnt,
+          current_account_id: id
+        }
+      else
+        _ ->
+          %{
+            current_user: nil,
+            current_username: nil,
+            current_account: nil,
+            current_account_id: nil
+          }
+      end
+    else
+      {:error, "Your app's account/user modules are not integrated with GraphQL."}
+    end
   end
 
   @doc """
   Once authenticated, load the context based on session (called from `Bonfire.API.GraphQL.Plugs.GraphQLContext`)
   """
-  def build_context_from_session(conn) do
+  defp build_context_from_session(conn) do
     #IO.inspect(session: Plug.Conn.get_session(conn))
     #IO.inspect(assigns: conn.assigns)
     context = %{
@@ -127,6 +180,4 @@ defmodule Bonfire.API.GraphQL.Auth do
   def username(user) do
     Bonfire.Common.Utils.e(user, :character, :username, nil)
   end
-
-
 end
