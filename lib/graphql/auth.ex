@@ -1,16 +1,20 @@
 defmodule Bonfire.API.GraphQL.Auth do
   import Bonfire.Common.Config, only: [repo: 0]
   import Where
-
-  alias Bonfire.API.GraphQL
   use Bonfire.Common.Utils
 
-  def token_new(id) do
-    Phoenix.Token.encrypt(Bonfire.Web.Endpoint, secret(), id)
+  alias Bonfire.API.GraphQL
+  alias Bonfire.Web.Endpoint
+
+  alias Bonfire.Me.Accounts
+  alias Bonfire.Me.Users
+
+  def token_new(ids) do
+    Phoenix.Token.encrypt(Endpoint, secret(), ids)
   end
 
   def token_verify(token) do
-    Phoenix.Token.decrypt(Bonfire.Web.Endpoint, secret(), token)
+    Phoenix.Token.decrypt(Endpoint, secret(), token)
   end
 
   defp secret() do
@@ -21,17 +25,17 @@ defmodule Bonfire.API.GraphQL.Auth do
   Resolver for login mutation for Bonfire.API.GraphQL.CommonSchema
   """
   def login(_, %{email_or_username: email_or_username, password: password} = attrs, _) do
-    if module_enabled?(Bonfire.Me.Accounts) do
-      with {:ok, account, user} <- Utils.maybe_apply(Bonfire.Me.Accounts, :login, attrs) do
-        # user = account |> repo().maybe_preload(:accounted) |> Map.get(:accounted, []) |> hd() |> Map.get(:user, nil)
-        id = Map.get(account, :id)
+    if module_enabled?(Accounts) do
+      with {:ok, account, user} <- Utils.maybe_apply(Accounts, :login, attrs) do
+        account_id = Map.get(account, :id)
+        username = username(user)
 
         {:ok, Map.merge(user || %{}, %{
               current_account: account,
-              current_account_id: id,
+              current_account_id: account_id,
               current_user: user,
-              current_username: username(user),
-              token: token_new(id)
+              current_username: username,
+              token: token_new({account_id, username})
             } ) }
       else e ->
         {:error, e}
@@ -44,7 +48,7 @@ defmodule Bonfire.API.GraphQL.Auth do
   def select_user(_, %{username: username} = attrs, info) do
     account = GraphQL.current_account(info)
     if account do
-      with {:ok, user} <- Utils.maybe_apply(Bonfire.Me.Users, :by_username_and_account, [username, account]) do
+      with %{} = user <- user_by(username, account) do
         {:ok, Map.merge(user, %{
                 current_account: account,
                 current_account_id: Map.get(account, :id),
@@ -111,37 +115,26 @@ defmodule Bonfire.API.GraphQL.Auth do
   end
 
   defp build_context_from_token(conn, val) do
-    if module_enabled?(Bonfire.Me.Accounts) do
-      with [scheme, token] <- String.split(val, " ", parts: 2),
-      "bearer" <- String.downcase(scheme, :ascii),
-      {:ok, id} <- token_verify(token),
-      {:ok, accnt} <- Bonfire.Me.Accounts.fetch_current(id) do
-        user =
-          accnt
-          |> repo().maybe_preload(accounted: :user)
-          |> Map.get(:accounted, [])
-          |> case do
-            [x | _] -> Map.get(x, :user, nil)
-            [] -> nil
-          end
+    with [scheme, token] <- String.split(val, " ", parts: 2),
+    "bearer" <- String.downcase(scheme, :ascii),
+    {:ok, ids} <- token_verify(token),
+    %{} = user <- user_by(ids),
+    %{} = account <- GraphQL.current_account(user) |> debug do
 
-        %{
-          current_user: user,
-          current_username: username(user),
-          current_account: accnt,
-          current_account_id: id
-        }
-      else
-        _ ->
-          %{
-            current_user: nil,
-            current_username: nil,
-            current_account: nil,
-            current_account_id: nil
-          }
-      end
+      %{
+        current_user: user,
+        current_username: username(user),
+        current_account: account,
+        current_account_id: ulid(account)
+      }
     else
-      {:error, "Your app's account/user modules are not integrated with GraphQL."}
+      _ ->
+        %{
+          current_user: nil,
+          current_username: nil,
+          current_account: nil,
+          current_account_id: nil
+        }
     end
   end
 
@@ -163,14 +156,42 @@ defmodule Bonfire.API.GraphQL.Auth do
     })
   end
 
-  def user_by(username, account_id) when is_binary(username) and is_binary(account_id) do
-    with {:ok, u} <- Utils.maybe_apply(Bonfire.Me.Users, :by_username_and_account, [username, account_id]) do
+  def user_by({account, username}) do
+    user_by(username, account)
+    |> repo().maybe_preload(accounted: :account)
+    |> debug("attempted to load account from user")
+  end
+
+  def user_by(username, account) when is_binary(username) and is_binary(account) or is_map(account) do
+    with {:ok, u} <- Utils.maybe_apply(Users, :by_username_and_account, [username, ulid(account)]) do
       u
     end
   end
 
-  def account_by(account_id) when is_binary(account_id) do
-    Utils.maybe_apply(Bonfire.Me.Accounts, :get_current, account_id)
+  def user_by(username, _) when is_binary(username) do
+    with {:ok, u} <- Utils.maybe_apply(Users, :by_username, [username]) do
+      u
+    end
+  end
+
+  def user_by(_, account) when is_binary(account) or is_map(account) do
+    with %{} = account <- account_by(account) do
+
+      account
+      |> repo().maybe_preload(accounted: [user: [:character, profile: [:icon, :image]]])
+      |> Map.get(:accounted, [])
+      |> List.first(%{})
+      |> Map.get(:user, %{})
+      |> Map.merge(%{accounted: %{account: account}})
+      |> debug("attempted to get user from account")
+
+    end
+  end
+
+  def account_by(account) when is_binary(account) or is_map(account) do
+    with {:ok, account} <- Utils.maybe_apply(Accounts, :get_current, ulid(account)) do
+      account
+    end
   end
 
   def username(%{current_user: current_user}) do

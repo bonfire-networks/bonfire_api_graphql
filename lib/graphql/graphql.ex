@@ -64,6 +64,7 @@ defmodule Bonfire.API.GraphQL do
   def is_authenticated(%{context: %{current_user: %{id: id} = current_user}}) when is_binary(id), do: :ok
   def is_authenticated(_), do: not_logged_in()
 
+  def current_account(%{accounted: %{account: account}}), do: account
   def current_account(%{context: %{current_account: %{id: id} = current_account}}) when is_binary(id), do: current_account
   def current_account(%{context: %{current_account_id: current_account_id}}) when is_binary(current_account_id), do: Bonfire.API.GraphQL.Auth.account_by(current_account_id)
   def current_account(_), do: nil
