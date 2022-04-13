@@ -4,17 +4,17 @@ defmodule Bonfire.API.GraphQL.Auth do
   use Bonfire.Common.Utils
 
   alias Bonfire.API.GraphQL
-  alias Bonfire.Web.Endpoint
-
   alias Bonfire.Me.Accounts
   alias Bonfire.Me.Users
 
+  @endpoint_module Config.get!(:endpoint_module)
+
   def token_new(ids) do
-    Phoenix.Token.encrypt(Endpoint, secret(), ids)
+    Phoenix.Token.encrypt(@endpoint_module, secret(), ids)
   end
 
   def token_verify(token) do
-    Phoenix.Token.decrypt(Endpoint, secret(), token)
+    Phoenix.Token.decrypt(@endpoint_module, secret(), token)
   end
 
   defp secret() do
