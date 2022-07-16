@@ -38,7 +38,7 @@ defmodule Bonfire.API.GraphQL.CommonResolver do
   end
 
   def fetch_context_edge(_, ids) do
-    {:ok, ptrs} = Pointers.many(id: List.flatten(ids))
+    # {:ok, ptrs} = Pointers.many(id: List.flatten(ids))
     Fields.new(Pointers.list!(ids), &Map.get(&1, :id))
   end
 
