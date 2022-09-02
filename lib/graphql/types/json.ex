@@ -5,7 +5,7 @@ defmodule Bonfire.API.GraphQL.JSON do
   Requires `{ :jason, "~> 1.1" }` package: https://github.com/michalmuskala/jason
   """
   defstruct data: nil, normalized: nil, raw: nil, errors: [], flags: %{}, open_ended: false
-  import Where
+  import Untangle
   alias Absinthe.Blueprint.Input
   use Absinthe.Schema.Notation
   require Protocol

@@ -1,6 +1,6 @@
 defmodule Bonfire.API.GraphQL.Auth do
   import Bonfire.Common.Config, only: [repo: 0]
-  import Where
+  import Untangle
   use Bonfire.Common.Utils
 
   alias Bonfire.API.GraphQL

@@ -7,7 +7,7 @@ defmodule Bonfire.API.GraphQL.QueryHelper do
   Adapted from https://github.com/devonestes/assertions (MIT license)
   """
 
-  import Where
+  import Untangle
 
   @spec run_query_id(any(), module(), atom(), non_neg_integer(), Keyword.t(), boolean()) ::
           String.t()
@@ -17,13 +17,13 @@ defmodule Bonfire.API.GraphQL.QueryHelper do
 
     with {:ok, go} <- Absinthe.run(q, schema, variables: %{"id" => id}) do
 
-      maybe_debug(q, go, debug)
+      maybe_debug_api(q, go, debug)
 
       go |> Map.get(:data) |> Map.get(Atom.to_string(type))
 
     else e ->
         error("The GraphQL query failed")
-        maybe_debug(q, e, true, "Query failed")
+        maybe_debug_api(q, e, true, "Query failed")
         e
     end
   end
@@ -228,12 +228,12 @@ defmodule Bonfire.API.GraphQL.QueryHelper do
 
   def camelize(type), do: Absinthe.Utils.camelize(to_string(type), lower: true)
 
-  def maybe_debug(q, %{errors: errors} = obj, _, msg \\ "The below GraphQL query had some errors in the response") do
+  def maybe_debug_api(q, %{errors: errors} = obj, _, msg \\ "The below GraphQL query had some errors in the response") do
     warn(errors, msg)
-    maybe_debug(q, Map.get(obj, :data), true)
+    maybe_debug_api(q, Map.get(obj, :data), true)
   end
 
-  def maybe_debug(q, obj, debug, msg) do
+  def maybe_debug_api(q, obj, debug, msg) do
     if debug do # || Bonfire.Common.Config.get([:logging, :tests_output_graphql]) do
       info(q, "GraphQL query")
       info(obj, "GraphQL response")

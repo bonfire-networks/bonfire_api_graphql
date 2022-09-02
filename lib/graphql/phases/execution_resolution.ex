@@ -12,7 +12,7 @@ defmodule Bonfire.API.GraphQL.Phase.ExecutionResolution do
 
   use Absinthe.Phase
 
-  import Where
+  import Untangle
 
   def run(bp_root, options \\ []) do
     Absinthe.Phase.Document.Execution.Resolution.run(bp_root, options)
