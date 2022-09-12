@@ -1,13 +1,18 @@
 defmodule Bonfire.API.GraphQL.UserSocket do
   use Phoenix.Socket
+
   use Absinthe.Phoenix.Socket,
     schema: Bonfire.API.GraphQL.Schema
 
   # Deprecated in Phoenix v1.4
-  transport :websocket, Phoenix.Transports.WebSocket
+  transport(:websocket, Phoenix.Transports.WebSocket)
 
   def connect(params, socket) do
-    socket = Absinthe.Phoenix.Socket.put_opts(socket, context: build_context_from_params(params, socket))
+    socket =
+      Absinthe.Phoenix.Socket.put_opts(socket,
+        context: build_context_from_params(params, socket)
+      )
+
     {:ok, socket}
   end
 
@@ -19,7 +24,6 @@ defmodule Bonfire.API.GraphQL.UserSocket do
       current_user: params["current_user"]
     }
   end
-
 
   def id(_socket), do: nil
 end

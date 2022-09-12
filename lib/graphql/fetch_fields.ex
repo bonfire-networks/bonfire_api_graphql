@@ -11,7 +11,8 @@ defmodule Bonfire.API.GraphQL.FetchFields do
 
   import Bonfire.Common.Config, only: [repo: 0]
 
-  alias Bonfire.API.GraphQL.{Fields, FetchFields}
+  alias Bonfire.API.GraphQL.Fields
+  alias Bonfire.API.GraphQL.FetchFields
 
   @type t :: %FetchFields{
           queries: atom,

@@ -28,7 +28,6 @@ defmodule Bonfire.API.GraphQL.Router do
       end
 
       scope "/api" do
-
         # TODO: choose default UI in config
         redirect("/", "/api/explore", :temporary)
 
@@ -82,8 +81,8 @@ defmodule Bonfire.API.GraphQL.Router do
       end
 
       # Auth integration
-      def absinthe_before_send(conn, blueprint), do: Bonfire.API.GraphQL.Auth.set_session_from_context(conn, blueprint)
-
+      def absinthe_before_send(conn, blueprint),
+        do: Bonfire.API.GraphQL.Auth.set_session_from_context(conn, blueprint)
     end
   end
 end

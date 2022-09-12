@@ -15,8 +15,8 @@ defmodule Bonfire.API.GraphQL.FetchPage do
   ]
 
   import Bonfire.Common.Config, only: [repo: 0]
-  alias Bonfire.API.GraphQL.{Page, FetchPage}
-
+  alias Bonfire.API.GraphQL.Page
+  alias Bonfire.API.GraphQL.FetchPage
 
   @doc false
   def default_cursor(x), do: [x.id]
@@ -49,14 +49,14 @@ defmodule Bonfire.API.GraphQL.FetchPage do
     base_q = apply(queries, :query, [query, base_filters])
     data_q = apply(queries, :filter, [base_q, data_filters])
     count_q = apply(queries, :filter, [base_q, count_filters])
-    #IO.inspect(FetchPage_run_data: data_q, count_with: count_q)
+    # IO.inspect(FetchPage_run_data: data_q, count_with: count_q)
     #
     {:ok, [data, count]} = repo().transact_many([{:all, data_q}, {count_with, count_q}])
 
-    #IO.inspect(FetchPage_run_data: data, count: count)
+    # IO.inspect(FetchPage_run_data: data, count: count)
     data = map_data(map_fn, data)
     count = map_count(map_count_fn, count)
-    #IO.inspect(mapped_data: data, mapped_count: count)
+    # IO.inspect(mapped_data: data, mapped_count: count)
     ret = Page.new(data, count, cursor_fn, page_opts)
     {:ok, ret}
   end

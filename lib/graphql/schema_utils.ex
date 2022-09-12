@@ -1,7 +1,6 @@
 defmodule Bonfire.API.GraphQL.SchemaUtils do
   def hydrations_merge(hydrators) do
-    Enum.reduce(hydrators, %{}, fn mod,
-    hydrated ->
+    Enum.reduce(hydrators, %{}, fn mod, hydrated ->
       hydrate_merge(hydrated, maybe_hydrate(mod))
     end)
   end
@@ -18,7 +17,8 @@ defmodule Bonfire.API.GraphQL.SchemaUtils do
     schemas = Bonfire.Common.Pointers.Tables.list_schemas()
 
     Enum.reduce(schemas, [], fn schema, acc ->
-      if Bonfire.Common.Extend.module_enabled?(schema) and function_exported?(schema, :type, 0) and
+      if Bonfire.Common.Extend.module_enabled?(schema) and
+           function_exported?(schema, :type, 0) and
            !is_nil(apply(schema, :type, [])) do
         Enum.concat(acc, [apply(schema, :type, [])])
       else
@@ -27,7 +27,6 @@ defmodule Bonfire.API.GraphQL.SchemaUtils do
     end)
   end
 
-
   # defmacro import_many_types(types) do # TODO / doesn't work with Absinthe
   #   quote do
   #     Enum.map(unquote(types), fn(schema_module) ->
@@ -35,5 +34,4 @@ defmodule Bonfire.API.GraphQL.SchemaUtils do
   #     end)
   #   end
   # end
-
 end

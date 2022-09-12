@@ -26,13 +26,16 @@ defmodule Bonfire.API.GraphQL.ResolveRootPage do
         paging_opts: opts,
         cursor_validators: validators
       }) do
+    with {:ok, page_opts_to_fetch} <-
+           GraphQL.full_page_opts(page_opts, validators, opts) do
+      info_to_fetch =
+        Map.take(info, [:context])
+        |> Map.put(
+          :data_filters,
+          Map.drop(page_opts, [:limit, :before, :after])
+        )
 
-    with {:ok, page_opts_to_fetch} <- GraphQL.full_page_opts(page_opts, validators, opts) do
-
-      info_to_fetch = Map.take(info, [:context])
-        |> Map.put(:data_filters,
-            Map.drop(page_opts, [:limit, :before, :after])
-          ) #|> IO.inspect
+      # |> IO.inspect
 
       apply(module, fetcher, [page_opts_to_fetch, info_to_fetch])
     end

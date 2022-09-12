@@ -10,7 +10,11 @@ defmodule Bonfire.API.GraphQL.Fields do
 
   @doc "Creates a new Fields from the data and a grouping function"
   @spec new(data :: [term], group_fn :: (term -> term)) :: t
-  @spec new(data :: [term], group_fn :: (term -> term), map_fn :: (term -> term)) :: t
+  @spec new(
+          data :: [term],
+          group_fn :: (term -> term),
+          map_fn :: (term -> term)
+        ) :: t
   def new(data, group_fn) when is_list(data) and is_function(group_fn, 1) do
     %Fields{data: Enums.group(data, group_fn)}
   end

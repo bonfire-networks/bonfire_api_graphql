@@ -8,7 +8,8 @@ defmodule Bonfire.API.GraphQL.Middleware.CollapseErrors do
     %{resolution | errors: collapse(resolution.errors)}
   end
 
-  def collapse(list) when is_list(list), do: List.flatten(Enum.map(list, &collapse/1))
+  def collapse(list) when is_list(list),
+    do: List.flatten(Enum.map(list, &collapse/1))
 
   def collapse(%Ecto.Changeset{} = changeset),
     do: extract_messages(changeset)
@@ -16,7 +17,9 @@ defmodule Bonfire.API.GraphQL.Middleware.CollapseErrors do
   def collapse(%{__struct__: _} = struct), do: Map.from_struct(struct)
 
   def collapse(other), do: Bonfire.Fail.fail(other) |> collapse()
-  def collapse(other, extra), do: Bonfire.Fail.fail(other, extra) |> Map.from_struct()
+
+  def collapse(other, extra),
+    do: Bonfire.Fail.fail(other, extra) |> Map.from_struct()
 
   defp extract_messages(changeset) do
     # IO.inspect(changeset: changeset)

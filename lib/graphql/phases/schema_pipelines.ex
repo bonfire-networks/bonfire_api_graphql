@@ -1,10 +1,13 @@
 defmodule Bonfire.API.GraphQL.SchemaPipelines do
-  alias Absinthe.{Phase, Pipeline, Blueprint}
+  alias Absinthe.Phase
+  alias Absinthe.Pipeline
+  alias Absinthe.Blueprint
 
   # Add this module to the pipeline of phases
   # to run on the schema
   def pipeline(pipeline) do
     pipeline
+
     # |> Pipeline.insert_after(Phase.Schema.TypeImports, __MODULE__)
     # |> Pipeline.insert_before(Phase.Document.Result, Bonfire.API.GraphQL.Phase.Debug)
     # |> Pipeline.insert_before(Phase.Document.Arguments.Parse, Arguments.Parse)
@@ -16,7 +19,6 @@ defmodule Bonfire.API.GraphQL.SchemaPipelines do
 
   # This receives (and should also return) the blueprint of the schema:
   def run(blueprint, _) do
-    {:ok, blueprint |> IO.inspect(label: "blueprint")}
+    {:ok, IO.inspect(blueprint, label: "blueprint")}
   end
-
 end

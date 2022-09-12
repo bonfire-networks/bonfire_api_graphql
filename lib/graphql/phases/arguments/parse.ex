@@ -5,7 +5,12 @@ defmodule Bonfire.API.GraphQL.Phase.Arguments.Parse do
   # Special handling for types that are lying about being scalar
 
   alias Absinthe.Blueprint
-  alias Absinthe.Blueprint.Input.{Integer, List, Null, String, Value}
+  alias Absinthe.Blueprint.Input.Integer
+  alias Absinthe.Blueprint.Input.List
+  alias Absinthe.Blueprint.Input.Null
+  alias Absinthe.Blueprint.Input.String
+  alias Absinthe.Blueprint.Input.Value
+
   alias Absinthe.Type.Scalar
   alias Bonfire.API.GraphQL.Cursor
   use Absinthe.Phase
@@ -44,7 +49,10 @@ defmodule Bonfire.API.GraphQL.Phase.Arguments.Parse do
     end
   end
 
-  defp handle_list_item(%Value{normalized: %{__struct__: struct, value: value}}, acc)
+  defp handle_list_item(
+         %Value{normalized: %{__struct__: struct, value: value}},
+         acc
+       )
        when struct in [Integer, String, Null] do
     {:cont, [value | acc]}
   end

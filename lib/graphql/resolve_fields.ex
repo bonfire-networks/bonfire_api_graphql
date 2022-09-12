@@ -5,7 +5,9 @@ defmodule Bonfire.API.GraphQL.ResolveFields do
   parents.
   """
 
-  alias Bonfire.API.GraphQL.{Fields, ResolveFields}
+  alias Bonfire.API.GraphQL.Fields
+  alias Bonfire.API.GraphQL.ResolveFields
+
   import Absinthe.Resolution.Helpers, only: [batch: 3]
 
   @enforce_keys [:module, :fetcher, :context, :info]
@@ -38,7 +40,11 @@ defmodule Bonfire.API.GraphQL.ResolveFields do
         getter_fn: getter
       })
       when is_function(getter, 2) do
-    batch({module, fetcher, Map.take(info, [:context])}, context, getter.(context, default))
+    batch(
+      {module, fetcher, Map.take(info, [:context])},
+      context,
+      getter.(context, default)
+    )
   end
 
   def default_getter(context, default), do: Fields.getter(context, default)

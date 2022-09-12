@@ -11,7 +11,10 @@ defmodule Bonfire.API.GraphQL.Middleware.Debug do
     -------------------------
     """)
 
-    %{resolution | middleware: resolution.middleware ++ [{__MODULE__, {:finish, path}}]}
+    %{
+      resolution
+      | middleware: resolution.middleware ++ [{__MODULE__, {:finish, path}}]
+    }
   end
 
   def call(resolution, {:finish, path}) do

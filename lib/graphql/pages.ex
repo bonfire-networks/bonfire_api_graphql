@@ -3,7 +3,8 @@ defmodule Bonfire.API.GraphQL.Pages do
   @enforce_keys ~w(data counts cursor_fn page_opts)a
   defstruct @enforce_keys
 
-  alias Bonfire.API.GraphQL.{Page, Pages}
+  alias Bonfire.API.GraphQL.Page
+  alias Bonfire.API.GraphQL.Pages
 
   @type data :: %{term => term}
   @type counts :: %{term => non_neg_integer}
@@ -14,7 +15,12 @@ defmodule Bonfire.API.GraphQL.Pages do
   """
   def new(data, counts, cursor_fn, page_opts)
       when is_function(cursor_fn, 1) do
-    %Pages{data: data, counts: counts, cursor_fn: cursor_fn, page_opts: page_opts}
+    %Pages{
+      data: data,
+      counts: counts,
+      cursor_fn: cursor_fn,
+      page_opts: page_opts
+    }
   end
 
   @doc """
@@ -31,7 +37,13 @@ defmodule Bonfire.API.GraphQL.Pages do
              is_function(group_fn, 1) and is_function(cursor_fn, 1) do
     data = Enum.group_by(data_rows, group_fn)
     counts = Map.new(count_rows)
-    %Pages{data: data, counts: counts, cursor_fn: cursor_fn, page_opts: page_opts}
+
+    %Pages{
+      data: data,
+      counts: counts,
+      cursor_fn: cursor_fn,
+      page_opts: page_opts
+    }
   end
 
   @doc "Returns a Page for the given key, defaulting to an empty one"

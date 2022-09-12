@@ -26,8 +26,8 @@ defmodule Bonfire.API.GraphQL.ResolvePages do
   import Absinthe.Resolution.Helpers, only: [async: 1, batch: 3]
 
   def run(%ResolvePages{info: info} = rp) do
-    #IO.inspect(depth: GraphQL.list_depth(info))
-    #IO.inspect(info: Map.take(info, [:context]))
+    # IO.inspect(depth: GraphQL.list_depth(info))
+    # IO.inspect(info: Map.take(info, [:context]))
     run(GraphQL.list_depth(info), Map.take(info, [:context]), rp)
   end
 
@@ -37,25 +37,40 @@ defmodule Bonfire.API.GraphQL.ResolvePages do
 
   # when running in Absinthe, do it async
   defp run_full(%{context: %{schema: _schema}} = rp, info, opts) do
-    with {:ok, opts} <- GraphQL.full_page_opts(rp.page_opts, rp.cursor_validators, opts) do
+    with {:ok, opts} <-
+           GraphQL.full_page_opts(rp.page_opts, rp.cursor_validators, opts) do
       async(fn ->
-        apply(rp.module, rp.fetcher, [opts, Map.take(info, [:context]), rp.context])
+        apply(rp.module, rp.fetcher, [
+          opts,
+          Map.take(info, [:context]),
+          rp.context
+        ])
       end)
     end
   end
 
   # when NOT running in Absinthe, just run it
   defp run_full(rp, info, opts) do
-    with {:ok, opts} <- GraphQL.full_page_opts(rp.page_opts, rp.cursor_validators, opts) do
-      apply(rp.module, rp.fetcher, [opts, Map.take(info, [:context]), rp.context])
+    with {:ok, opts} <-
+           GraphQL.full_page_opts(rp.page_opts, rp.cursor_validators, opts) do
+      apply(rp.module, rp.fetcher, [
+        opts,
+        Map.take(info, [:context]),
+        rp.context
+      ])
     end
   end
 
   defp run_limit(rp, info, opts) do
     cond do
-      function_exported?(rp.module, rp.fetcher, 2) -> batch_limit(rp, info, opts)
-      function_exported?(rp.module, rp.fetcher, 3) -> unbatch_limit(rp, info, opts)
-      true -> throw({:missing_fetcher, {rp.module, rp.fetcher, [2, 3]}})
+      function_exported?(rp.module, rp.fetcher, 2) ->
+        batch_limit(rp, info, opts)
+
+      function_exported?(rp.module, rp.fetcher, 3) ->
+        unbatch_limit(rp, info, opts)
+
+      true ->
+        throw({:missing_fetcher, {rp.module, rp.fetcher, [2, 3]}})
     end
   end
 
@@ -74,7 +89,11 @@ defmodule Bonfire.API.GraphQL.ResolvePages do
   defp unbatch_limit(rp, info, opts) do
     with {:ok, opts} <- GraphQL.limit_page_opts(rp.page_opts, opts) do
       async(fn ->
-        apply(rp.module, rp.fetcher, [opts, Map.take(info, [:context]), rp.context])
+        apply(rp.module, rp.fetcher, [
+          opts,
+          Map.take(info, [:context]),
+          rp.context
+        ])
       end)
     end
   end

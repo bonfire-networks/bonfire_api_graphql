@@ -1,6 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.API.GraphQL.Cursor do
-  defstruct data: nil, normalized: nil, raw: nil, errors: [], flags: %{}, open_ended: false
+  defstruct data: nil,
+            normalized: nil,
+            raw: nil,
+            errors: [],
+            flags: %{},
+            open_ended: false
 
   use Absinthe.Schema.Notation
   alias Absinthe.Blueprint.Input
@@ -17,9 +22,8 @@ defmodule Bonfire.API.GraphQL.Cursor do
   May be extended in future.
   """
   scalar :cursor, name: "Cursor" do
-
-    parse &decode/1
-    serialize &encode/1
+    parse(&decode/1)
+    serialize(&encode/1)
   end
 
   @spec decode(Input.String.t()) :: {:ok, binary}

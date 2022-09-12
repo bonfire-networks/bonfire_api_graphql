@@ -1,6 +1,7 @@
 defmodule Bonfire.API.GraphQL.PlugPipelines do
   # alias Bonfire.API.GraphQL.Phase.Arguments
-  alias Absinthe.{Phase, Pipeline}
+  alias Absinthe.Phase
+  alias Absinthe.Pipeline
 
   def default_pipeline(config, opts) do
     Absinthe.Plug.default_pipeline(config, opts)
@@ -21,9 +22,11 @@ defmodule Bonfire.API.GraphQL.PlugPipelines do
 
   # This receives (and should also return) the blueprint of the schema:
   def run(blueprint, _) do
-    {:ok, blueprint
-      #|> IO.inspect(label: "blueprint")
+    {
+      :ok,
+      blueprint
+
+      # |> IO.inspect(label: "blueprint")
     }
   end
-
 end

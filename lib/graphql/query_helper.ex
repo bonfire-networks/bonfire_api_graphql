@@ -9,26 +9,39 @@ defmodule Bonfire.API.GraphQL.QueryHelper do
 
   import Untangle
 
-  @spec run_query_id(any(), module(), atom(), non_neg_integer(), Keyword.t(), boolean()) ::
+  @spec run_query_id(
+          any(),
+          module(),
+          atom(),
+          non_neg_integer(),
+          Keyword.t(),
+          boolean()
+        ) ::
           String.t()
-  def run_query_id(id, schema, type, nesting \\ 1, override_fun \\ nil, debug \\ nil) do
-
+  def run_query_id(
+        id,
+        schema,
+        type,
+        nesting \\ 1,
+        override_fun \\ nil,
+        debug \\ nil
+      ) do
     q = query_with_id(schema, type, nesting, override_fun)
 
     with {:ok, go} <- Absinthe.run(q, schema, variables: %{"id" => id}) do
-
       maybe_debug_api(q, go, debug)
 
       go |> Map.get(:data) |> Map.get(Atom.to_string(type))
-
-    else e ->
+    else
+      e ->
         error("The GraphQL query failed")
         maybe_debug_api(q, e, true, "Query failed")
         e
     end
   end
 
-  @spec query_with_id(module(), atom(), non_neg_integer(), Keyword.t()) :: String.t()
+  @spec query_with_id(module(), atom(), non_neg_integer(), Keyword.t()) ::
+          String.t()
   def query_with_id(schema, type, nesting \\ 1, override_fun \\ nil) do
     document = document_for(schema, type, nesting, override_fun)
 
@@ -66,7 +79,8 @@ defmodule Bonfire.API.GraphQL.QueryHelper do
       ```
 
   """
-  @spec document_for(module(), atom(), non_neg_integer(), Keyword.t()) :: String.t()
+  @spec document_for(module(), atom(), non_neg_integer(), Keyword.t()) ::
+          String.t()
   def document_for(schema, type, nesting \\ 1, override_fun \\ nil) do
     schema
     |> fields_for(type, nesting)
@@ -132,7 +146,8 @@ defmodule Bonfire.API.GraphQL.QueryHelper do
     {interface_fields, implementor_fields}
   end
 
-  def get_fields(%struct{types: types}, schema, nesting) when struct == Absinthe.Type.Union do
+  def get_fields(%struct{types: types}, schema, nesting)
+      when struct == Absinthe.Type.Union do
     {[], Enum.map(types, &{&1, fields_for(schema, &1, nesting)})}
   end
 
@@ -158,8 +173,7 @@ defmodule Bonfire.API.GraphQL.QueryHelper do
       |> elem(0)
 
     implementor_fields =
-      implementor_fields
-      |> Enum.map(fn {type, fields} ->
+      Enum.map(implementor_fields, fn {type, fields} ->
         type_info = schema.__absinthe_type__(type)
         [_ | rest] = format_fields(fields, type, 12, schema)
         fields = ["...on #{type_info.name} {\n" | rest]
@@ -178,36 +192,53 @@ defmodule Bonfire.API.GraphQL.QueryHelper do
     Enum.reverse(fields)
   end
 
-  def format_fields({interface_fields, implementor_fields}, type, left_pad, schema)
+  def format_fields(
+        {interface_fields, implementor_fields},
+        type,
+        left_pad,
+        schema
+      )
       when is_list(interface_fields) do
     interface_fields =
       interface_fields
-      |> Enum.reduce({["#{camelize(type)} {\n"], left_pad + 2}, &do_format_fields(&1, &2, schema))
+      |> Enum.reduce(
+        {["#{camelize(type)} {\n"], left_pad + 2},
+        &do_format_fields(&1, &2, schema)
+      )
       |> elem(0)
 
     implementor_fields =
-      implementor_fields
-      |> Enum.map(fn {type, fields} ->
+      Enum.map(implementor_fields, fn {type, fields} ->
         type_info = schema.__absinthe_type__(type)
         [_ | rest] = format_fields(fields, type, left_pad + 2, schema)
         fields = ["...on #{type_info.name} {\n" | rest]
         [padding(left_pad + 2), fields]
       end)
 
-    Enum.reverse(["}\n", padding(left_pad), implementor_fields | interface_fields])
+    Enum.reverse([
+      "}\n",
+      padding(left_pad),
+      implementor_fields | interface_fields
+    ])
   end
 
   def format_fields(fields, type, left_pad, schema) do
     fields =
       fields
-      |> Enum.reduce({["#{camelize(type)} {\n"], left_pad + 2}, &do_format_fields(&1, &2, schema))
+      |> Enum.reduce(
+        {["#{camelize(type)} {\n"], left_pad + 2},
+        &do_format_fields(&1, &2, schema)
+      )
       |> elem(0)
 
     Enum.reverse(["}\n", padding(left_pad) | fields])
   end
 
   def do_format_fields({type, sub_fields}, {acc, left_pad}, schema) do
-    {[format_fields(sub_fields, type, left_pad, schema), padding(left_pad) | acc], left_pad}
+    {[
+       format_fields(sub_fields, type, left_pad, schema),
+       padding(left_pad) | acc
+     ], left_pad}
   end
 
   def do_format_fields(type, {acc, left_pad}, _) do
@@ -228,13 +259,19 @@ defmodule Bonfire.API.GraphQL.QueryHelper do
 
   def camelize(type), do: Absinthe.Utils.camelize(to_string(type), lower: true)
 
-  def maybe_debug_api(q, %{errors: errors} = obj, _, msg \\ "The below GraphQL query had some errors in the response") do
+  def maybe_debug_api(
+        q,
+        %{errors: errors} = obj,
+        _,
+        msg \\ "The below GraphQL query had some errors in the response"
+      ) do
     warn(errors, msg)
     maybe_debug_api(q, Map.get(obj, :data), true)
   end
 
   def maybe_debug_api(q, obj, debug, msg) do
-    if debug do # || Bonfire.Common.Config.get([:logging, :tests_output_graphql]) do
+    # || Bonfire.Common.Config.get([:logging, :tests_output_graphql]) do
+    if debug do
       info(q, "GraphQL query")
       info(obj, "GraphQL response")
     end

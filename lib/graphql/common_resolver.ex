@@ -5,16 +5,15 @@ defmodule Bonfire.API.GraphQL.CommonResolver do
 
   alias Bonfire.API.GraphQL
 
-  alias Bonfire.API.GraphQL.{
-    Fields,
-    # Pages,
-    # FetchFields,
-    # FetchPage,
-    ResolveFields,
-    ResolvePages
-  }
+  alias Bonfire.API.GraphQL.Fields
+  # Pages,
+  # FetchFields,
+  # FetchPage,
+  alias Bonfire.API.GraphQL.ResolveFields
+  alias Bonfire.API.GraphQL.ResolvePages
 
   alias Bonfire.Common.Pointers
+
   # alias CommonsPub.Common
 
   # def resolve_context_type(%CommonsPub.Communities.Community{}, _), do: :community
@@ -67,7 +66,12 @@ defmodule Bonfire.API.GraphQL.CommonResolver do
 
   @doc "Returns the username for a character"
   def display_username_edge(object, _, _) do
-    {:ok, Bonfire.Common.Utils.maybe_apply(Bonfire.Me.Characters, :display_username, object)}
+    {:ok,
+     Bonfire.Common.Utils.maybe_apply(
+       Bonfire.Me.Characters,
+       :display_username,
+       object
+     )}
   end
 
   def is_public_edge(parent, _, _), do: {:ok, not is_nil(parent.published_at)}
@@ -84,7 +88,7 @@ defmodule Bonfire.API.GraphQL.CommonResolver do
         {:ok, deleted}
       else
         e ->
-          #IO.inspect(cannot_delete: e)
+          # IO.inspect(cannot_delete: e)
           GraphQL.not_permitted("delete")
       end
     end
@@ -93,5 +97,4 @@ defmodule Bonfire.API.GraphQL.CommonResolver do
       {:error, "Generic deletion is not supported."}
     end
   end
-
 end

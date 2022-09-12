@@ -21,10 +21,15 @@ defmodule Bonfire.API.GraphQL.Phase.Arguments.Data do
   # setting the `data_value` to `nil`, adding flags to the `normalized_value`,
   # and building stub fields/arguments when missing values are required. Actual
   # addition of errors is handled by validation phases.
+  alias Absinthe.Blueprint.Input.Argument
+  alias Absinthe.Blueprint.Input.List
+  alias Absinthe.Blueprint.Input.Null
+  alias Absinthe.Blueprint.Input.Object
+  alias Absinthe.Blueprint.Input.Value
 
-  alias Absinthe.Blueprint.Input.{Argument, List, Null, Object, Value}
   alias Absinthe.Blueprint.Document.Field
-  alias Absinthe.{Blueprint}
+  alias Absinthe.Blueprint
+
   use Absinthe.Phase
   alias Bonfire.API.GraphQL.Cursor
 
@@ -44,12 +49,12 @@ defmodule Bonfire.API.GraphQL.Phase.Arguments.Data do
   end
 
   def handle_node(%Argument{input_value: input} = node) do
-    #IO.inspect(input: input)
+    # IO.inspect(input: input)
     %{node | value: input.data}
   end
 
   def handle_node(%Value{data: %Cursor{data: _data}} = node) do
-    #IO.inspect(data: data)
+    # IO.inspect(data: data)
     node
   end
 

@@ -18,7 +18,8 @@ defmodule Bonfire.API.GraphQL.FetchPages do
 
   import Bonfire.Common.Config, only: [repo: 0]
 
-  alias Bonfire.API.GraphQL.{Pages, FetchPages}
+  alias Bonfire.API.GraphQL.Pages
+  alias Bonfire.API.GraphQL.FetchPages
 
   @doc false
   def default_cursor(x), do: [x.id]
@@ -48,13 +49,16 @@ defmodule Bonfire.API.GraphQL.FetchPages do
         map_counts_fn: map_counts_fn
       }) do
     {:ok, [data, counts]} = repo().transact_many(all: data_query, all: count_query)
+
     data = group_data(data, group_fn, map_fn)
     counts = group_counts(counts, map_counts_fn)
     Pages.new(data, counts, cursor_fn, page_opts)
   end
 
   defp group_data(data, group_fn, nil), do: Enum.group_by(data, group_fn)
-  defp group_data(data, group_fn, map_fn), do: Enum.group_by(data, group_fn, map_fn)
+
+  defp group_data(data, group_fn, map_fn),
+    do: Enum.group_by(data, group_fn, map_fn)
 
   defp group_counts(counts, nil), do: Map.new(counts)
   defp group_counts(counts, map_fn), do: Map.new(counts, map_fn)

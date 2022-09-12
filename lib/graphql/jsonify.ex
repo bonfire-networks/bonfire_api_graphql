@@ -1,4 +1,3 @@
-
 # # Temporary hack to allow encoding user data as JSON scalar
 # defimpl Jason.Encoder, for: [Bonfire.Data.Identity.Accounted, Bonfire.Data.Identity.Account, Bonfire.Data.Identity.User, Bonfire.Data.Identity.Character, Bonfire.Data.Social.Profile] do
 #   def encode(struct, opts) do

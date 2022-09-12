@@ -8,7 +8,6 @@ defmodule Bonfire.API.GraphQL.ResolveField do
   @enforce_keys [:module, :fetcher, :context, :info]
   defstruct @enforce_keys
 
-
   def run(%Bonfire.API.GraphQL.ResolveField{
         module: module,
         fetcher: fetcher,

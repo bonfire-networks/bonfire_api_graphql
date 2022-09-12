@@ -21,7 +21,8 @@ defmodule Bonfire.API.GraphQL.Pagination do
     data_q = apply(queries, :filter, [base_q, data_filters])
     count_q = apply(queries, :filter, [base_q, count_filters])
 
-    with {:ok, [data, counts]} <- repo().transact_many(all: data_q, count: count_q) do
+    with {:ok, [data, counts]} <-
+           repo().transact_many(all: data_q, count: count_q) do
       {:ok, Bonfire.API.GraphQL.Page.new(data, counts, cursor_fn, page_opts)}
     end
   end
@@ -41,10 +42,18 @@ defmodule Bonfire.API.GraphQL.Pagination do
              is_list(base_filters) and
              is_list(data_filters) and
              is_list(count_filters) do
-    queries_args = [schema, page_opts, base_filters, data_filters, count_filters]
+    queries_args = [
+      schema,
+      page_opts,
+      base_filters,
+      data_filters,
+      count_filters
+    ]
+
     {data_q, count_q} = apply(queries, :queries, queries_args)
 
-    with {:ok, [data, counts]} <- repo().transact_many(all: data_q, all: count_q) do
+    with {:ok, [data, counts]} <-
+           repo().transact_many(all: data_q, all: count_q) do
       {:ok, Bonfire.API.GraphQL.Page.new(data, counts, cursor_fn, page_opts)}
     end
   end
@@ -66,12 +75,26 @@ defmodule Bonfire.API.GraphQL.Pagination do
              is_list(base_filters) and
              is_list(data_filters) and
              is_list(count_filters) do
-    queries_args = [schema, page_opts, base_filters, data_filters, count_filters]
+    queries_args = [
+      schema,
+      page_opts,
+      base_filters,
+      data_filters,
+      count_filters
+    ]
+
     {data_q, count_q} = apply(queries, :queries, queries_args)
 
-    with {:ok, [data, counts]} <- repo().transact_many(all: data_q, all: count_q) do
-      {:ok, Bonfire.API.GraphQL.Pages.new(data, counts, cursor_fn, group_fn, page_opts)}
+    with {:ok, [data, counts]} <-
+           repo().transact_many(all: data_q, all: count_q) do
+      {:ok,
+       Bonfire.API.GraphQL.Pages.new(
+         data,
+         counts,
+         cursor_fn,
+         group_fn,
+         page_opts
+       )}
     end
   end
-
 end

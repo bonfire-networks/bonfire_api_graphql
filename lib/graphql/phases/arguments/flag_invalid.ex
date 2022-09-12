@@ -5,8 +5,9 @@ defmodule Bonfire.API.GraphQL.Phase.Arguments.FlagInvalid do
   # Marks arguments as bad if they have any invalid children.
   #
   # This is later used by the ArgumentsOfCorrectType phase.
+  alias Absinthe.Blueprint
+  alias Absinthe.Phase
 
-  alias Absinthe.{Blueprint, Phase}
   alias Bonfire.API.GraphQL.Cursor
   use Absinthe.Phase
 
@@ -20,7 +21,7 @@ defmodule Bonfire.API.GraphQL.Phase.Arguments.FlagInvalid do
   end
 
   defp handle_node(%{schema_node: nil, flags: %{}} = node) do
-    node |> flag_invalid(:extra)
+    flag_invalid(node, :extra)
   end
 
   defp handle_node(%Blueprint.Input.Argument{} = node) do
@@ -32,7 +33,7 @@ defmodule Bonfire.API.GraphQL.Phase.Arguments.FlagInvalid do
   end
 
   defp handle_node(%Blueprint.Input.List{} = node) do
-    check_children(node, node.items |> Enum.map(& &1.normalized), :bad_list)
+    check_children(node, Enum.map(node.items, & &1.normalized), :bad_list)
   end
 
   defp handle_node(%Blueprint.Input.Object{} = node) do

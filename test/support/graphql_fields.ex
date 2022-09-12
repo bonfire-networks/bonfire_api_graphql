@@ -71,11 +71,13 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLFields do
   end
 
   def like_fields(extra \\ []) do
-    extra ++ ~w(id canonical_url is_local is_public created_at updated_at __typename)a
+    extra ++
+      ~w(id canonical_url is_local is_public created_at updated_at __typename)a
   end
 
   def follow_fields(extra \\ []) do
-    extra ++ ~w(id canonical_url is_local is_public created_at updated_at __typename)a
+    extra ++
+      ~w(id canonical_url is_local is_public created_at updated_at __typename)a
   end
 
   def followed_collection_fields(extra \\ []) do
@@ -191,13 +193,25 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLFields do
   def gen_mutation(params, field_fn, options) do
     params2 = Keyword.get(options, :params, [])
     name = Keyword.get(options, :name, "test")
-    mutation(name: name, params: params, params: params2, field: field_fn.(options))
+
+    mutation(
+      name: name,
+      params: params,
+      params: params2,
+      field: field_fn.(options)
+    )
   end
 
   def gen_mutation(params, field_fn, field1_options, field2_options) do
     params2 = Keyword.get(field1_options, :params, [])
     name = Keyword.get(field1_options, :name, "test")
-    mutation(name: name, params: params, params: params2, field: field_fn.(field1_options, field2_options))
+
+    mutation(
+      name: name,
+      params: params,
+      params: params2,
+      field: field_fn.(field1_options, field2_options)
+    )
   end
 
   def gen_submutation(args, field_name, field_fn, options) do
@@ -206,11 +220,22 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLFields do
     field(field_name, args: args, args: args2, fields: field_fn.(fields))
   end
 
-  def gen_submutation(args, field_name, field_fn, field1_options, field2_options) do
+  def gen_submutation(
+        args,
+        field_name,
+        field_fn,
+        field1_options,
+        field2_options
+      ) do
     args2 = Keyword.get(field1_options, :args, [])
     fields1 = Keyword.get(field1_options, :fields, [])
     fields2 = Keyword.get(field2_options, :fields, [])
-    field(field_name, args: args, args: args2, fields: field_fn.(fields1, fields2))
+
+    field(field_name,
+      args: args,
+      args: args2,
+      fields: field_fn.(fields1, fields2)
+    )
   end
 
   ### collections
@@ -254,27 +279,45 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLFields do
   end
 
   def create_collection_mutation(options \\ []) do
-    [
-      collection: type!(:collection_input),
-      context_id: type!(:string),
-      icon: type(:upload_input)
-    ]
-    |> gen_mutation(&create_collection_submutation/1, options)
+    gen_mutation(
+      [
+        collection: type!(:collection_input),
+        context_id: type!(:string),
+        icon: type(:upload_input)
+      ],
+      &create_collection_submutation/1,
+      options
+    )
   end
 
   def create_collection_submutation(options \\ []) do
-    [collection: var(:collection), context_id: var(:context_id), icon: var(:icon)]
-    |> gen_submutation(:create_collection, &collection_fields/1, options)
+    gen_submutation(
+      [
+        collection: var(:collection),
+        context_id: var(:context_id),
+        icon: var(:icon)
+      ],
+      :create_collection,
+      &collection_fields/1,
+      options
+    )
   end
 
   def update_collection_mutation(options \\ []) do
-    [collection: type!(:collection_update_input), collection_id: type!(:string)]
-    |> gen_mutation(&update_collection_submutation/1, options)
+    gen_mutation(
+      [collection: type!(:collection_update_input), collection_id: type!(:string)],
+      &update_collection_submutation/1,
+      options
+    )
   end
 
   def update_collection_submutation(options \\ []) do
-    [collection: var(:collection), collection_id: var(:collection_id)]
-    |> gen_submutation(:update_collection, &collection_fields/1, options)
+    gen_submutation(
+      [collection: var(:collection), collection_id: var(:collection_id)],
+      :update_collection,
+      &collection_fields/1,
+      options
+    )
   end
 
   ### communities
@@ -316,23 +359,28 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLFields do
   end
 
   def create_community_mutation(options \\ []) do
-    [community: type!(:community_input)]
-    |> gen_mutation(&create_community_submutation/1, options)
+    gen_mutation([community: type!(:community_input)], &create_community_submutation/1, options)
   end
 
   def create_community_submutation(options \\ []) do
-    [community: var(:community)]
-    |> gen_submutation(:create_community, &community_fields/1, options)
+    gen_submutation([community: var(:community)], :create_community, &community_fields/1, options)
   end
 
   def update_community_mutation(options \\ []) do
-    [community: type!(:community_update_input), community_id: type!(:string)]
-    |> gen_mutation(&update_community_submutation/1, options)
+    gen_mutation(
+      [community: type!(:community_update_input), community_id: type!(:string)],
+      &update_community_submutation/1,
+      options
+    )
   end
 
   def update_community_submutation(options \\ []) do
-    [community: var(:community), community_id: var(:community_id)]
-    |> gen_submutation(:update_community, &community_fields/1, options)
+    gen_submutation(
+      [community: var(:community), community_id: var(:community_id)],
+      :update_community,
+      &community_fields/1,
+      options
+    )
   end
 
   ### flags
@@ -360,23 +408,28 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLFields do
   end
 
   def create_flag_mutation(options \\ []) do
-    [flag: type!(:flag_input)]
-    |> gen_mutation(&create_flag_submutation/1, options)
+    gen_mutation([flag: type!(:flag_input)], &create_flag_submutation/1, options)
   end
 
   def create_flag_submutation(options \\ []) do
-    [flag: var(:flag)]
-    |> gen_submutation(:create_flag, &flag_fields/1, options)
+    gen_submutation([flag: var(:flag)], :create_flag, &flag_fields/1, options)
   end
 
   def update_flag_mutation(options \\ []) do
-    [flag: type!(:flag_input), flag_id: type!(:string)]
-    |> gen_mutation(&create_flag_submutation/1, options)
+    gen_mutation(
+      [flag: type!(:flag_input), flag_id: type!(:string)],
+      &create_flag_submutation/1,
+      options
+    )
   end
 
   def update_flag_submutation(options \\ []) do
-    [flag: var(:flag_input), flag_id: var(:flag_id)]
-    |> gen_submutation(:update_flag, &flag_fields/1, options)
+    gen_submutation(
+      [flag: var(:flag_input), flag_id: var(:flag_id)],
+      :update_flag,
+      &flag_fields/1,
+      options
+    )
   end
 
   ### features
@@ -440,7 +493,9 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLFields do
       limit: var(:collection_follows_limit)
     ]
 
-    page_subquery(:collection_follows, &follow_fields/1, [{:args, args} | options])
+    page_subquery(:collection_follows, &follow_fields/1, [
+      {:args, args} | options
+    ])
   end
 
   def community_follows_subquery(options \\ []) do
@@ -450,7 +505,9 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLFields do
       limit: var(:community_follows_limit)
     ]
 
-    page_subquery(:community_follows, &follow_fields/1, [{:args, args} | options])
+    page_subquery(:community_follows, &follow_fields/1, [
+      {:args, args} | options
+    ])
   end
 
   def user_follows_subquery(options \\ []) do
@@ -464,47 +521,39 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLFields do
   end
 
   def create_follow_mutation(options \\ []) do
-    [context_id: type!(:string)]
-    |> gen_mutation(&create_follow_submutation/1, options)
+    gen_mutation([context_id: type!(:string)], &create_follow_submutation/1, options)
   end
 
   def create_follow_submutation(options \\ []) do
-    [context_id: var(:context_id)]
-    |> gen_submutation(:create_follow, &follow_fields/1, options)
+    gen_submutation([context_id: var(:context_id)], :create_follow, &follow_fields/1, options)
   end
 
   def follow_remote_actor_mutation(options \\ []) do
-    [url: type!(:string)]
-    |> gen_mutation(&follow_remote_actor_submutation/1, options)
+    gen_mutation([url: type!(:string)], &follow_remote_actor_submutation/1, options)
   end
 
   def follow_remote_actor_submutation(options \\ []) do
-    [url: var(:url)]
-    |> gen_submutation(:createFollowByURL, &follow_fields/1, options)
+    gen_submutation([url: var(:url)], :createFollowByURL, &follow_fields/1, options)
   end
 
   ### invites
 
   def invite_mutation(options \\ []) do
-    [email: type!(:string)]
-    |> gen_mutation(&invite_submutation/1, options)
+    gen_mutation([email: type!(:string)], &invite_submutation/1, options)
   end
 
   def invite_submutation(options \\ []) do
-    [email: var(:email)]
-    |> gen_submutation(:send_invite, &invite_fields/1, options)
+    gen_submutation([email: var(:email)], :send_invite, &invite_fields/1, options)
   end
 
   ### deactivates
 
   def deactivation_mutation(options \\ []) do
-    [id: type!(:string)]
-    |> gen_mutation(&deactivation_submutation/1, options)
+    gen_mutation([id: type!(:string)], &deactivation_submutation/1, options)
   end
 
   def deactivation_submutation(options \\ []) do
-    [id: var(:id)]
-    |> gen_submutation(:deactivate_user, &user_fields/1, options)
+    gen_submutation([id: var(:id)], :deactivate_user, &user_fields/1, options)
   end
 
   ### likes
@@ -538,13 +587,11 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLFields do
   end
 
   def create_like_mutation(options \\ []) do
-    [context_id: type!(:string)]
-    |> gen_mutation(&create_like_submutation/1, options)
+    gen_mutation([context_id: type!(:string)], &create_like_submutation/1, options)
   end
 
   def create_like_submutation(options \\ []) do
-    [context_id: var(:context_id)]
-    |> gen_submutation(:create_like, &like_fields/1, options)
+    gen_submutation([context_id: var(:context_id)], :create_like, &like_fields/1, options)
   end
 
   ### resources
@@ -576,53 +623,74 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLFields do
   end
 
   def create_resource_mutation(options \\ []) do
-    [
-      context_id: type!(:string),
-      resource: type!(:resource_input),
-      content: type!(:upload_input),
-      icon: type(:upload_input)
-    ]
-    |> gen_mutation(&create_resource_submutation/1, options)
+    gen_mutation(
+      [
+        context_id: type!(:string),
+        resource: type!(:resource_input),
+        content: type!(:upload_input),
+        icon: type(:upload_input)
+      ],
+      &create_resource_submutation/1,
+      options
+    )
   end
 
   def create_resource_submutation(options \\ []) do
-    [
-      context_id: var(:context_id),
-      resource: var(:resource),
-      content: var(:content),
-      icon: var(:icon)
-    ]
-    |> gen_submutation(:create_resource, &resource_fields/1, options)
+    gen_submutation(
+      [
+        context_id: var(:context_id),
+        resource: var(:resource),
+        content: var(:content),
+        icon: var(:icon)
+      ],
+      :create_resource,
+      &resource_fields/1,
+      options
+    )
   end
 
   def update_resource_mutation(options \\ []) do
-    [
-      resource_id: type!(:string),
-      resource: type!(:resource_input),
-      content: type(:upload_input),
-      icon: type(:upload_input)
-    ]
-    |> gen_mutation(&update_resource_submutation/1, options)
+    gen_mutation(
+      [
+        resource_id: type!(:string),
+        resource: type!(:resource_input),
+        content: type(:upload_input),
+        icon: type(:upload_input)
+      ],
+      &update_resource_submutation/1,
+      options
+    )
   end
 
   def update_resource_submutation(options \\ []) do
-    [
-      resource_id: var(:resource_id),
-      resource: var(:resource),
-      content: var(:content),
-      icon: var(:icon)
-    ]
-    |> gen_submutation(:update_resource, &resource_fields/1, options)
+    gen_submutation(
+      [
+        resource_id: var(:resource_id),
+        resource: var(:resource),
+        content: var(:content),
+        icon: var(:icon)
+      ],
+      :update_resource,
+      &resource_fields/1,
+      options
+    )
   end
 
   def copy_resource_mutation(options \\ []) do
-    [context_id: type!(:string), resource_id: type!(:string)]
-    |> gen_mutation(&copy_resource_submutation/1, options)
+    gen_mutation(
+      [context_id: type!(:string), resource_id: type!(:string)],
+      &copy_resource_submutation/1,
+      options
+    )
   end
 
   def copy_resource_submutation(options \\ []) do
-    [context_id: var(:context_id), resource_id: var(:resource_id)]
-    |> gen_submutation(:copy_resource, &resource_fields/1, options)
+    gen_submutation(
+      [context_id: var(:context_id), resource_id: var(:resource_id)],
+      :copy_resource,
+      &resource_fields/1,
+      options
+    )
   end
 
   ### threads
@@ -684,33 +752,36 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLFields do
   end
 
   def create_user_mutation(options \\ []) do
-    [user: type!(:registration_input)]
-    |> gen_mutation(&create_user_submutation/1, options)
+    gen_mutation([user: type!(:registration_input)], &create_user_submutation/1, options)
   end
 
   def create_user_submutation(options \\ []) do
-    [user: var(:user)]
-    |> gen_submutation(:create_user, &me_fields/1, options)
+    gen_submutation([user: var(:user)], :create_user, &me_fields/1, options)
   end
 
   def confirm_email_mutation(options \\ []) do
-    [token: type!(:string)]
-    |> gen_mutation(&confirm_email_submutation/1, options)
+    gen_mutation([token: type!(:string)], &confirm_email_submutation/1, options)
   end
 
   def confirm_email_submutation(options \\ []) do
-    [token: var(:token)]
-    |> gen_submutation(:confirm_email, &auth_payload_fields/1, options)
+    gen_submutation([token: var(:token)], :confirm_email, &auth_payload_fields/1, options)
   end
 
   def create_session_mutation(options \\ []) do
-    [email: type!(:string), password: type!(:string)]
-    |> gen_mutation(&create_session_submutation/1, options)
+    gen_mutation(
+      [email: type!(:string), password: type!(:string)],
+      &create_session_submutation/1,
+      options
+    )
   end
 
   def create_session_submutation(options \\ []) do
-    [email: var(:email), password: var(:password)]
-    |> gen_submutation(:create_session, &auth_payload_fields/1, options)
+    gen_submutation(
+      [email: var(:email), password: var(:password)],
+      :create_session,
+      &auth_payload_fields/1,
+      options
+    )
   end
 
   def reset_password_request_mutation(_options \\ []) do
@@ -722,28 +793,32 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLFields do
   end
 
   def reset_password_mutation(options \\ []) do
-    [token: type!(:string), password: type!(:string)]
-    |> gen_mutation(&reset_password_submutation/1, options)
+    gen_mutation(
+      [token: type!(:string), password: type!(:string)],
+      &reset_password_submutation/1,
+      options
+    )
   end
 
   def reset_password_submutation(options \\ []) do
-    [token: var(:token), password: var(:password)]
-    |> gen_submutation(:reset_password, &auth_payload_fields/1, options)
+    gen_submutation(
+      [token: var(:token), password: var(:password)],
+      :reset_password,
+      &auth_payload_fields/1,
+      options
+    )
   end
 
   def update_profile_mutation(options \\ []) do
-    [profile: type!(:update_profile_input)]
-    |> gen_mutation(&update_profile_submutation/1, options)
+    gen_mutation([profile: type!(:update_profile_input)], &update_profile_submutation/1, options)
   end
 
   def update_profile_submutation(options \\ []) do
-    [profile: var(:profile)]
-    |> gen_submutation(:update_profile, &me_fields/1, options)
+    gen_submutation([profile: var(:profile)], :update_profile, &me_fields/1, options)
   end
 
   def delete_self_mutation(options \\ []) do
-    [i_am_sure: type!(:boolean)]
-    |> gen_mutation(&delete_self_submutation/1, options)
+    gen_mutation([i_am_sure: type!(:boolean)], &delete_self_submutation/1, options)
   end
 
   def delete_self_submutation(_options \\ []) do

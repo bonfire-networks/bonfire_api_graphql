@@ -3,7 +3,8 @@ defmodule Bonfire.API.GraphQL.Page do
   @enforce_keys ~w(page_info total_count edges)a
   defstruct @enforce_keys
 
-  alias Bonfire.API.GraphQL.{Page, PageInfo}
+  alias Bonfire.API.GraphQL.Page
+  alias Bonfire.API.GraphQL.PageInfo
 
   @type t :: %Page{
           page_info: PageInfo.t(),
@@ -19,7 +20,8 @@ defmodule Bonfire.API.GraphQL.Page do
   end
 
   # there are no results
-  defp paginate([], _opts, _cursor_fn), do: {PageInfo.new(nil, nil, false, false), []}
+  defp paginate([], _opts, _cursor_fn),
+    do: {PageInfo.new(nil, nil, false, false), []}
 
   # there were results and we must check for the previous page marker
   defp paginate([e | es] = edges, %{after: a, limit: limit}, cursor_fn) do
@@ -32,7 +34,13 @@ defmodule Bonfire.API.GraphQL.Page do
   defp paginate(edges, %{before: b, limit: limit}, cursor_fn) do
     if cursor_fn.(List.last(edges)) == b,
       do: paginate_before(true, :lists.droplast(edges), limit, cursor_fn),
-      else: paginate_before(nil, Enum.slice(edges, -(limit - 1)..-1), limit, cursor_fn)
+      else:
+        paginate_before(
+          nil,
+          Enum.slice(edges, -(limit - 1)..-1),
+          limit,
+          cursor_fn
+        )
   end
 
   # there is no previous page

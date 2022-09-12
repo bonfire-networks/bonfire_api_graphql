@@ -4,7 +4,13 @@ defmodule Bonfire.API.GraphQL.JSON do
   The Json scalar type allows arbitrary JSON values to be passed in and out.
   Requires `{ :jason, "~> 1.1" }` package: https://github.com/michalmuskala/jason
   """
-  defstruct data: nil, normalized: nil, raw: nil, errors: [], flags: %{}, open_ended: false
+  defstruct data: nil,
+            normalized: nil,
+            raw: nil,
+            errors: [],
+            flags: %{},
+            open_ended: false
+
   import Untangle
   alias Absinthe.Blueprint.Input
   use Absinthe.Schema.Notation
@@ -21,11 +27,13 @@ defmodule Bonfire.API.GraphQL.JSON do
   defp decode(%Input.String{value: value}) do
     try do
       {:ok, Jason.decode!(value)}
-    rescue e ->
-      error(e)
-      :error
+    rescue
+      e ->
+        error(e)
+        :error
     end
   end
+
   defp decode(%Input.Null{}), do: {:ok, nil}
   defp decode(_), do: :error
 

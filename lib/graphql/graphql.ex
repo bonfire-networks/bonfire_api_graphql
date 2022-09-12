@@ -55,23 +55,49 @@ defmodule Bonfire.API.GraphQL do
 
   def equals_or_not_permitted(l, r), do: equals_or(l, r, :ok, &empty_page/0)
 
-  def not_in_list_or(info, value), do: lazy_bool_or(not in_list?(info), :ok, value)
+  def not_in_list_or(info, value),
+    do: lazy_bool_or(not in_list?(info), :ok, value)
 
   def not_in_list_or_empty_page(info), do: not_in_list_or(info, &empty_page/0)
 
-  def is_authenticated(%{context: %{current_account_id: current_account_id}}) when is_binary(current_account_id), do: :ok
-  def is_authenticated(%{context: %{current_user: %{id: id} = current_user}}) when is_binary(id), do: :ok
+  def is_authenticated(%{context: %{current_account_id: current_account_id}})
+      when is_binary(current_account_id),
+      do: :ok
+
+  def is_authenticated(%{context: %{current_user: %{id: id} = current_user}})
+      when is_binary(id),
+      do: :ok
+
   def is_authenticated(_), do: not_logged_in()
 
   def current_account(%{accounted: %{account: account}}), do: account
-  def current_account(%{context: %{current_account: %{id: id} = current_account}}) when is_binary(id), do: current_account
-  def current_account(%{context: %{current_account_id: current_account_id}}) when is_binary(current_account_id), do: Bonfire.API.GraphQL.Auth.account_by(current_account_id)
+
+  def current_account(%{
+        context: %{current_account: %{id: id} = current_account}
+      })
+      when is_binary(id),
+      do: current_account
+
+  def current_account(%{context: %{current_account_id: current_account_id}})
+      when is_binary(current_account_id),
+      do: Bonfire.API.GraphQL.Auth.account_by(current_account_id)
+
   def current_account(_), do: nil
 
   def current_user(%{context: context}), do: current_user(context)
   def current_user(%{__context__: context}), do: current_user(context)
-  def current_user(%{current_user: %{id: id} = current_user}) when is_binary(id), do: current_user
-  def current_user(%{current_account_id: current_account_id, current_username: current_username}) when is_binary(current_account_id) and is_binary(current_username), do: Bonfire.API.GraphQL.Auth.user_by(current_username, current_account_id)
+
+  def current_user(%{current_user: %{id: id} = current_user})
+      when is_binary(id),
+      do: current_user
+
+  def current_user(%{
+        current_account_id: current_account_id,
+        current_username: current_username
+      })
+      when is_binary(current_account_id) and is_binary(current_username),
+      do: Bonfire.API.GraphQL.Auth.user_by(current_username, current_account_id)
+
   # def current_user(debug), do: IO.inspect(current_user_debug: debug)
   def current_user(_), do: nil
 
@@ -79,7 +105,8 @@ defmodule Bonfire.API.GraphQL do
 
   def current_user_or_empty_page(info), do: current_user_or(info, &empty_page/0)
 
-  def current_user_or_not_logged_in(info), do: current_user_or(info, &not_logged_in/0)
+  def current_user_or_not_logged_in(info),
+    do: current_user_or(info, &not_logged_in/0)
 
   def current_user_or_not_found(info), do: current_user_or(info, &not_found/0)
 
@@ -189,7 +216,9 @@ defmodule Bonfire.API.GraphQL do
   def validate_cursor(_, _), do: not_found()
 
   def predicated(fun) when is_function(fun, 1), do: &predicate_result(fun.(&1))
-  def predicated(fun, arg) when is_function(fun, 1), do: predicate_result(fun.(arg))
+
+  def predicated(fun, arg) when is_function(fun, 1),
+    do: predicate_result(fun.(arg))
 
   # def predicated(fun) when is_function(fun, 2), do: &predicate_result(fun.(&1, &2))
   # def predicated(fun) when is_function(fun, 3), do: &predicate_result(fun.(&1, &2, &3))

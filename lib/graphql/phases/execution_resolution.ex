@@ -18,14 +18,36 @@ defmodule Bonfire.API.GraphQL.Phase.ExecutionResolution do
     Absinthe.Phase.Document.Execution.Resolution.run(bp_root, options)
   rescue
     error in Ecto.Query.CastError ->
-      debug_exception("You seem to have provided an incorrect data type (eg. an invalid ID)", error, __STACKTRACE__, :error)
+      debug_exception(
+        "You seem to have provided an incorrect data type (eg. an invalid ID)",
+        error,
+        __STACKTRACE__,
+        :error
+      )
+
     error in Ecto.ConstraintError ->
-      debug_exception("You seem to be referencing an invalid object ID, or trying to insert duplicated data", error, __STACKTRACE__, :error)
+      debug_exception(
+        "You seem to be referencing an invalid object ID, or trying to insert duplicated data",
+        error,
+        __STACKTRACE__,
+        :error
+      )
+
     error ->
-      debug_exception("The API encountered an exceptional error", error, __STACKTRACE__, :error)
+      debug_exception(
+        "The API encountered an exceptional error",
+        error,
+        __STACKTRACE__,
+        :error
+      )
   catch
     error ->
-      debug_exception("The API was thrown an exceptional error", error, __STACKTRACE__, :error)
+      debug_exception(
+        "The API was thrown an exceptional error",
+        error,
+        __STACKTRACE__,
+        :error
+      )
   end
 
   defp debug_exception(msg, exception, stacktrace, kind) do
@@ -53,9 +75,11 @@ defmodule Bonfire.API.GraphQL.Phase.ExecutionResolution do
     IO.puts(Exception.format_exit(exception))
     IO.puts(Exception.format_stacktrace(stacktrace))
 
-    if Bonfire.Common.Extend.module_enabled?(Sentry), do: Sentry.capture_exception(
-      exception,
-      stacktrace: stacktrace
-    )
+    if Bonfire.Common.Extend.module_enabled?(Sentry),
+      do:
+        Sentry.capture_exception(
+          exception,
+          stacktrace: stacktrace
+        )
   end
 end

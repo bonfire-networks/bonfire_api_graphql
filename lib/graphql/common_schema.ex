@@ -40,9 +40,9 @@ defmodule Bonfire.API.GraphQL.CommonSchema do
   end
 
   input_object :paginate do
-    field :limit, :integer
-    field :before, list_of(non_null(:cursor))
-    field :after, list_of(non_null(:cursor))
+    field(:limit, :integer)
+    field(:before, list_of(non_null(:cursor)))
+    field(:after, list_of(non_null(:cursor)))
   end
 
   @desc "Cursors for pagination"

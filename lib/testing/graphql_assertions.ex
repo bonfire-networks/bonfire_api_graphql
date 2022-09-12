@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.API.GraphQL.Test.GraphQLAssertions do
-
   alias Pointers.ULID
   import ExUnit.Assertions
   import Zest
@@ -85,8 +84,11 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLAssertions do
     fn l -> assert(is_list(l)) && Enum.map(l, of) end
   end
 
-  def assert_list(of, size) when is_function(of, 1) and is_integer(size) and size >= 0 do
-    fn l -> assert(is_list(l)) && assert(Enum.count(l) == size) && Enum.map(l, of) end
+  def assert_list(of, size)
+      when is_function(of, 1) and is_integer(size) and size >= 0 do
+    fn l ->
+      assert(is_list(l)) && assert(Enum.count(l) == size) && Enum.map(l, of)
+    end
   end
 
   def assert_optional(map_fn) do
@@ -97,14 +99,16 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLAssertions do
     fn val2 -> assert(val1 == val2) && val2 end
   end
 
-  def assert_field(object, key, test) when is_map(object) and is_function(test, 1) do
+  def assert_field(object, key, test)
+      when is_map(object) and is_function(test, 1) do
     scope assert_field: key do
       assert %{^key => value} = object
       Map.put(object, key, test.(value))
     end
   end
 
-  def assert_optional_field(object, key, test) when is_map(object) and is_function(test, 1) do
+  def assert_optional_field(object, key, test)
+      when is_map(object) and is_function(test, 1) do
     scope assert_field: key do
       case object do
         %{^key => nil} -> object
@@ -298,7 +302,7 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLAssertions do
   @doc false
   def uncamel(atom) when is_atom(atom), do: atom
   def uncamel("__typeName"), do: :typename
-  def uncamel(bin) when is_binary(bin), do: String.to_existing_atom(Recase.to_snake(bin))
 
-
+  def uncamel(bin) when is_binary(bin),
+    do: String.to_existing_atom(Recase.to_snake(bin))
 end
