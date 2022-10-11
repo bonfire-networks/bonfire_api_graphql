@@ -4,7 +4,6 @@ defmodule Bonfire.API.GraphQL do
   alias Bonfire.API.GraphQL.Page
   alias Bonfire.Common.Enums
   import Bonfire.Common.Repo.Utils, only: [match_admin: 0]
-  import Bonfire.Fail
 
   def reverse_path(info) do
     Enum.reverse(Resolution.path(info))
@@ -183,7 +182,7 @@ defmodule Bonfire.API.GraphQL do
 
   def not_logged_in(), do: {:error, :needs_login}
 
-  def not_permitted(verb \\ "do"), do: {:error, fail(:unauthorized, verb)}
+  def not_permitted(verb \\ "do"), do: {:error, Bonfire.Fail.fail(:unauthorized, verb)}
 
   def not_found(), do: {:error, :not_found}
 
