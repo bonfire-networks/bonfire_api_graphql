@@ -55,9 +55,9 @@ defmodule Bonfire.API.GraphQL.CommonResolver do
     {:ok, Pointers.list!(pointers)}
   end
 
-  # def loaded_context(%Community{}=community), do: Repo.preload(community, :character)
-  # def loaded_context(%Collection{}=collection), do: Repo.preload(collection, :character)
-  # def loaded_context(%User{}=user), do: Repo.preload(user, :character)
+  # def loaded_context(%Community{}=community), do: repo().preload(community, :character)
+  # def loaded_context(%Collection{}=collection), do: repo().preload(collection, :character)
+  # def loaded_context(%User{}=user), do: repo().preload(user, :character)
   # def loaded_context(other), do: other
 
   @doc "Returns the canonical url for a thing or character"
