@@ -66,7 +66,7 @@ defmodule Bonfire.API.GraphQL.Phase.ExecutionResolution do
   end
 
   defp env() do
-    Bonfire.Common.Config.get!(:env)
+    Bonfire.Common.Config.env()
   end
 
   defp debug_log(msg, exception, stacktrace, kind) do
