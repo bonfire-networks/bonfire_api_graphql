@@ -89,7 +89,7 @@ defmodule Bonfire.API.GraphQL.CommonResolver do
       else
         e ->
           # IO.inspect(cannot_delete: e)
-          GraphQL.not_permitted("delete")
+          GraphQL.not_permitted("to delete this")
       end
     end
   else

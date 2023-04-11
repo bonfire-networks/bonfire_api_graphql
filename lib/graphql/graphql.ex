@@ -182,7 +182,7 @@ defmodule Bonfire.API.GraphQL do
 
   def not_logged_in(), do: {:error, :needs_login}
 
-  def not_permitted(verb \\ "do"), do: {:error, Bonfire.Fail.fail(:unauthorized, verb)}
+  def not_permitted(what \\ "to do this"), do: {:error, Bonfire.Fail.fail(:unauthorized, what)}
 
   def not_found(), do: {:error, :not_found}
 
