@@ -11,8 +11,8 @@ defmodule Bonfire.API.GraphQL.CommonSchema do
     field(:current_username, :string)
   end
 
-  object :common_queries do
-  end
+  # object :common_queries do
+  # end
 
   object :common_mutations do
     @desc "Authenticate an account and/or user"
