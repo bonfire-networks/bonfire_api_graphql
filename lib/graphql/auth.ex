@@ -182,7 +182,7 @@ defmodule Bonfire.API.GraphQL.Auth do
       current_username:
         conn.assigns[:current_username] ||
           Plug.Conn.get_session(conn, :current_username),
-      current_account: conn.assigns[:current_account],
+      current_account: current_account(conn.assigns),
       current_user: conn.assigns[:current_user]
     }
 
