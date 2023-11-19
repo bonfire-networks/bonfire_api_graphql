@@ -19,7 +19,7 @@ defmodule Bonfire.API.GraphQL.SchemaUtils do
     Enum.reduce(schemas, [], fn schema, acc ->
       if Bonfire.Common.Extend.module_enabled?(schema) and
            function_exported?(schema, :type, 0) and
-           !is_nil(apply(schema, :type, [])) do
+           not is_nil(apply(schema, :type, [])) do
         Enum.concat(acc, [apply(schema, :type, [])])
       else
         acc
