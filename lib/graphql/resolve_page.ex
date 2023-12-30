@@ -12,7 +12,7 @@ defmodule Bonfire.API.GraphQL.ResolvePage do
     :context,
     :page_opts,
     :info,
-    cursor_validators: [&Pointers.ULID.cast/1],
+    cursor_validators: [&Needle.ULID.cast/1],
     paging_opts: %{default_limit: 10}
   ]
 

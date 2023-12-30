@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.API.GraphQL.CommonResolver do
-  alias Pointers.ULID
+  alias Needle.ULID
   alias Bonfire.API.GraphQL
 
   alias Bonfire.API.GraphQL
@@ -12,7 +12,7 @@ defmodule Bonfire.API.GraphQL.CommonResolver do
   alias Bonfire.API.GraphQL.ResolveFields
   alias Bonfire.API.GraphQL.ResolvePages
 
-  alias Bonfire.Common.Pointers
+  alias Bonfire.Common.Needle
 
   # alias CommonsPub.Common
 
@@ -37,8 +37,8 @@ defmodule Bonfire.API.GraphQL.CommonResolver do
   end
 
   def fetch_context_edge(_, ids) do
-    # {:ok, ptrs} = Pointers.many(id: List.flatten(ids))
-    Fields.new(Pointers.list!(ids), &Map.get(&1, :id))
+    # {:ok, ptrs} = Needle.many(id: List.flatten(ids))
+    Fields.new(Needle.list!(ids), &Map.get(&1, :id))
   end
 
   def context_edges(%{context_ids: ids}, %{} = page_opts, info) do
@@ -52,7 +52,7 @@ defmodule Bonfire.API.GraphQL.CommonResolver do
   end
 
   def fetch_context_edges(_page_opts, _info, pointers) do
-    {:ok, Pointers.list!(pointers)}
+    {:ok, Needle.list!(pointers)}
   end
 
   # def loaded_context(%Community{}=community), do: repo().preload(community, :character)

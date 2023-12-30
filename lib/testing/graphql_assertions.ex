@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.API.GraphQL.Test.GraphQLAssertions do
-  alias Pointers.ULID
+  alias Needle.ULID
   import ExUnit.Assertions
   import Zest
 
@@ -34,7 +34,7 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLAssertions do
 
   def assert_ulid(ulid) do
     assert is_binary(ulid)
-    assert {:ok, val} = Pointers.ULID.cast(ulid)
+    assert {:ok, val} = Needle.ULID.cast(ulid)
     val
   end
 
