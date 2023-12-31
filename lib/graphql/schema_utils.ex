@@ -14,7 +14,7 @@ defmodule Bonfire.API.GraphQL.SchemaUtils do
   end
 
   def context_types() do
-    schemas = Bonfire.Common.Needle.Tables.list_schemas()
+    schemas = Bonfire.Common.Needles.Tables.list_schemas()
 
     Enum.reduce(schemas, [], fn schema, acc ->
       if Bonfire.Common.Extend.module_enabled?(schema) and
