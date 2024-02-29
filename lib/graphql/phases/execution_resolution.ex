@@ -14,6 +14,8 @@ defmodule Bonfire.API.GraphQL.Phase.ExecutionResolution do
 
   import Untangle
 
+  alias Bonfire.Common.Errors
+
   def run(bp_root, options \\ []) do
     Absinthe.Phase.Document.Execution.Resolution.run(bp_root, options)
   rescue
@@ -57,9 +59,9 @@ defmodule Bonfire.API.GraphQL.Phase.ExecutionResolution do
       {:error,
        msg <>
          ": " <>
-         Exception.format_banner(kind, exception, stacktrace) <>
+         Errors.format_banner(kind, exception, stacktrace) <>
          " -- Details: " <>
-         Exception.format_stacktrace(stacktrace)}
+         Errors.format_stacktrace(stacktrace)}
     else
       {:error, msg}
     end
@@ -71,9 +73,9 @@ defmodule Bonfire.API.GraphQL.Phase.ExecutionResolution do
 
   defp debug_log(msg, exception, stacktrace, kind) do
     error(msg)
-    error(Exception.format_banner(kind, exception, stacktrace))
+    error(Errors.format_banner(kind, exception, stacktrace))
     IO.puts(Exception.format_exit(exception))
-    IO.puts(Exception.format_stacktrace(stacktrace))
+    IO.puts(Errors.format_stacktrace(stacktrace))
 
     if Bonfire.Common.Extend.module_enabled?(Sentry),
       do:
