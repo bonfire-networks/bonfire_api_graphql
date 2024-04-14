@@ -47,7 +47,8 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
   defp transform_response({:error, response}, conn, _), do: error_fn(response, conn)
 
   def success_fn(response, conn) do
-    Plug.Conn.send_resp(conn, 200, Jason.encode!(transform_data(response)))
+    # Plug.Conn.send_resp(conn, 200, Jason.encode!(transform_data(response)))
+    Phoenix.Controller.json(conn, transform_data(response))
   end
 
   def error_fn(response, conn) do
