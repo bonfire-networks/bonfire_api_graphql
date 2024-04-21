@@ -92,6 +92,13 @@ defmodule Bonfire.API.GraphQL do
 
   def current_user(%{
         current_account_id: current_account_id,
+        current_user_id: current_user_id
+      })
+      when is_binary(current_account_id) and is_binary(current_user_id),
+      do: Bonfire.API.GraphQL.Auth.user_by(current_user_id, current_account_id)
+
+  def current_user(%{
+        current_account_id: current_account_id,
         current_username: current_username
       })
       when is_binary(current_account_id) and is_binary(current_username),

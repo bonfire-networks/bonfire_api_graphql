@@ -173,16 +173,20 @@ defmodule Bonfire.API.GraphQL.Auth do
   Once authenticated, load the context based on session (called from `Bonfire.API.GraphQL.Plugs.GraphQLContext`)
   """
   defp build_context_from_session(conn) do
-    # IO.inspect(session: Plug.Conn.get_session(conn))
-    # IO.inspect(assigns: conn.assigns)
+    dump(Plug.Conn.get_session(conn), "session")
+    dump(conn.assigns, "assigns")
+
     context = %{
       current_account_id:
         conn.assigns[:current_account_id] ||
           Plug.Conn.get_session(conn, :current_account_id),
+      current_account: current_account(conn.assigns),
       current_username:
         conn.assigns[:current_username] ||
           Plug.Conn.get_session(conn, :current_username),
-      current_account: current_account(conn.assigns),
+      current_user_id:
+        conn.assigns[:current_user_id] ||
+          Plug.Conn.get_session(conn, :current_user_id),
       current_user: conn.assigns[:current_user]
     }
 
@@ -198,12 +202,12 @@ defmodule Bonfire.API.GraphQL.Auth do
     |> debug("attempted to load account from user")
   end
 
-  def user_by(username, account)
-      when (is_binary(username) and is_binary(account)) or is_map(account) do
+  def user_by(username_or_user_id, account)
+      when (is_binary(username_or_user_id) and is_binary(account)) or is_map(account) do
     with {:ok, u} <-
-           Utils.maybe_apply(Users, :by_username_and_account, [
-             username,
-             ulid(account)
+           Utils.maybe_apply(Users, :by_user_and_account, [
+             username_or_user_id,
+             account
            ]) do
       u
     end
