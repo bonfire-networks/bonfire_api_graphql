@@ -1,5 +1,6 @@
 defmodule Bonfire.API.GraphQL.Pagination do
   import Bonfire.Common.Config, only: [repo: 0]
+  import Untangle
 
   def pagination_args_filter(args) do
     # {pagination_args, filters} = 
@@ -8,7 +9,7 @@ defmodule Bonfire.API.GraphQL.Pagination do
     |> Keyword.split([:after, :before, :first, :last])
   end
 
-  def connection_paginate(list, args, repo_fun \\ &Repo.all/1)
+  def connection_paginate(list, args, opts \\ [])
 
   def connection_paginate(
         %{
@@ -22,14 +23,15 @@ defmodule Bonfire.API.GraphQL.Pagination do
             } = page_info
         },
         _args,
-        repo_fun
+        opts
       ) do
-    IO.inspect(page_info)
+    # IO.inspect(page_info)
     # best option, since doesn't use offset
     # Absinthe.Relay.Connection.from_slice(edges, end_cursor)
     {:ok,
      %{
-       edges: build_edges(edges, cursor_for_record_fun),
+       edges:
+         build_edges(edges, Keyword.put(opts, :cursor_for_record_fun, cursor_for_record_fun)),
        page_info:
          Map.merge(page_info, %{
            # page_count == limit, 
@@ -39,12 +41,12 @@ defmodule Bonfire.API.GraphQL.Pagination do
      }}
   end
 
-  def connection_paginate(%Ecto.Query{} = query, args, repo_fun) do
+  def connection_paginate(%Ecto.Query{} = query, args, opts) do
     # simple limit + offset
-    Absinthe.Relay.Connection.from_query(query, repo_fun, args)
+    Absinthe.Relay.Connection.from_query(query, opts[:repo_fun] || (&Repo.all/1), args)
   end
 
-  def connection_paginate(list, args, _repo_fun) when is_list(list) do
+  def connection_paginate(list, args, _opts) when is_list(list) do
     # need to provide the full list
     Absinthe.Relay.Connection.from_list(
       list,
@@ -52,33 +54,33 @@ defmodule Bonfire.API.GraphQL.Pagination do
     )
   end
 
-  defp build_cursors(items, cursor_for_record_fun \\ nil)
+  defp build_cursors(items, opts \\ [])
   defp build_cursors([], _), do: {[], nil, nil}
 
-  defp build_cursors(items, cursor_for_record_fun) do
-    edges = build_edges(items, cursor_for_record_fun)
+  defp build_cursors(items, opts) do
+    edges = build_edges(items, opts)
     first = edges |> List.first() |> get_in([:cursor])
     last = edges |> List.last() |> get_in([:cursor])
     {edges, first, last}
   end
 
-  defp build_edges(items, cursor_for_record_fun \\ nil)
+  defp build_edges(items, opts \\ [])
   defp build_edges([], _), do: []
 
-  defp build_edges([item | items], cursor_for_record_fun) do
-    edge = build_edge(item, cursor_for_record_fun)
-    {edges, _} = do_build_cursors(items, [edge], edge[:cursor], cursor_for_record_fun)
+  defp build_edges([item | items], opts) do
+    edge = build_edge(item, opts)
+    {edges, _} = do_build_cursors(items, [edge], edge[:cursor], opts)
     edges
   end
 
   defp do_build_cursors([], edges, last, _), do: {Enum.reverse(edges), last}
 
-  defp do_build_cursors([item | rest], edges, _last, cursor_for_record_fun) do
-    edge = build_edge(item, cursor_for_record_fun)
-    do_build_cursors(rest, [edge | edges], edge[:cursor], cursor_for_record_fun)
+  defp do_build_cursors([item | rest], edges, _last, opts) do
+    edge = build_edge(item, opts)
+    do_build_cursors(rest, [edge | edges], edge[:cursor], opts)
   end
 
-  defp build_edge({item, args}, cursor_for_record_fun) do
+  defp build_edge({item, args}, opts) do
     args
     |> Enum.flat_map(fn
       {key, _} when key in [:node] ->
@@ -88,17 +90,27 @@ defmodule Bonfire.API.GraphQL.Pagination do
       {key, val} ->
         [{key, val}]
     end)
-    |> Enum.into(build_edge(item, cursor_for_record_fun))
+    |> Enum.into(build_edge(item, opts))
   end
 
-  defp build_edge(item, cursor_for_record_fun) do
+  defp build_edge(item, opts) do
+    opts
+    |> IO.inspect(label: "opts")
+
+    cursor_for_record_fun = opts[:cursor_for_record_fun] || (&Enums.id/1)
+
+    item =
+      if item_fun = opts[:item_prepare_fun] do
+        item_fun.(item)
+        |> IO.inspect(label: "item1")
+      else
+        item
+        |> IO.inspect(label: "item2")
+      end
+
     %{
       node: item,
-      cursor:
-        if(is_function(cursor_for_record_fun, 1),
-          do: cursor_for_record_fun.(item),
-          else: Paginator.cursor_for_record(item, [:id])
-        )
+      cursor: cursor_for_record_fun.(item)
     }
   end
 
