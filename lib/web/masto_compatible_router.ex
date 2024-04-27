@@ -4,8 +4,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
   defmacro include_masto_api do
     quote do
       scope "/" do
-        pipe_through(:basic_json)
-        pipe_through(:load_current_auth)
+        pipe_through([:basic_json, :load_authorization, :load_current_auth])
 
         # add here to override wrong priority order of routes
         get "/api/v1/accounts/verify_credentials",
@@ -13,6 +12,10 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
             :verify_credentials
 
         get "/api/v1/accounts/:id", Bonfire.API.MastoCompatible.AccountController, :show
+
+        get "/api/v1/instance", Bonfire.API.MastoCompatible.InstanceController, :show
+
+        post "/api/v1/apps", Bonfire.API.MastoCompatible.AppController, :create
 
         # require Apical
         # Apical.router_from_file(unquote(@api_spec),
