@@ -94,18 +94,18 @@ defmodule Bonfire.API.GraphQL.Pagination do
   end
 
   defp build_edge(item, opts) do
-    opts
-    |> IO.inspect(label: "opts")
+    # opts
+    # |> IO.inspect(label: "opts")
 
     cursor_for_record_fun = opts[:cursor_for_record_fun] || (&Enums.id/1)
 
     item =
       if item_fun = opts[:item_prepare_fun] do
         item_fun.(item)
-        |> IO.inspect(label: "item1")
+        # |> IO.inspect(label: "item1")
       else
         item
-        |> IO.inspect(label: "item2")
+        # |> IO.inspect(label: "item2")
       end
 
     %{

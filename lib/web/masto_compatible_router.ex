@@ -13,9 +13,17 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
         get "/api/v1/accounts/:id", Bonfire.API.MastoCompatible.AccountController, :show
 
+        get "/api/v1/preferences",
+            Bonfire.API.MastoCompatible.AccountController,
+            :show_preferences
+
         get "/api/v1/instance", Bonfire.API.MastoCompatible.InstanceController, :show
+        get "/api/v2/instance", Bonfire.API.MastoCompatible.InstanceController, :show_v2
 
         post "/api/v1/apps", Bonfire.API.MastoCompatible.AppController, :create
+
+        get "/api/v1/timelines/home", Bonfire.API.MastoCompatible.TimelineController, :home
+        get "/api/v1/timelines/:feed", Bonfire.API.MastoCompatible.TimelineController, :timeline
 
         # require Apical
         # Apical.router_from_file(unquote(@api_spec),

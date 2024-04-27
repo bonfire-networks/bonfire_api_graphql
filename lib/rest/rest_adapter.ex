@@ -64,7 +64,7 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
   def transform_data(data, _), do: transform_data(data)
 
   def transform_data(data) when is_binary(data), do: data
-  def transform_data(%{} = data), do: Enums.maybe_to_map(data, true)
+  def transform_data(%{} = data), do: Enums.struct_to_map(data, true)
   def transform_data(data) when is_list(data), do: Enum.map(data, &transform_data/1)
   def transform_data(data), do: inspect(data)
 end
