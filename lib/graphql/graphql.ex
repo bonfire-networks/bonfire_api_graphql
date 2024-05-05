@@ -1,5 +1,7 @@
 # Bonfire.Common.Config.require_extension_config!(:bonfire_api_graphql)
 defmodule Bonfire.API.GraphQL do
+  @moduledoc "./README.md" |> File.stream!() |> Enum.drop(1) |> Enum.join()
+
   alias Absinthe.Resolution
   alias Bonfire.API.GraphQL.Page
   alias Bonfire.Common.Enums
