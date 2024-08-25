@@ -243,6 +243,6 @@ defmodule Bonfire.API.GraphQL.Auth do
   end
 
   def username(user) do
-    Bonfire.Common.Utils.e(user, :character, :username, nil)
+    e(user, :character, :username, nil)
   end
 end
