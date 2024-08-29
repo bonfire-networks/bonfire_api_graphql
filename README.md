@@ -131,8 +131,6 @@ So for every field, a resolver function is run. It defaults to a map
 lookup, but you can override it with `resolve/1`. It may or may not
 have arguments. And all absinthe resolvers return an ok/error tuple.
 
-
-
 ## Copyright and License
 
 Copyright (c) 2020 Bonfire, VoxPublica, and CommonsPub Contributors
@@ -144,8 +142,8 @@ License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
 Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public
-License along with this program.  If not, see <https://www.gnu.org/licenses/>.
+License along with this program. If not, see <https://www.gnu.org/licenses/>.

@@ -3,25 +3,25 @@ openapi: 3.1.0
 #   id: cc3pgc7osi9i0
 info:
   title: Mastodon API
-  version: '1.0'
+  version: "1.0"
   contact:
     name: None
   description: Incomplete API for interacting with Mastodon. Sourced from https://github.com/samwightt/mastodon-openapi/tree/main
 servers:
-  - url: 'http://localhost:3000'
+  - url: "http://localhost:3000"
 paths:
   /api/v1/apps:
     post:
       summary: Create an application
       responses:
-        '200':
-          description: 'Store the client_id and client_secret in your cache, as these will be used to obtain OAuth tokens.'
+        "200":
+          description: "Store the client_id and client_secret in your cache, as these will be used to obtain OAuth tokens."
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/Application'
-                  - $ref: '#/components/schemas/Client-Credentials'
+                  - $ref: "#/components/schemas/Application"
+                  - $ref: "#/components/schemas/Client-Credentials"
                   - type: object
                     properties:
                       id:
@@ -39,8 +39,8 @@ paths:
               #       client_id: TWhM-tNSuncnqN7DBJmoyeLnk6K3iJJ71KKXxgL1hPM
               #       client_secret: ZEaFUFmF0umgBX1qKJDjaU99Q31lDkOU8NutzTOoliw
               #       vapid_key: BCk-QqERU0q-CfYZjcuB6lnyyOYfJ2AifKqfeGIm7Z-HiTU5T9eTG5GxVA0_OH5mMlI4UkkDTpaZwozy0TzdZ2M=
-        '422':
-          description: 'If a required parameter is missing or improperly formatted, the request will fail.'
+        "422":
+          description: "If a required parameter is missing or improperly formatted, the request will fail."
           content:
             application/json:
               schema:
@@ -87,20 +87,20 @@ paths:
     get:
       summary: Verify your app works
       responses:
-        '200':
-          description: 'If the Authorization header was provided with a valid token, you should see your app returned as an Application entity.'
+        "200":
+          description: "If the Authorization header was provided with a valid token, you should see your app returned as an Application entity."
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Application'
+                $ref: "#/components/schemas/Application"
               # examples:
               #   Example 1:
               #     value:
               #       name: test app
               #       website: null
               #       vapid_key: BCk-QqERU0q-CfYZjcuB6lnyyOYfJ2AifKqfeGIm7Z-HiTU5T9eTG5GxVA0_OH5mMlI4UkkDTpaZwozy0TzdZ2M=
-        '401':
-          $ref: '#/components/responses/Invalid-Authentication-Token'
+        "401":
+          $ref: "#/components/responses/Invalid-Authentication-Token"
       operationId: get-api-v1-apps-verify_credentials
       description: Confirm that the app's OAuth2 credentials work.
       parameters: []
@@ -112,7 +112,7 @@ paths:
     get:
       summary: Authorize a user
       responses:
-        '200':
+        "200":
           description: |-
             The authorization code will be returned as a query parameter named `code`.
 
@@ -120,7 +120,7 @@ paths:
             redirect_uri?code=qDFUEaYrRK5c-HNmTCJbAzazwLRInJ7VHFat0wcMgCU
             ```
       operationId: get-oauth-authorize
-      description: 'Displays an authorization form to the user. If approved, it will create and return an authorization code, then redirect to the desired redirect_uri, or show the authorization code if urn:ietf:wg:oauth:2.0:oob was requested. The authorization code can be used while requesting a token to obtain access to user-level methods.'
+      description: "Displays an authorization form to the user. If approved, it will create and return an authorization code, then redirect to the desired redirect_uri, or show the authorization code if urn:ietf:wg:oauth:2.0:oob was requested. The authorization code can be used while requesting a token to obtain access to user-level methods."
       # requestBody:
       #   content:
       #     application/x-www-form-urlencoded:
@@ -155,12 +155,12 @@ paths:
     post:
       summary: Obtain a token
       responses:
-        '200':
+        "200":
           description: Store the result of this for later use with auth-required methods.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Access-Token'
+                $ref: "#/components/schemas/Access-Token"
               # examples:
               #   Example 1:
               #     value:
@@ -168,8 +168,8 @@ paths:
               #       token_type: Bearer
               #       scope: read write follow push
               #       created_at: 1573979017
-        '400':
-          description: 'If you try to request a scope that was not included when registering the app, the request will fail.'
+        "400":
+          description: "If you try to request a scope that was not included when registering the app, the request will fail."
           content:
             application/json:
               schema:
@@ -187,10 +187,10 @@ paths:
               #     value:
               #       error: invalid_scope
               #       error_description: 'The requested scope is invalid, unknown, or malformed.'
-        '401':
-          $ref: '#/components/responses/Invalid-Authentication-Token'
+        "401":
+          $ref: "#/components/responses/Invalid-Authentication-Token"
       operationId: post-oauth-token
-      description: 'Returns an access token, to be used during API calls that are not public.'
+      description: "Returns an access token, to be used during API calls that are not public."
       # requestBody:
       #   content:
       #     application/x-www-form-urlencoded:
@@ -248,15 +248,15 @@ paths:
       tags:
         - OAuth
       responses:
-        '200':
-          description: 'If you own the provided token, the API call will provide an empty response. This operation is idempotent, so calling this API multiple times will still return OK.'
+        "200":
+          description: "If you own the provided token, the API call will provide an empty response. This operation is idempotent, so calling this API multiple times will still return OK."
           content:
             application/json:
               schema:
                 type: object
                 properties: {}
-        '403':
-          description: 'If you provide a token you don''t own, or no token at all, the API call will return a 403 error.'
+        "403":
+          description: "If you provide a token you don't own, or no token at all, the API call will return a 403 error."
           content:
             application/json:
               schema:
@@ -303,15 +303,15 @@ paths:
       tags:
         - Accounts
       responses:
-        '200':
+        "200":
           description: Account creation was successful.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Access-Token'
-        '401':
-          $ref: '#/components/responses/Invalid-Authentication-Token'
-        '422':
+                $ref: "#/components/schemas/Access-Token"
+        "401":
+          $ref: "#/components/responses/Invalid-Authentication-Token"
+        "422":
           description: There were validation errors when trying to create the account.
           content:
             application/json:
@@ -425,14 +425,14 @@ paths:
       #           - agreement
       security:
         - client-auth:
-            - 'write:accounts'
+            - "write:accounts"
   /api/v1/accounts/verify_credentials:
     get:
       summary: Verify account credentials
       tags:
         - Accounts
       responses:
-        '200':
+        "200":
           description: |-
             Success.
 
@@ -441,11 +441,11 @@ paths:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/Account'
+                  - $ref: "#/components/schemas/Account"
                   - type: object
                     properties:
                       source:
-                        $ref: '#/components/schemas/Source'
+                        $ref: "#/components/schemas/Source"
               # examples:
               #   Successful response:
               #     value:
@@ -503,10 +503,10 @@ paths:
               #         - name: 'Main topics:'
               #           value: 'systemic analysis, design patterns, anticapitalism, info/tech freedom, theory and philosophy, and otherwise being a genuine and decent wholesome poster. i&apos;m just here to hang out and talk to cool people!'
               #           verified_at: null
-        '401':
-          $ref: '#/components/responses/Invalid-Authentication-Token'
-        '403':
-          description: 'Your user account is currently disabled, missing a confirmed email address, or pending approval.'
+        "401":
+          $ref: "#/components/responses/Invalid-Authentication-Token"
+        "403":
+          description: "Your user account is currently disabled, missing a confirmed email address, or pending approval."
           content:
             application/json:
               schema:
@@ -528,7 +528,7 @@ paths:
       security:
         - user-token-auth:
             - read
-            - 'read:accounts'
+            - "read:accounts"
       parameters: []
       description: Test to make sure that the user token works.
   /api/v1/accounts/update_credentials:
@@ -537,21 +537,21 @@ paths:
       tags:
         - Accounts
       responses:
-        '200':
+        "200":
           description: Fields were saved successfully.
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/Account'
+                  - $ref: "#/components/schemas/Account"
                   - type: object
                     properties:
                       source:
-                        $ref: '#/components/schemas/Source'
+                        $ref: "#/components/schemas/Source"
                     required:
                       - source
-        '401':
-          $ref: '#/components/responses/Invalid-Authentication-Token'
+        "401":
+          $ref: "#/components/responses/Invalid-Authentication-Token"
       operationId: patch-api-v1-accounts-update_credentials
       description: |-
         Update the user's display and preferences.
@@ -559,7 +559,7 @@ paths:
         You should use `/api/v1/apps/verify_credentials` to first obtain plaintext representations from within the `source` parameter, then allow the user to edit these plaintext representations before submitting them through this API. The server will generate the corresponding HTML.
       security:
         - user-token-auth:
-            - 'write:accounts'
+            - "write:accounts"
             - write
       parameters: []
       # requestBody:
@@ -614,7 +614,7 @@ paths:
       #                   type: string
       #                   description: Value of the field.
       #   description: ''
-  '/api/v1/accounts/{id}':
+  "/api/v1/accounts/{id}":
     # parameters:
     #   - schema:
     #       type: string
@@ -627,12 +627,12 @@ paths:
       tags:
         - Accounts
       responses:
-        '200':
+        "200":
           description: Account record will be returned. Note that `acct` of local users does not include the domain name.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Account'
+                $ref: "#/components/schemas/Account"
               # examples:
               #   Local user:
               #     value:
@@ -730,9 +730,9 @@ paths:
               #       suspended: true
               #       emojis: []
               #       fields: []
-        '401':
-          $ref: '#/components/responses/Invalid-Authentication-Token'
-        '404':
+        "401":
+          $ref: "#/components/responses/Invalid-Authentication-Token"
+        "404":
           description: Account does not exist
           content:
             application/json:
@@ -745,11 +745,11 @@ paths:
               #   Example 1:
               #     value:
               #       error: Record not found
-        '410':
+        "410":
           description: Account is suspended
       operationId: get-api-v1-accounts-id
       description: View information about a profile.
-  '/api/v1/accounts/{id}/statuses':
+  "/api/v1/accounts/{id}/statuses":
     # parameters:
     #   - schema:
     #       type: string
@@ -763,16 +763,16 @@ paths:
         - Statuses
         - Accounts
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Status'
-        '401':
-          description: 'Instance is in whitelist mode or running a version of Mastodon older than 2.7.0, and the Authorization header is invalid or missing.'
+                  $ref: "#/components/schemas/Status"
+        "401":
+          description: "Instance is in whitelist mode or running a version of Mastodon older than 2.7.0, and the Authorization header is invalid or missing."
           content:
             application/json:
               schema:
@@ -789,7 +789,7 @@ paths:
               #   pre-2.7.0:
               #     value:
               #       error: The access token is invalid
-        '404':
+        "404":
           description: Account is deleted or does not exist.
           content:
             application/json:
@@ -804,7 +804,7 @@ paths:
               #   Example 1:
               #     value:
               #       error: Record not found
-        '410':
+        "410":
           description: Account is suspended.
       operationId: get-api-v1-accounts-id-statuses
       description: |-
@@ -813,9 +813,9 @@ paths:
         Public for public statuses only, or user_token + read:statuses (for private statuses the user is authorized to see).
       security:
         - user-token-auth:
-            - 'read:statuses'
+            - "read:statuses"
       parameters: []
-  '/api/v1/accounts/{id}/followers':
+  "/api/v1/accounts/{id}/followers":
     # parameters:
     #   - schema:
     #       type: string
@@ -828,7 +828,7 @@ paths:
       tags:
         - Accounts
       responses:
-        '200':
+        "200":
           description: Success
           headers:
             Link:
@@ -840,7 +840,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Account'
+                  $ref: "#/components/schemas/Account"
               # examples:
               #   Limit=2:
               #     value:
@@ -882,8 +882,8 @@ paths:
               #         last_status_at: null
               #         emojis: []
               #         fields: []
-        '401':
-          description: 'Invalid or missing Authorization header, or instance is in whitelist mode and your token is not authorized with a user.'
+        "401":
+          description: "Invalid or missing Authorization header, or instance is in whitelist mode and your token is not authorized with a user."
           content:
             application/json:
               schema:
@@ -900,7 +900,7 @@ paths:
               #   whitelist:
               #     value:
               #       error: This API requires an authenticated user
-        '404':
+        "404":
           description: Account is deleted or does not exist.
           content:
             application/json:
@@ -915,13 +915,13 @@ paths:
               #   Example 1:
               #     value:
               #       error: Record not found
-        '410':
+        "410":
           description: Account is suspended.
       operationId: get-api-v1-accounts-id-followers
-      description: 'Accounts which follow the given account, if network is not hidden by the account owner.'
+      description: "Accounts which follow the given account, if network is not hidden by the account owner."
       security:
         - client-auth:
-            - 'read:accounts'
+            - "read:accounts"
       parameters: []
       # requestBody:
       #   content:
@@ -939,7 +939,7 @@ paths:
       #             type: integer
       #             description: Maximum number of results to return.
       #             default: 40
-  '/api/v1/accounts/{id}/following':
+  "/api/v1/accounts/{id}/following":
     # parameters:
     #   - schema:
     #       type: string
@@ -952,7 +952,7 @@ paths:
       tags:
         - Accounts
       responses:
-        '200':
+        "200":
           description: OK
           headers:
             Link:
@@ -964,7 +964,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Account'
+                  $ref: "#/components/schemas/Account"
               # examples:
               #   Example 1:
               #     value:
@@ -1012,7 +1012,7 @@ paths:
               #           - name: whomst lov
               #             value: the oceane
               #             verified_at: null
-        '401':
+        "401":
           description: Unauthorized
           content:
             application/json:
@@ -1030,7 +1030,7 @@ paths:
               #   whitelist:
               #     value:
               #       error: This API requires an authenticated user
-        '404':
+        "404":
           description: Account is deleted or does not exist.
           content:
             application/json:
@@ -1045,13 +1045,13 @@ paths:
               #   Example 1:
               #     value:
               #       error: Record not found
-        '410':
+        "410":
           description: Account is suspended.
       operationId: get-api-v1-accounts-id-following
-      description: 'Accounts which the given account is following, if network is not hidden by the account owner.'
+      description: "Accounts which the given account is following, if network is not hidden by the account owner."
       security:
         - client-auth:
-            - 'read:accounts'
+            - "read:accounts"
       # requestBody:
       #   content:
       #     application/x-www-form-urlencoded:
@@ -1068,7 +1068,7 @@ paths:
       #             type: integer
       #             default: 40
       #             description: Maximum number of results to return.
-  '/api/v1/accounts/{id}/featured_tags':
+  "/api/v1/accounts/{id}/featured_tags":
     # parameters:
     #   - schema:
     #       type: string
@@ -1081,23 +1081,23 @@ paths:
         - Tags
         - Accounts
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Featured-Tag'
-        '401':
-          $ref: '#/components/responses/Invalid-Authentication-Token'
+                  $ref: "#/components/schemas/Featured-Tag"
+        "401":
+          $ref: "#/components/responses/Invalid-Authentication-Token"
       operationId: get-api-v1-accounts-id-featured_tags
       description: Tags featured by this account.
       security:
         - user-token-auth:
-            - 'read:accounts'
+            - "read:accounts"
       parameters: []
-  '/api/v1/accounts/{id}/lists':
+  "/api/v1/accounts/{id}/lists":
     # parameters:
     #   - schema:
     #       type: string
@@ -1110,15 +1110,15 @@ paths:
         - Lists
         - Accounts
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: array
-                description: 'If the account is part of any lists, those entities will be returned. If the account is not part of any of your lists, then an empty array will be returned.'
+                description: "If the account is part of any lists, those entities will be returned. If the account is not part of any of your lists, then an empty array will be returned."
                 items:
-                  $ref: '#/components/schemas/List'
+                  $ref: "#/components/schemas/List"
               # examples:
               #   Part of lists:
               #     value:
@@ -1126,9 +1126,9 @@ paths:
               #         title: dev
               #   Not in any lists.:
               #     value: []
-        '401':
-          $ref: '#/components/responses/Invalid-Authentication-Token'
-        '404':
+        "401":
+          $ref: "#/components/responses/Invalid-Authentication-Token"
+        "404":
           description: Account with given id does not exist or is deleted.
           content:
             application/json:
@@ -1143,15 +1143,15 @@ paths:
               #   Example 1:
               #     value:
               #       error: Record not found
-        '410':
+        "410":
           description: Account with given id is suspended.
       operationId: get-api-v1-accounts-id-lists
       description: User lists that you have added this account to.
       security:
         - user-token-auth:
-            - 'read:lists'
+            - "read:lists"
       parameters: []
-  '/api/v1/accounts/{id}/identity_proofs':
+  "/api/v1/accounts/{id}/identity_proofs":
     # parameters:
     #   - schema:
     #       type: string
@@ -1165,14 +1165,14 @@ paths:
         - Identity Proofs
         - Accounts
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Identity-Proof'
+                  $ref: "#/components/schemas/Identity-Proof"
               # examples:
               #   Example 1:
               #     value:
@@ -1181,7 +1181,7 @@ paths:
               #         updated_at: '2019-07-21T20:14:39.596Z'
               #         proof_url: 'https://keybase.io/gargron/sigchain#5cfc20c7018f2beefb42a68836da59a792e55daa4d118498c9b1898de7e845690f'
               #         profile_url: 'https://keybase.io/gargron'
-        '404':
+        "404":
           description: Account with given id is deleted or does not exist
           content:
             application/json:
@@ -1194,10 +1194,10 @@ paths:
               #   Example 1:
               #     value:
               #       error: Record not found
-        '410':
+        "410":
           description: Account with given id is suspended.
-        '422':
-          description: ''
+        "422":
+          description: ""
           content:
             application/json:
               schema:
@@ -1218,7 +1218,7 @@ paths:
       security:
         - user-token-auth: []
       description: Get the identity proofs for an account.
-  '/api/v1/accounts/{id}/follow':
+  "/api/v1/accounts/{id}/follow":
     # parameters:
     #   - schema:
     #       type: string
@@ -1231,13 +1231,13 @@ paths:
       tags:
         - Accounts
       responses:
-        '200':
-          description: 'Successfully followed, or account was already followed.'
+        "200":
+          description: "Successfully followed, or account was already followed."
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Relationship'
-        '403':
+                $ref: "#/components/schemas/Relationship"
+        "403":
           description: Trying to follow someone that you block or that blocks you.
           content:
             application/json:
@@ -1255,7 +1255,7 @@ paths:
       operationId: post-api-v1-accounts-id-follow
       security:
         - user-token-auth:
-            - 'write:follows'
+            - "write:follows"
             - follow
       parameters: []
       # requestBody:
@@ -1273,7 +1273,7 @@ paths:
       #             default: false
       #             description: Receive notifications when this account posts a status?
       description: Follows the given account. Can be used to update whether ot show reblogs or enable notifications.
-  '/api/v1/accounts/{id}/unfollow':
+  "/api/v1/accounts/{id}/unfollow":
     # parameters:
     #   - schema:
     #       type: string
@@ -1286,12 +1286,12 @@ paths:
       tags:
         - Accounts
       responses:
-        '200':
-          description: 'Successfully unfollowed, or account was already not followed.'
+        "200":
+          description: "Successfully unfollowed, or account was already not followed."
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Relationship'
+                $ref: "#/components/schemas/Relationship"
               # examples:
               #   Example 1:
               #     value:
@@ -1307,7 +1307,7 @@ paths:
               #       requested: false
               #       domain_blocking: false
               #       endorsed: false
-        '401':
+        "401":
           description: Invalid or missing Authorization header.
           content:
             application/json:
@@ -1326,7 +1326,7 @@ paths:
       description: Unfollow the given account.
       security:
         - user-token-auth:
-            - 'write:follows'
+            - "write:follows"
             - follow
       parameters: []
 components:
@@ -1347,7 +1347,7 @@ components:
             - Bearer
         scope:
           type: string
-          description: 'The OAuth scopes granted by this token, space-separated.'
+          description: "The OAuth scopes granted by this token, space-separated."
         created_at:
           type: number
           description: When the token was generated (UNIX Timestamp).
@@ -1365,31 +1365,31 @@ components:
         id:
           type: string
           description: The account id `header`. Cast from an integer but not guaranteed to be a number.
-          example: '23634'
+          example: "23634"
         username:
           type: string
-          description: 'The username of the account, **not including the domain**.'
+          description: "The username of the account, **not including the domain**."
         acct:
           type: string
-          description: 'The webfinger account URI. Equal to `username` for local users, or `username@domain` for remote users.'
+          description: "The webfinger account URI. Equal to `username` for local users, or `username@domain` for remote users."
         url:
           type: string
           description: The location of the user's profile page (HTTPS URI).
           format: uri
         moved:
-          $ref: '#/components/schemas/Account'
+          $ref: "#/components/schemas/Account"
         fields:
-          $ref: '#/components/schemas/Field'
+          $ref: "#/components/schemas/Field"
         bot:
           type: boolean
-          description: 'A presentational flag. Indicates that the account may perform automated actions, may not be monitored, or identifies as a robot.'
+          description: "A presentational flag. Indicates that the account may perform automated actions, may not be monitored, or identifies as a robot."
         suspended:
           type: boolean
           description: An extra entity returned when an account is suspended.
         mute_expires_at:
           type: string
           format: date-time
-          description: 'When a timed mute will expire, if applicable (ISO 8601 Datetime).'
+          description: "When a timed mute will expire, if applicable (ISO 8601 Datetime)."
         created_at:
           type: string
           format: date-time
@@ -1437,9 +1437,9 @@ components:
           description: Whether the account manually approves follow requests.
         emojis:
           type: array
-          description: 'Custom emoji entities to be used when rendering the profile. If none, an empty array will be returned.'
+          description: "Custom emoji entities to be used when rendering the profile. If none, an empty array will be returned."
           items:
-            $ref: '#/components/schemas/Emoji'
+            $ref: "#/components/schemas/Emoji"
         discoverable:
           type: string
           description: Whether the account has opted into discovery features such as the profile directory.
@@ -1503,7 +1503,7 @@ components:
           format: uri
         vapid_key:
           type: string
-          description: ' Used for Push Streaming API. Returned with POST /api/v1/apps. Equivalent to PushSubscription#server_key.'
+          description: " Used for Push Streaming API. Returned with POST /api/v1/apps. Equivalent to PushSubscription#server_key."
       required:
         - name
       description: Represents an application that interfaces with the REST API to access accounts or post statuses.
@@ -1532,10 +1532,10 @@ components:
           description: The location of the full-size original attachment on the remote website. Null if the attachment is local.
         description:
           type: string
-          description: 'Alternate text that describes what is in the media attachment, to be used for the visually impaired or when media attachments do not load.'
+          description: "Alternate text that describes what is in the media attachment, to be used for the visually impaired or when media attachments do not load."
         blurhash:
           type: string
-          description: 'A hash computed by the BlurHash algorithm, for generating colorful preview thumbnails when media has not been downloaded yet.'
+          description: "A hash computed by the BlurHash algorithm, for generating colorful preview thumbnails when media has not been downloaded yet."
       required:
         - id
         - url
@@ -1588,10 +1588,10 @@ components:
           description: HTML to be used for generating the preview card.
         width:
           type: integer
-          description: 'Width of preview, in pixels.'
+          description: "Width of preview, in pixels."
         height:
           type: integer
-          description: 'Height of preview, in pixels.'
+          description: "Height of preview, in pixels."
         image:
           type: string
           format: uri
@@ -1599,10 +1599,10 @@ components:
         embed_url:
           type: string
           format: uri
-          description: 'Used for photo embeds, instead of custom `html`.'
+          description: "Used for photo embeds, instead of custom `html`."
         blurhash:
           type: string
-          description: 'A hash compute by the BlurHash algorithm, for generating colorful preview thumbnails when media has not been downloaded yet.'
+          description: "A hash compute by the BlurHash algorithm, for generating colorful preview thumbnails when media has not been downloaded yet."
       required:
         - url
         - title
@@ -1659,10 +1659,10 @@ components:
       properties:
         client_id:
           type: string
-          description: 'Client ID key, to be used for obtaining OAuth tokens.'
+          description: "Client ID key, to be used for obtaining OAuth tokens."
         client_secret:
           type: string
-          description: 'Client secret key, to be used for obtaining OAuth tokens.'
+          description: "Client secret key, to be used for obtaining OAuth tokens."
       required:
         - client_id
         - client_secret
@@ -1819,7 +1819,7 @@ components:
         proof_url:
           type: string
           format: uri
-          description: 'A link to a statement of identity proof, hosted by the identity provider.'
+          description: "A link to a statement of identity proof, hosted by the identity provider."
         updated_at:
           type: string
           description: When the identity proof was last updated. ISO 8601 DateTime.
@@ -1840,7 +1840,7 @@ components:
       properties:
         id:
           type: string
-          description: 'The internal database ID of the list. Cast from an integer, but not guaranteed to be a number.'
+          description: "The internal database ID of the list. Cast from an integer, but not guaranteed to be a number."
         title:
           type: string
           description: The user-defined title of the list.
@@ -1867,13 +1867,13 @@ components:
       properties:
         id:
           type: string
-          description: 'The account id of the mentioned user. Cast from an integer, but not guaranteed to be a number.'
+          description: "The account id of the mentioned user. Cast from an integer, but not guaranteed to be a number."
         username:
           type: string
           description: The username of the mentioned user.
         acct:
           type: string
-          description: 'The webfinger acct: URI of the mentioned user. Equivalent to `username` for local users, or `username@domain` for remote users.'
+          description: "The webfinger acct: URI of the mentioned user. Equivalent to `username` for local users, or `username@domain` for remote users."
         url:
           type: string
           description: The location of the mentioned user's profile.
@@ -1920,10 +1920,10 @@ components:
           description: How many unique accounts have voted on a multiple choice poll. Null if `multiple` is false.
         voted:
           type: boolean
-          description: 'When called with a user token, has the authorized user voted?'
+          description: "When called with a user token, has the authorized user voted?"
         own_votes:
           type: array
-          description: 'When called with a user token, which options has the authorized user chosen? Contains an array of index values for `options`.'
+          description: "When called with a user token, which options has the authorized user chosen? Contains an array of index values for `options`."
           items:
             type: integer
         options:
@@ -1937,7 +1937,7 @@ components:
                 description: The text value of the poll option.
               votes_count:
                 type: integer
-                description: 'The number of votes received for this option. Number, or null if results are not published yet.'
+                description: "The number of votes received for this option. Number, or null if results are not published yet."
                 minimum: 0
             required:
               - title
@@ -1945,7 +1945,7 @@ components:
           type: array
           description: Custom emoji to be used for rendering poll options.
           items:
-            $ref: '#/components/schemas/Emoji'
+            $ref: "#/components/schemas/Emoji"
       required:
         - id
         - expired
@@ -1957,11 +1957,11 @@ components:
       title: Relationship
       # x-stoplight:
       #   id: m55gcfa8jpe5r
-      description: 'Represents the relationship between accounts, such as following / blocking / muting / etc.'
+      description: "Represents the relationship between accounts, such as following / blocking / muting / etc."
       properties:
         id:
           type: string
-          description: 'The account id. Cast from an integer, but not guaranteed to be a number.'
+          description: "The account id. Cast from an integer, but not guaranteed to be a number."
         following:
           type: boolean
           description: Are you following this user?
@@ -2012,7 +2012,7 @@ components:
       # x-stoplight:
       #   id: jmpm6jpiz2lfq
       type: object
-      description: 'Represents display or publishing preferences of user''s own account. Returned as an additional entity when verifying and updated credentials, as an attribute of `Account`.'
+      description: "Represents display or publishing preferences of user's own account. Returned as an additional entity when verifying and updated credentials, as an attribute of `Account`."
       properties:
         note:
           type: string
@@ -2021,10 +2021,10 @@ components:
           type: array
           description: Metadata about the account.
           items:
-            $ref: '#/components/schemas/Field'
+            $ref: "#/components/schemas/Field"
         privacy:
           type: string
-          description: 'The default post privacy to be used for new statuses. `public` = Public post, `unlisted` = unlisted post, `private` = followers-only post, and `direct` = direct post.'
+          description: "The default post privacy to be used for new statuses. `public` = Public post, `unlisted` = unlisted post, `private` = followers-only post, and `direct` = direct post."
           enum:
             - public
             - unlisted
@@ -2062,7 +2062,7 @@ components:
           description: The date when this status was created (ISO 8601 DateTime).
           format: date-time
         account:
-          $ref: '#/components/schemas/Account'
+          $ref: "#/components/schemas/Account"
         content:
           type: string
           description: HTML-encoded status content.
@@ -2084,14 +2084,14 @@ components:
           description: Is the status marked as sensitive content?
         spoiler_text:
           type: string
-          description: 'Subject or summary line, below which status content is collapsed until expanded.'
+          description: "Subject or summary line, below which status content is collapsed until expanded."
         media_attachements:
           type: array
           description: Media that is attached to this status.
           items:
-            $ref: '#/components/schemas/Attachment'
+            $ref: "#/components/schemas/Attachment"
         application:
-          $ref: '#/components/schemas/Application'
+          $ref: "#/components/schemas/Application"
         url:
           type: string
           format: uri
@@ -2103,32 +2103,32 @@ components:
           type: string
           description: ID of the account being replied to. Cast from integer but not guaranteed to be a number.
         reblog:
-          $ref: '#/components/schemas/Status'
+          $ref: "#/components/schemas/Status"
         poll:
-          $ref: '#/components/schemas/Poll'
+          $ref: "#/components/schemas/Poll"
         card:
-          $ref: '#/components/schemas/Card'
+          $ref: "#/components/schemas/Card"
         language:
           type: string
           description: Primary langauge of this status. ISO 639 Part 1 two-letter langauge code.
         text:
           type: string
-          description: 'Plain-text source of a status. Returned instead of `content` when status is deleted, so the user may redraft from the source text without the client having to reverse-engineer the original text from the HTML content.'
+          description: "Plain-text source of a status. Returned instead of `content` when status is deleted, so the user may redraft from the source text without the client having to reverse-engineer the original text from the HTML content."
         mentions:
           type: array
           description: Mentions of users within the status content.
           items:
-            $ref: '#/components/schemas/Mention'
+            $ref: "#/components/schemas/Mention"
         tags:
           type: array
           description: Hashtags used within the status content.
           items:
-            $ref: '#/components/schemas/Tag'
+            $ref: "#/components/schemas/Tag"
         emojis:
           type: array
           description: Custom emoji to be used while rendering status content.
           items:
-            $ref: '#/components/schemas/Emoji'
+            $ref: "#/components/schemas/Emoji"
         reblogs_count:
           type: integer
           minimum: 0
@@ -2209,7 +2209,7 @@ components:
       properties:
         name:
           type: string
-          description: 'The value of the hashtag after the # sign.'
+          description: "The value of the hashtag after the # sign."
         url:
           type: string
           format: uri
@@ -2218,12 +2218,12 @@ components:
           type: array
           description: Usage statistics for given days.
           items:
-            $ref: '#/components/schemas/History'
+            $ref: "#/components/schemas/History"
       required:
         - name
         - url
     Admin-Account:
-      title: 'Admin::Account'
+      title: "Admin::Account"
       # x-stoplight:
       #   id: xyakm7mxo0kti
       type: object
@@ -2231,7 +2231,7 @@ components:
       properties:
         id:
           type: string
-          description: 'The ID of the account in the database. Cast from an integer, but not guaranteed to be a number.'
+          description: "The ID of the account in the database. Cast from an integer, but not guaranteed to be a number."
         username:
           type: string
           description: The username of the account.
@@ -2274,13 +2274,13 @@ components:
           type: boolean
           description: Whether the account is currently suspended.
         account:
-          $ref: '#/components/schemas/Account'
+          $ref: "#/components/schemas/Account"
         created_by_application_id:
           type: string
-          description: 'The ID of the application that created this account. Cast from an integer, but not guaranteed to be a number.'
+          description: "The ID of the application that created this account. Cast from an integer, but not guaranteed to be a number."
         invited_by_account_id:
           type: string
-          description: 'The ID of the account that invited this user. Cast from an integer, but not guaranteed to be a number.'
+          description: "The ID of the account that invited this user. Cast from an integer, but not guaranteed to be a number."
       required:
         - id
         - username
@@ -2298,7 +2298,7 @@ components:
         - suspended
         - account
     Admin-Report:
-      title: 'Admin::Report'
+      title: "Admin::Report"
       # x-stoplight:
       #   id: s42ye786vcvq0
       type: object
@@ -2322,11 +2322,11 @@ components:
           description: The time of last action on this report.
           format: date-time
         account:
-          $ref: '#/components/schemas/Account'
+          $ref: "#/components/schemas/Account"
         target_account:
-          $ref: '#/components/schemas/Account'
+          $ref: "#/components/schemas/Account"
         assigned_account:
-          $ref: '#/components/schemas/Account'
+          $ref: "#/components/schemas/Account"
         action_taken_by_account:
           type: string
           description: The action taken by the moderator who handled the report.
@@ -2334,9 +2334,9 @@ components:
           type:
             - string
             - array
-          description: 'Statuses attached to the report, for context.'
+          description: "Statuses attached to the report, for context."
           items:
-            $ref: '#/components/schemas/Status'
+            $ref: "#/components/schemas/Status"
       required:
         - id
         - created_at
@@ -2380,7 +2380,7 @@ components:
           type: array
           description: Emoji reactions attached to the announcement.
           items:
-            $ref: '#/components/schemas/Announcement-Reaction'
+            $ref: "#/components/schemas/Announcement-Reaction"
         scheduled_at:
           type: string
           format: date-time
@@ -2442,7 +2442,7 @@ components:
       properties:
         name:
           type: string
-          description: 'The emoji used for the reaction. Either a unicode emoji, or a custom emoji''s shortcode.'
+          description: "The emoji used for the reaction. Either a unicode emoji, or a custom emoji's shortcode."
         count:
           type: integer
           description: The total number of users who have added this reaction.
@@ -2470,12 +2470,12 @@ components:
           type: array
           description: Parents in the thread.
           items:
-            $ref: '#/components/schemas/Status'
+            $ref: "#/components/schemas/Status"
         descendants:
           type: array
           description: Children in the thread.
           items:
-            $ref: '#/components/schemas/Status'
+            $ref: "#/components/schemas/Status"
       required:
         - ancestors
         - descendants
@@ -2493,12 +2493,12 @@ components:
           type: array
           description: Participants in the conversation.
           items:
-            $ref: '#/components/schemas/Account'
+            $ref: "#/components/schemas/Account"
         unread:
           type: boolean
           description: Is the conversation currently marked as unread?
         last_status:
-          $ref: '#/components/schemas/Status'
+          $ref: "#/components/schemas/Status"
       required:
         - id
         - accounts
@@ -2580,32 +2580,32 @@ components:
       #       - en
       #     registrations: true
       #     approval_required: false
-          # contact_account:
-          #   id: '1'
-          #   username: Gargron
-          #   acct: Gargron
-          #   display_name: Eugen
-          #   locked: false
-          #   bot: false
-          #   created_at: '2016-03-16T14:34:26.392Z'
-          #   note: '<p>Developer of Mastodon and administrator of mastodon.social. I post service announcements, development updates, and personal stuff.</p>'
-          #   url: 'https://mastodon.social/@Gargron'
-          #   avatar: 'https://files.mastodon.social/accounts/avatars/000/000/001/original/d96d39a0abb45b92.jpg'
-          #   avatar_static: 'https://files.mastodon.social/accounts/avatars/000/000/001/original/d96d39a0abb45b92.jpg'
-          #   header: 'https://files.mastodon.social/accounts/headers/000/000/001/original/c91b871f294ea63e.png'
-          #   header_static: 'https://files.mastodon.social/accounts/headers/000/000/001/original/c91b871f294ea63e.png'
-          #   followers_count: 317112
-          #   following_count: 453
-          #   statuses_count: 60903
-          #   last_status_at: '2019-11-26T21:14:44.522Z'
-          #   emojis: []
-          #   fields:
-          #     - name: Patreon
-          #       value: '<a href="https://www.patreon.com/mastodon" rel="me nofollow noopener noreferrer" target="_blank"><span class="invisible">https://www.</span><span class="">patreon.com/mastodon</span><span class="invisible"></span}'
-          #       verified_at: null
-          #     - name: Homepage
-          #       value: '<a href="https://zeonfederated.com" rel="me nofollow noopener noreferrer" target="_blank"><span class="invisible">https://</span><span class="">zeonfederated.com</span><span class="invisible"></span}'
-          #       verified_at: '2019-07-15T18:29:57.191+00:00'
+      # contact_account:
+      #   id: '1'
+      #   username: Gargron
+      #   acct: Gargron
+      #   display_name: Eugen
+      #   locked: false
+      #   bot: false
+      #   created_at: '2016-03-16T14:34:26.392Z'
+      #   note: '<p>Developer of Mastodon and administrator of mastodon.social. I post service announcements, development updates, and personal stuff.</p>'
+      #   url: 'https://mastodon.social/@Gargron'
+      #   avatar: 'https://files.mastodon.social/accounts/avatars/000/000/001/original/d96d39a0abb45b92.jpg'
+      #   avatar_static: 'https://files.mastodon.social/accounts/avatars/000/000/001/original/d96d39a0abb45b92.jpg'
+      #   header: 'https://files.mastodon.social/accounts/headers/000/000/001/original/c91b871f294ea63e.png'
+      #   header_static: 'https://files.mastodon.social/accounts/headers/000/000/001/original/c91b871f294ea63e.png'
+      #   followers_count: 317112
+      #   following_count: 453
+      #   statuses_count: 60903
+      #   last_status_at: '2019-11-26T21:14:44.522Z'
+      #   emojis: []
+      #   fields:
+      #     - name: Patreon
+      #       value: '<a href="https://www.patreon.com/mastodon" rel="me nofollow noopener noreferrer" target="_blank"><span class="invisible">https://www.</span><span class="">patreon.com/mastodon</span><span class="invisible"></span}'
+      #       verified_at: null
+      #     - name: Homepage
+      #       value: '<a href="https://zeonfederated.com" rel="me nofollow noopener noreferrer" target="_blank"><span class="invisible">https://</span><span class="">zeonfederated.com</span><span class="invisible"></span}'
+      #       verified_at: '2019-07-15T18:29:57.191+00:00'
       properties:
         uri:
           type: string
@@ -2665,11 +2665,11 @@ components:
           type: boolean
           description: Whether registrations require moderator approval.
         contact_account:
-          $ref: '#/components/schemas/Account'
+          $ref: "#/components/schemas/Account"
         thumbnail:
           type:
             - string
-            - 'null'
+            - "null"
           description: Banner image for the website.
           format: uri
       required:
@@ -2703,32 +2703,32 @@ components:
       #       - en
       #     registrations: true
       #     approval_required: false
-          # contact_account:
-          #   id: '1'
-          #   username: Gargron
-          #   acct: Gargron
-          #   display_name: Eugen
-          #   locked: false
-          #   bot: false
-          #   created_at: '2016-03-16T14:34:26.392Z'
-          #   note: '<p>Developer of Mastodon and administrator of mastodon.social. I post service announcements, development updates, and personal stuff.</p>'
-          #   url: 'https://mastodon.social/@Gargron'
-          #   avatar: 'https://files.mastodon.social/accounts/avatars/000/000/001/original/d96d39a0abb45b92.jpg'
-          #   avatar_static: 'https://files.mastodon.social/accounts/avatars/000/000/001/original/d96d39a0abb45b92.jpg'
-          #   header: 'https://files.mastodon.social/accounts/headers/000/000/001/original/c91b871f294ea63e.png'
-          #   header_static: 'https://files.mastodon.social/accounts/headers/000/000/001/original/c91b871f294ea63e.png'
-          #   followers_count: 317112
-          #   following_count: 453
-          #   statuses_count: 60903
-          #   last_status_at: '2019-11-26T21:14:44.522Z'
-          #   emojis: []
-          #   fields:
-          #     - name: Patreon
-          #       value: '<a href="https://www.patreon.com/mastodon" rel="me nofollow noopener noreferrer" target="_blank"><span class="invisible">https://www.</span><span class="">patreon.com/mastodon</span><span class="invisible"></span}'
-          #       verified_at: null
-          #     - name: Homepage
-          #       value: '<a href="https://zeonfederated.com" rel="me nofollow noopener noreferrer" target="_blank"><span class="invisible">https://</span><span class="">zeonfederated.com</span><span class="invisible"></span}'
-          #       verified_at: '2019-07-15T18:29:57.191+00:00'
+      # contact_account:
+      #   id: '1'
+      #   username: Gargron
+      #   acct: Gargron
+      #   display_name: Eugen
+      #   locked: false
+      #   bot: false
+      #   created_at: '2016-03-16T14:34:26.392Z'
+      #   note: '<p>Developer of Mastodon and administrator of mastodon.social. I post service announcements, development updates, and personal stuff.</p>'
+      #   url: 'https://mastodon.social/@Gargron'
+      #   avatar: 'https://files.mastodon.social/accounts/avatars/000/000/001/original/d96d39a0abb45b92.jpg'
+      #   avatar_static: 'https://files.mastodon.social/accounts/avatars/000/000/001/original/d96d39a0abb45b92.jpg'
+      #   header: 'https://files.mastodon.social/accounts/headers/000/000/001/original/c91b871f294ea63e.png'
+      #   header_static: 'https://files.mastodon.social/accounts/headers/000/000/001/original/c91b871f294ea63e.png'
+      #   followers_count: 317112
+      #   following_count: 453
+      #   statuses_count: 60903
+      #   last_status_at: '2019-11-26T21:14:44.522Z'
+      #   emojis: []
+      #   fields:
+      #     - name: Patreon
+      #       value: '<a href="https://www.patreon.com/mastodon" rel="me nofollow noopener noreferrer" target="_blank"><span class="invisible">https://www.</span><span class="">patreon.com/mastodon</span><span class="invisible"></span}'
+      #       verified_at: null
+      #     - name: Homepage
+      #       value: '<a href="https://zeonfederated.com" rel="me nofollow noopener noreferrer" target="_blank"><span class="invisible">https://</span><span class="">zeonfederated.com</span><span class="invisible"></span}'
+      #       verified_at: '2019-07-15T18:29:57.191+00:00'
     Marker:
       title: Marker
       # x-stoplight:
@@ -2810,9 +2810,9 @@ components:
           format: date-time
           description: The timestamp of the notification.
         account:
-          $ref: '#/components/schemas/Account'
+          $ref: "#/components/schemas/Account"
         status:
-          $ref: '#/components/schemas/Status'
+          $ref: "#/components/schemas/Status"
       required:
         - id
         - type
@@ -2834,18 +2834,18 @@ components:
       #     'reading:expand:media': default
       #     'reading:expand:spoilers': false
       properties:
-        'posting:default:visibility':
+        "posting:default:visibility":
           type: string
           description: Default visibility for new posts. Equivalent to `Source#privacy`.
-        'posting:default:sensitive':
+        "posting:default:sensitive":
           type: boolean
           description: Default sensitivity flag for new posts. Equivalent to `Source#sensitive`.
-        'posting:default:language':
+        "posting:default:language":
           type:
             - string
-            - 'null'
+            - "null"
           description: Default language for new posts. Equivalent to `Source#language`
-        'reading:expand:media':
+        "reading:expand:media":
           type: string
           description: |-
             Whether media attachments should be automatically displayed or blurred / hidden.
@@ -2857,14 +2857,14 @@ components:
             - default
             - show_all
             - hide_all
-        'reading:expand:spoilers':
+        "reading:expand:spoilers":
           type: boolean
           description: Whether CWs should be expanded by default.
       required:
-        - 'posting:default:visibility'
-        - 'posting:default:sensitive'
-        - 'reading:expand:media'
-        - 'reading:expand:spoilers'
+        - "posting:default:visibility"
+        - "posting:default:sensitive"
+        - "reading:expand:media"
+        - "reading:expand:spoilers"
       description: Represents a user's preferences.
     PushSubscription:
       type: object
@@ -2942,12 +2942,12 @@ components:
           type: array
           description: Accounts which match the given query.
           items:
-            $ref: '#/components/schemas/Account'
+            $ref: "#/components/schemas/Account"
         statuses:
           type: array
           description: Statuses which match the given query.
           items:
-            $ref: '#/components/schemas/Status'
+            $ref: "#/components/schemas/Status"
         hashtags:
           type: array
           description: Hashtags which match the given query.
@@ -2967,19 +2967,19 @@ components:
           type: array
           description: Accounts which match the given query.
           items:
-            $ref: '#/components/schemas/Account'
+            $ref: "#/components/schemas/Account"
         statuses:
           type: array
           description: Statuses which match the given query.
           items:
-            $ref: '#/components/schemas/Status'
+            $ref: "#/components/schemas/Status"
         hashtags:
           type:
             - string
             - array
           description: Hashtags which match the given query.
           items:
-            $ref: '#/components/schemas/Tag'
+            $ref: "#/components/schemas/Tag"
       required:
         - accounts
         - statuses
@@ -2996,49 +2996,49 @@ components:
           scopes:
             read: Grants access to read data. Requesting `read` will also grant child scopes shown in the left column of the table below.
             write: Grants access to write data. Requesting `write` will also grant child scopes shown in the right column of the table below.
-            follow: 'Grants access to manage relationships. Requesting `follow` will also grant the following child scopes, shown in bold in the table: `read:blocks`, `write:blocks`, `read:follows`, `write:follows`, `read:mutes`, and `write:mutes`.'
+            follow: "Grants access to manage relationships. Requesting `follow` will also grant the following child scopes, shown in bold in the table: `read:blocks`, `write:blocks`, `read:follows`, `write:follows`, `read:mutes`, and `write:mutes`."
             push: Grants access to Web Push API subscriptions. Added in Mastodon 2.4.0.
-            'admin:read': 'Includes `admin:read:accounts` and `admin:read:reports` scopes.'
-            'admin:read:accounts': ''
-            'admin:read:reports': ''
-            'admin:write': 'Includes `admin:write:accounts` and `admin:write:reports`'
-            'admin:write:accounts': ''
-            'admin:write:reports': ''
-            'read:accounts': ''
-            'write:accounts': ''
-            'read:bookmarks': ''
-            'write:bookmarks': ''
-            'write:conversations': ''
-            'read:favourites': ''
-            'write:favourites': ''
-            'read:filters': ''
-            'write:filters': ''
-            'read:follows': ''
-            'write:follows': ''
-            'read:lists': ''
-            'write:lists': ''
-            'write:media': ''
-            'read:mutes': ''
-            'write:mutes': ''
-            'read:notifications': ''
-            'write:notifications': ''
-            'write:reports': ''
-            'read:search': ''
-            'read:statuses': ''
-            'write:statuses': ''
-      description: ''
+            "admin:read": "Includes `admin:read:accounts` and `admin:read:reports` scopes."
+            "admin:read:accounts": ""
+            "admin:read:reports": ""
+            "admin:write": "Includes `admin:write:accounts` and `admin:write:reports`"
+            "admin:write:accounts": ""
+            "admin:write:reports": ""
+            "read:accounts": ""
+            "write:accounts": ""
+            "read:bookmarks": ""
+            "write:bookmarks": ""
+            "write:conversations": ""
+            "read:favourites": ""
+            "write:favourites": ""
+            "read:filters": ""
+            "write:filters": ""
+            "read:follows": ""
+            "write:follows": ""
+            "read:lists": ""
+            "write:lists": ""
+            "write:media": ""
+            "read:mutes": ""
+            "write:mutes": ""
+            "read:notifications": ""
+            "write:notifications": ""
+            "write:reports": ""
+            "read:search": ""
+            "read:statuses": ""
+            "write:statuses": ""
+      description: ""
     client-auth:
       type: oauth2
       flows:
         clientCredentials:
-          tokenUrl: ''
-          refreshUrl: ''
+          tokenUrl: ""
+          refreshUrl: ""
           scopes:
-            'write:accounts': ''
-            'read:accounts': ''
+            "write:accounts": ""
+            "read:accounts": ""
   responses:
     Invalid-Authentication-Token:
-      description: 'If the Authorization header contains an invalid token, is malformed, or is not present, an error will be returned indicating an authorization failure.'
+      description: "If the Authorization header contains an invalid token, is malformed, or is not present, an error will be returned indicating an authorization failure."
       content:
         application/json:
           schema:
