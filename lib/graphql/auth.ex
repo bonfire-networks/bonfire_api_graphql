@@ -156,7 +156,7 @@ defmodule Bonfire.API.GraphQL.Auth do
         current_user: user,
         current_username: username(user),
         current_account: account,
-        current_account_id: ulid(account)
+        current_account_id: uid(account)
       }
     else
       _ ->
@@ -233,7 +233,7 @@ defmodule Bonfire.API.GraphQL.Auth do
 
   def account_by(account) when is_binary(account) or is_map(account) do
     with {:ok, account} <-
-           Utils.maybe_apply(Accounts, :get_current, ulid(account)) do
+           Utils.maybe_apply(Accounts, :get_current, uid(account)) do
       account
     end
   end
