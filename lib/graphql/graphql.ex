@@ -196,7 +196,7 @@ defmodule Bonfire.API.GraphQL do
   def not_found(), do: {:error, :not_found}
 
   def cast_ulid(str) when is_binary(str) do
-    with :error <- Needle.ULID.cast(str), do: not_found()
+    with :error <- Needle.UID.cast(str), do: not_found()
   end
 
   def cast_ulid(_), do: not_found()
@@ -208,7 +208,7 @@ defmodule Bonfire.API.GraphQL do
   def cast_nonnegint(_), do: not_found()
 
   def cast_int_ulid_id([int, ulid]) when is_integer(int) and is_binary(ulid) do
-    with :error <- Needle.ULID.cast(ulid), do: not_found()
+    with :error <- Needle.UID.cast(ulid), do: not_found()
   end
 
   def cast_int_ulid_id(_), do: not_found()

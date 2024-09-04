@@ -14,7 +14,7 @@ defmodule Bonfire.API.GraphQL.ResolvePages do
     :context,
     :page_opts,
     :info,
-    cursor_validators: [&Needle.ULID.cast/1],
+    cursor_validators: [&Needle.UID.cast/1],
     single_opts: %{default_limit: 5, max_limit: 50},
     batch_opts: %{default_limit: 3, max_limit: 20},
     deep_opts: %{default_limit: 3, max_limit: 10},

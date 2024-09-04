@@ -34,7 +34,7 @@ defmodule Bonfire.API.GraphQL.Test.GraphQLAssertions do
 
   def assert_ulid(ulid) do
     assert is_binary(ulid)
-    assert {:ok, val} = Needle.ULID.cast(ulid)
+    assert {:ok, val} = Needle.UID.cast(ulid)
     val
   end
 
