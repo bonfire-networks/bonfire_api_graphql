@@ -61,7 +61,7 @@ defmodule Bonfire.API.GraphQL.Phase.ExecutionResolution do
          ": " <>
          Errors.format_banner(kind, exception, stacktrace) <>
          " -- Details: " <>
-         Errors.format_stacktrace(stacktrace)}
+         Untangle.format_stacktrace(stacktrace)}
     else
       {:error, msg}
     end
@@ -75,7 +75,7 @@ defmodule Bonfire.API.GraphQL.Phase.ExecutionResolution do
     error(msg)
     error(Errors.format_banner(kind, exception, stacktrace))
     IO.puts(Exception.format_exit(exception))
-    IO.puts(Errors.format_stacktrace(stacktrace))
+    IO.puts(Untangle.format_stacktrace(stacktrace))
 
     if Bonfire.Common.Extend.module_enabled?(Sentry),
       do:
