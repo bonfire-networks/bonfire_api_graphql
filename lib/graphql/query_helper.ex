@@ -140,7 +140,7 @@ defmodule Bonfire.API.GraphQL.QueryHelper do
 
     implementor_fields =
       Enum.map(implementors, fn type ->
-        {type, fields_for(schema, type, nesting) -- interface_fields -- [:__typename]}
+        {type, fields_for(schema, type, nesting) -- (interface_fields -- [:__typename])}
       end)
 
     {interface_fields, implementor_fields}
