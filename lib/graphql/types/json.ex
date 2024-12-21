@@ -16,8 +16,8 @@ defmodule Bonfire.API.GraphQL.JSON do
   use Absinthe.Schema.Notation
   require Protocol
 
-  scalar :json, name: "Json" do
-    description("Arbitrary json stored as a string")
+  scalar :json, name: "JSON" do
+    description("Arbitrary data stored as a JSON string")
     serialize(&encode/1)
     parse(&decode/1)
   end
