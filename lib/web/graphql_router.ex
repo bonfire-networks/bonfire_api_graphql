@@ -1,4 +1,6 @@
 defmodule Bonfire.API.GraphQL.Router do
+  @behaviour Bonfire.UI.Common.RoutesModule
+
   defmacro __using__(_) do
     quote do
       import Redirect
