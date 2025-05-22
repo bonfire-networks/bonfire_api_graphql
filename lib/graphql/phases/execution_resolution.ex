@@ -77,7 +77,7 @@ defmodule Bonfire.API.GraphQL.Phase.ExecutionResolution do
     IO.puts(Exception.format_exit(exception))
     IO.puts(Untangle.format_stacktrace(stacktrace))
 
-    if Bonfire.Common.Extend.module_enabled?(Sentry),
+    if Bonfire.Common.Errors.maybe_sentry_dsn(),
       do:
         Sentry.capture_exception(
           exception,
