@@ -10,4 +10,8 @@ geo = "~> 4.0"
 zest = "~> 0.1"
 dataloader = "~> 2.0.0"
 absinthe_relay = "~> 1.5.2"
+
 # apical = "~> 0.2.1"
+
+# jsv = "~> 0.8.1"
+# oaskit = "~> 0.1"
