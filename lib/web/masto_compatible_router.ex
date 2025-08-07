@@ -1,5 +1,5 @@
 defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
-  @api_spec Path.join(:code.priv_dir(:bonfire_api_graphql), "specs/akkoma-openapi.json")
+  # @api_spec Path.join(:code.priv_dir(:bonfire_api_graphql), "specs/akkoma-openapi.json")
 
   defmacro include_masto_api do
     quote do
