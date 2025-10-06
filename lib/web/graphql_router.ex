@@ -31,13 +31,15 @@ defmodule Bonfire.API.GraphQL.Router do
 
       scope "/api" do
         # TODO: choose default UI in config
-        redirect("/", "/api/explore", :temporary)
+        # redirect("/", "/api/explore/simple", :temporary)
 
         get("/schema", Bonfire.API.GraphQL.DevTools, :schema)
 
         scope "/explore" do
           pipe_through(:api_browser)
           pipe_through(:graphql)
+
+          redirect("/", "/api/explore/simple", :temporary)
 
           get("/simple", Absinthe.Plug.GraphiQL,
             schema: @schema,
@@ -58,7 +60,7 @@ defmodule Bonfire.API.GraphQL.Router do
             before_send: {__MODULE__, :absinthe_before_send}
           )
 
-          forward("/", Absinthe.Plug.GraphiQL,
+          forward("/advanced", Absinthe.Plug.GraphiQL,
             schema: @schema,
             interface: :advanced,
             default_url: "/api/graphql",
