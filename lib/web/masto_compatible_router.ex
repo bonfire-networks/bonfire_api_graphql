@@ -48,6 +48,18 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
         get "/instance", Bonfire.API.MastoCompatible.InstanceController, :show_v2
       end
+
+      # scope "/" do
+      # pipe_through([:basic_json, :load_authorization, :load_current_auth])
+      # require Apical
+      # Apical.router_from_file(unquote(@api_spec),
+      #   controller: Bonfire.API.MastoCompatible,
+      #   nest_all_json: false, # If enabled, nest all json request body payloads under the "_json" key. Otherwise objects payloads will be merged into `conn.params`.
+      #   root: "/", 
+      #   dump: :all # temp: ony for debug
+      # )
+      # end
+
     end
   end
 end

@@ -16,31 +16,30 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
 
   def return(name, ret, conn, transform_fun \\ nil) do
     case ret do
-      {:error, _} = error_tuple ->
+      {:error, e} ->
         # Handle error tuples directly (e.g., from unauthorized requests)
-        {:error, error_tuple}
+        error(e)
 
       %{data: data, errors: errors} ->
         # Check if we actually have data after extraction
         extracted_data = ret_data(data, name)
         if extracted_data do
           # Partial data with errors - log errors but return data
-          error(errors, "partial_graphql_errors")
+          warn(errors, "partial_graphql_errors")
           {:ok, transform_data(extracted_data, transform_fun)}
         else
           # No data, only errors - treat as full error
-          {:error, errors}
+          error(errors)
         end
 
       %{data: data} ->
         {:ok, ret_data(data, name) |> transform_data(transform_fun)}
 
       %{errors: errors} ->
-        {:error, errors}
+          error(errors)
 
       other ->
         error(other, "unexpected_graphql_response")
-        {:error, other}
     end
     |> transform_response(conn)
   end

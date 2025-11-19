@@ -124,7 +124,7 @@ defmodule Bonfire.API.GraphQL.QueryHelper do
   def get_fields(%{fields: fields}, schema, depth) when is_map(fields) do
     fields
     |> Enum.reduce([], fn {_key, field}, acc ->
-      field_name = String.to_atom(field.name)
+      field_name = Bonfire.Common.Types.maybe_to_atom(field.name)
 
       case fields_for(schema, field.type, depth - 1) do
         # Empty result - skip this field
