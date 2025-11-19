@@ -17,7 +17,10 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
             :verify_credentials
 
         # More specific routes must come BEFORE less specific ones
-        get "/accounts/:id/statuses", Bonfire.API.MastoCompatible.TimelineController, :user_statuses
+        get "/accounts/:id/statuses",
+            Bonfire.API.MastoCompatible.TimelineController,
+            :user_statuses
+
         get "/accounts/:id", Bonfire.API.MastoCompatible.AccountController, :show
 
         get "/preferences",
@@ -30,7 +33,11 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
         # Status interactions
         post "/statuses/:id/favourite", Bonfire.API.MastoCompatible.StatusController, :favourite
-        post "/statuses/:id/unfavourite", Bonfire.API.MastoCompatible.StatusController, :unfavourite
+
+        post "/statuses/:id/unfavourite",
+             Bonfire.API.MastoCompatible.StatusController,
+             :unfavourite
+
         post "/statuses/:id/reblog", Bonfire.API.MastoCompatible.StatusController, :reblog
         post "/statuses/:id/unreblog", Bonfire.API.MastoCompatible.StatusController, :unreblog
 
@@ -59,7 +66,6 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
       #   dump: :all # temp: ony for debug
       # )
       # end
-
     end
   end
 end
