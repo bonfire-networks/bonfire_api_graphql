@@ -11,6 +11,11 @@ defmodule Bonfire.API.GraphQL.Pagination do
 
   def connection_paginate(list, args, opts \\ [])
 
+  # Handle error tuples (e.g., from unauthorized requests)
+  def connection_paginate({:error, _reason} = error, _args, _opts) do
+    error
+  end
+
   def connection_paginate(
         %{
           edges: edges,
@@ -18,23 +23,20 @@ defmodule Bonfire.API.GraphQL.Pagination do
             %{
               end_cursor: end_cursor,
               start_cursor: start_cursor,
-              # page_count: page_count, limit: limit, 
+              # page_count: page_count, limit: limit,
               cursor_for_record_fun: cursor_for_record_fun
             } = page_info
         },
-        _args,
+        args,
         opts
       ) do
-    # IO.inspect(page_info)
-    # best option, since doesn't use offset
-    # Absinthe.Relay.Connection.from_slice(edges, end_cursor)
     {:ok,
      %{
        edges:
          build_edges(edges, Keyword.put(opts, :cursor_for_record_fun, cursor_for_record_fun)),
        page_info:
          Map.merge(page_info, %{
-           # page_count == limit, 
+           # page_count == limit,
            has_next_page: not is_nil(end_cursor),
            has_previous_page: not is_nil(start_cursor)
          })
@@ -47,11 +49,7 @@ defmodule Bonfire.API.GraphQL.Pagination do
   end
 
   def connection_paginate(list, args, _opts) when is_list(list) do
-    # need to provide the full list
-    Absinthe.Relay.Connection.from_list(
-      list,
-      args
-    )
+    Absinthe.Relay.Connection.from_list(list, args)
   end
 
   defp build_cursors(items, opts \\ [])

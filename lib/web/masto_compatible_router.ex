@@ -16,6 +16,8 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
             Bonfire.API.MastoCompatible.AccountController,
             :verify_credentials
 
+        # More specific routes must come BEFORE less specific ones
+        get "/accounts/:id/statuses", Bonfire.API.MastoCompatible.TimelineController, :user_statuses
         get "/accounts/:id", Bonfire.API.MastoCompatible.AccountController, :show
 
         get "/preferences",
@@ -26,7 +28,18 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
         post "/apps", Bonfire.API.MastoCompatible.AppController, :create
 
+        # Status interactions
+        post "/statuses/:id/favourite", Bonfire.API.MastoCompatible.StatusController, :favourite
+        post "/statuses/:id/unfavourite", Bonfire.API.MastoCompatible.StatusController, :unfavourite
+        post "/statuses/:id/reblog", Bonfire.API.MastoCompatible.StatusController, :reblog
+        post "/statuses/:id/unreblog", Bonfire.API.MastoCompatible.StatusController, :unreblog
+
+        # Notifications
+        get "/notifications", Bonfire.API.MastoCompatible.TimelineController, :notifications
+
+        # Timelines - specific routes before generic
         get "/timelines/home", Bonfire.API.MastoCompatible.TimelineController, :home
+        get "/timelines/public", Bonfire.API.MastoCompatible.TimelineController, :public
         get "/timelines/:feed", Bonfire.API.MastoCompatible.TimelineController, :timeline
       end
 
@@ -35,17 +48,6 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
         get "/instance", Bonfire.API.MastoCompatible.InstanceController, :show_v2
       end
-
-      # scope "/" do
-      # pipe_through([:basic_json, :load_authorization, :load_current_auth])
-      # require Apical
-      # Apical.router_from_file(unquote(@api_spec),
-      #   controller: Bonfire.API.MastoCompatible,
-      #   nest_all_json: false, # If enabled, nest all json request body payloads under the "_json" key. Otherwise objects payloads will be merged into `conn.params`.
-      #   root: "/", 
-      #   dump: :all # temp: ony for debug
-      # )
-      # end
     end
   end
 end

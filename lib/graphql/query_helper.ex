@@ -108,79 +108,44 @@ defmodule Bonfire.API.GraphQL.QueryHelper do
     |> get_fields(schema, nesting)
   end
 
-  # We include only the ID of sub-objects in the list when we've reached the end of our nesting
-  def get_fields(%{fields: %{id: id_field}}, _, 0) do
-    # IO.inspect(get_fields: id_field)
-    # :reject
-    ["id"]
+  # At maximum nesting depth, only include the id field if present
+  # This prevents infinite nesting while keeping a reference to the object
+  def get_fields(%{fields: %{id: _}}, _schema, 0) do
+    [:id]
   end
 
-  # We don't include any *other* objects in the list when we've reached the end of our nesting,
-  # otherwise the resulting document would be invalid because we need to select sub-fields of
-  # all objects.
-  def get_fields(%{fields: fields}, _, 0) do
-    # IO.inspect(get_fields: fields)
-    :reject
+  # At maximum depth without an id field, return empty list to signal
+  # this field should not be included (would create invalid GraphQL)
+  def get_fields(%{fields: _}, _schema, 0) do
+    []
   end
 
-  # We can't use the struct expansion directly here, because then it becomes a compile-time
-  # dependency and will make compilation fail for projects that doesn't use Absinthe.
-  def get_fields(%struct{fields: fields} = type, schema, nesting)
-      when struct == Absinthe.Type.Interface do
-    interface_fields =
-      Enum.reduce(fields, [], fn {_, value}, acc ->
-        case fields_for(schema, value.type, nesting - 1) do
-          :reject -> acc
-          :scalar -> [String.to_atom(value.name) | acc]
-          list -> [{String.to_atom(value.name), list} | acc]
-        end
-      end)
+  # Process object types with fields - recursively build field list
+  def get_fields(%{fields: fields}, schema, depth) when is_map(fields) do
+    fields
+    |> Enum.reduce([], fn {_key, field}, acc ->
+      field_name = String.to_atom(field.name)
 
-    implementors = Map.get(schema.__absinthe_interface_implementors__(), type.identifier)
+      case fields_for(schema, field.type, depth - 1) do
+        # Empty result - skip this field
+        [] ->
+          acc
 
-    implementor_fields =
-      Enum.map(implementors, fn type ->
-        {type, fields_for(schema, type, nesting) -- (interface_fields -- [:__typename])}
-      end)
+        # Scalar field - include just the field name
+        :scalar ->
+          [field_name | acc]
 
-    {interface_fields, implementor_fields}
-  end
-
-  def get_fields(%struct{types: types}, schema, nesting)
-      when struct == Absinthe.Type.Union do
-    {[], Enum.map(types, &{&1, fields_for(schema, &1, nesting)})}
-  end
-
-  def get_fields(%{fields: fields}, schema, nesting) do
-    Enum.reduce(fields, [], fn {_, value}, acc ->
-      case fields_for(schema, value.type, nesting - 1) do
-        :reject -> acc
-        :scalar -> [String.to_atom(value.name) | acc]
-        list when is_list(list) -> [{String.to_atom(value.name), list} | acc]
-        tuple -> [{String.to_atom(value.name), tuple} | acc]
+        # Nested object - include field name with sub-fields
+        nested when is_list(nested) ->
+          [{field_name, nested} | acc]
       end
     end)
+    |> Enum.reverse()
   end
 
-  def get_fields(_, _, _) do
+  # Scalar types or anything without fields - terminal value
+  def get_fields(_type_def, _schema, _depth) do
     :scalar
-  end
-
-  def format_fields({interface_fields, implementor_fields}, _, 10, schema) do
-    interface_fields =
-      interface_fields
-      |> Enum.reduce({[], 12}, &do_format_fields(&1, &2, schema))
-      |> elem(0)
-
-    implementor_fields =
-      Enum.map(implementor_fields, fn {type, fields} ->
-        type_info = schema.__absinthe_type__(type)
-        [_ | rest] = format_fields(fields, type, 12, schema)
-        fields = ["...on #{type_info.name} {\n" | rest]
-        [padding(12), fields]
-      end)
-
-    Enum.reverse([implementor_fields | interface_fields])
   end
 
   def format_fields(fields, _, 10, schema) do
@@ -190,36 +155,6 @@ defmodule Bonfire.API.GraphQL.QueryHelper do
       |> elem(0)
 
     Enum.reverse(fields)
-  end
-
-  def format_fields(
-        {interface_fields, implementor_fields},
-        type,
-        left_pad,
-        schema
-      )
-      when is_list(interface_fields) do
-    interface_fields =
-      interface_fields
-      |> Enum.reduce(
-        {["#{camelize(type)} {\n"], left_pad + 2},
-        &do_format_fields(&1, &2, schema)
-      )
-      |> elem(0)
-
-    implementor_fields =
-      Enum.map(implementor_fields, fn {type, fields} ->
-        type_info = schema.__absinthe_type__(type)
-        [_ | rest] = format_fields(fields, type, left_pad + 2, schema)
-        fields = ["...on #{type_info.name} {\n" | rest]
-        [padding(left_pad + 2), fields]
-      end)
-
-    Enum.reverse([
-      "}\n",
-      padding(left_pad),
-      implementor_fields | interface_fields
-    ])
   end
 
   def format_fields(fields, type, left_pad, schema) do
