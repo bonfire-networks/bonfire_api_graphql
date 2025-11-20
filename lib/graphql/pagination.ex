@@ -3,10 +3,8 @@ defmodule Bonfire.API.GraphQL.Pagination do
   import Untangle
 
   def pagination_args_filter(args) do
-    # {pagination_args, filters} = 
-    args
-    |> Keyword.new()
-    |> Keyword.split([:after, :before, :first, :last])
+    keyword_args = Keyword.new(args)
+    Keyword.split(keyword_args, [:after, :before, :first, :last])
   end
 
   def connection_paginate(list, args, opts \\ [])

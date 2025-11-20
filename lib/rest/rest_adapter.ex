@@ -23,6 +23,7 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
       %{data: data, errors: errors} ->
         # Check if we actually have data after extraction
         extracted_data = ret_data(data, name)
+
         if extracted_data do
           # Partial data with errors - log errors but return data
           warn(errors, "partial_graphql_errors")
@@ -36,7 +37,7 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
         {:ok, ret_data(data, name) |> transform_data(transform_fun)}
 
       %{errors: errors} ->
-          error(errors)
+        error(errors)
 
       other ->
         error(other, "unexpected_graphql_response")
@@ -99,24 +100,29 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
               :not_found -> 404
               _ -> 400
             end
+
           first_error = List.first(errors)
           base_error = %{"error" => first_error[:message] || "GraphQL error"}
           # Only include details in dev/test environments for security
-          error_with_details = if Mix.env() in [:dev, :test] do
-            Map.put(base_error, "details", transform_data(errors))
-          else
-            base_error
-          end
+          error_with_details =
+            if Mix.env() in [:dev, :test] do
+              Map.put(base_error, "details", transform_data(errors))
+            else
+              base_error
+            end
+
           {status, error_with_details}
 
         other ->
           base_error = %{"error" => "Internal server error"}
           # Only include details in dev/test environments for security
-          error_with_details = if Mix.env() in [:dev, :test] do
-            Map.put(base_error, "details", transform_data(other))
-          else
-            base_error
-          end
+          error_with_details =
+            if Mix.env() in [:dev, :test] do
+              Map.put(base_error, "details", transform_data(other))
+            else
+              base_error
+            end
+
           {500, error_with_details}
       end
 
