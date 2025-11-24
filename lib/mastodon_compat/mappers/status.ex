@@ -29,6 +29,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     alias Bonfire.API.MastoCompat.Schemas
     alias Bonfire.Me.API.GraphQLMasto.Adapter, as: MeAdapter
+    alias Bonfire.Social.Activities
 
     @doc """
     Transform a Bonfire Activity into a Mastodon Status.
@@ -48,6 +49,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def from_activity(%{node: activity}, opts), do: from_activity(activity, opts)
 
     def from_activity(activity, opts \\ []) do
+      # Ensure subject and creator are properly loaded (handles NotLoaded associations)
+      activity = Activities.prepare_subject_and_creator(activity, opts)
+
       context = build_activity_context(activity, opts)
 
       # Determine if this is a boost/reblog
@@ -292,32 +296,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp prepare_account(nil, _opts), do: nil
 
-    # Handle NotLoaded association (happens when subject is current_user due to optimization)
-    # In this case, use current_user from opts since that's who the subject is
-    defp prepare_account(%Ecto.Association.NotLoaded{}, opts) do
-      case Keyword.get(opts, :current_user) do
-        %{} = current_user ->
-          # Call prepare_user directly and ensure we get a JSON-safe map
-          try do
-            prepared =
-              Utils.maybe_apply(MeAdapter, :prepare_user, current_user, fallback_return: nil)
-
-            # Only use if it's a proper plain map with an ID (not a struct)
-            # Structs have a __struct__ key, plain maps don't
-            if is_map(prepared) && !Map.has_key?(prepared, :__struct__) &&
-                 (Map.has_key?(prepared, :id) || Map.has_key?(prepared, "id")) do
-              prepared
-            else
-              nil
-            end
-          rescue
-            _ -> nil
-          end
-
-        _ ->
-          nil
-      end
-    end
+    # NotLoaded associations are now handled by Activities.prepare_subject_and_creator
+    # which is called at the start of from_activity
+    defp prepare_account(%Ecto.Association.NotLoaded{}, _opts), do: nil
 
     defp prepare_account(user_data, _opts) do
       case user_data do

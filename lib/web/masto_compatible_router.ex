@@ -53,9 +53,14 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
         post "/statuses/:id/reblog", Bonfire.API.MastoCompatible.StatusController, :reblog
         post "/statuses/:id/unreblog", Bonfire.API.MastoCompatible.StatusController, :unreblog
+        post "/statuses/:id/bookmark", Bonfire.API.MastoCompatible.StatusController, :bookmark
+        post "/statuses/:id/unbookmark", Bonfire.API.MastoCompatible.StatusController, :unbookmark
 
         # Notifications
         get "/notifications", Bonfire.API.MastoCompatible.TimelineController, :notifications
+
+        # Bookmarks
+        get "/bookmarks", Bonfire.API.MastoCompatible.TimelineController, :bookmarks
 
         # Timelines - specific routes before generic
         get "/timelines/home", Bonfire.API.MastoCompatible.TimelineController, :home

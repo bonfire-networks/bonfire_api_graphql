@@ -109,6 +109,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp fetch_and_respond(conn, current_user, id, interaction_type, flag, flag_value) do
       opts = [
+        current_user: current_user,
         preload: [
           :with_subject,
           :with_creator,
@@ -119,12 +120,13 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         ]
       ]
 
-      case Bonfire.Social.Activities.get(id, current_user, opts) do
+      case Bonfire.Social.Activities.read([id: id], opts) do
         {:ok, activity} ->
           prepared =
             activity
             |> Mappers.Status.from_activity(current_user: current_user)
             |> Map.put(flag, flag_value)
+            |> deep_struct_to_map()
 
           Phoenix.Controller.json(conn, prepared)
 
@@ -133,6 +135,27 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           RestAdapter.error_fn({:error, reason}, conn)
       end
     end
+
+    # Helper to recursively convert all structs to JSON-safe maps
+    # This ensures no Ecto structs leak through to Jason.encode!
+    defp deep_struct_to_map(data) when is_struct(data) do
+      data
+      |> Map.from_struct()
+      |> Map.drop([:__meta__])
+      |> deep_struct_to_map()
+    end
+
+    defp deep_struct_to_map(data) when is_map(data) do
+      data
+      |> Enum.map(fn {k, v} -> {k, deep_struct_to_map(v)} end)
+      |> Map.new()
+    end
+
+    defp deep_struct_to_map(data) when is_list(data) do
+      Enum.map(data, &deep_struct_to_map/1)
+    end
+
+    defp deep_struct_to_map(data), do: data
 
     @doc """
     Helper to get preload options for activity fetching.
