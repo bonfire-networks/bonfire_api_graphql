@@ -60,6 +60,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         # Timelines - specific routes before generic
         get "/timelines/home", Bonfire.API.MastoCompatible.TimelineController, :home
         get "/timelines/public", Bonfire.API.MastoCompatible.TimelineController, :public
+        get "/timelines/tag/:hashtag", Bonfire.API.MastoCompatible.TimelineController, :hashtag
         get "/timelines/:feed", Bonfire.API.MastoCompatible.TimelineController, :timeline
       end
 
