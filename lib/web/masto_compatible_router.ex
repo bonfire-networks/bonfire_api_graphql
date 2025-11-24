@@ -31,7 +31,20 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
         post "/apps", Bonfire.API.MastoCompatible.AppController, :create
 
-        # Status interactions
+        # Status GET endpoints (more specific routes before generic)
+        get "/statuses/:id/context", Bonfire.API.MastoCompatible.StatusController, :context
+
+        get "/statuses/:id/favourited_by",
+            Bonfire.API.MastoCompatible.StatusController,
+            :favourited_by
+
+        get "/statuses/:id/reblogged_by",
+            Bonfire.API.MastoCompatible.StatusController,
+            :reblogged_by
+
+        get "/statuses/:id", Bonfire.API.MastoCompatible.StatusController, :show
+
+        # Status POST interactions
         post "/statuses/:id/favourite", Bonfire.API.MastoCompatible.StatusController, :favourite
 
         post "/statuses/:id/unfavourite",

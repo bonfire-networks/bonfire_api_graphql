@@ -69,7 +69,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         "tags" => [],
         "emojis" => [],
 
-        # Interaction counts (required)
+        # Interaction counts (required) - defaults to 0, overridden by mapper with real data from EdgeTotal
         "reblogs_count" => 0,
         "favourites_count" => 0,
         "replies_count" => 0,

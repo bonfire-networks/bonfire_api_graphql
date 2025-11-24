@@ -82,6 +82,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp build_activity_context(activity, _opts) do
       object = get_field(activity, :object)
+      replied = get_field(activity, :replied)
 
       %{
         activity: activity,
@@ -93,7 +94,19 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         object_post_content: get_field(activity, :object_post_content),
         subject: get_field(activity, :account) || get_field(activity, :subject),
         verb: get_field(activity, :verb) |> get_field(:verb),
-        media: get_field(activity, :media) || []
+        media: get_field(activity, :media) || [],
+        # Extract reply-to information for threading
+        replied: replied,
+        in_reply_to_id: get_field(replied, :reply_to_id),
+        in_reply_to_account_id: get_field(replied, :reply_to) |> get_field(:subject_id),
+        # Extract interaction flags from GraphQL (Dataloader-batched)
+        liked_by_me: get_field(activity, :liked_by_me),
+        boosted_by_me: get_field(activity, :boosted_by_me),
+        bookmarked_by_me: get_field(activity, :bookmarked_by_me),
+        # Extract engagement counts from GraphQL (from EdgeTotal system)
+        like_count: get_field(activity, :like_count),
+        boost_count: get_field(activity, :boost_count),
+        replies_count: get_field(activity, :replies_count)
       }
     end
 
@@ -144,27 +157,103 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp build_regular_status(context, opts) do
       # Extract data from context
-      IO.inspect(context[:media], label: "Media cazz")
       account = extract_account(context, opts)
       content_data = extract_content(context)
       media_attachments = prepare_media_attachments(context[:media])
+      object_id = context[:id] || context[:object_id]
 
       # Build base status
-      Schemas.Status.new(%{
-        "id" => context[:id] || context[:object_id],
-        "created_at" => context[:created_at],
-        "uri" => context[:uri],
-        "url" => context[:uri],
-        "account" => account,
-        "content" => content_data.html,
-        "text" => content_data.text,
-        "spoiler_text" => content_data.spoiler_text,
-        "media_attachments" => media_attachments,
-        # TODO: Map actual visibility from Bonfire boundaries
-        "visibility" => "public",
-        # TODO: Map actual sensitive flag
-        "sensitive" => false
-      })
+      base_status =
+        Schemas.Status.new(%{
+          "id" => object_id,
+          "created_at" => context[:created_at],
+          "uri" => context[:uri],
+          "url" => context[:uri],
+          "account" => account,
+          "content" => content_data.html,
+          "text" => content_data.text,
+          "spoiler_text" => content_data.spoiler_text,
+          "media_attachments" => media_attachments,
+          # Threading fields for conversation display
+          "in_reply_to_id" => context[:in_reply_to_id],
+          "in_reply_to_account_id" => context[:in_reply_to_account_id],
+          # Engagement counts (from EdgeTotal system via GraphQL)
+          "favourites_count" => context[:like_count] || 0,
+          "reblogs_count" => context[:boost_count] || 0,
+          "replies_count" => context[:replies_count] || 0,
+          # TODO: Map actual visibility from Bonfire boundaries
+          "visibility" => "public",
+          # TODO: Map actual sensitive flag
+          "sensitive" => false
+        })
+
+      # Add interaction states
+      # Priority: 1) Dataloader results from context, 2) manual batch loading, 3) fallback queries
+      add_interaction_states(
+        base_status,
+        object_id,
+        context,
+        Keyword.get(opts, :current_user),
+        Keyword.get(opts, :interaction_states)
+      )
+    end
+
+    # Add interaction states for current user
+    # Priority:
+    # 1. Dataloader results from GraphQL context (liked_by_me, boosted_by_me, bookmarked_by_me)
+    # 2. Manual batch loading via interaction_states map
+    # 3. Fallback to individual queries (backward compatibility, causes N+1)
+    defp add_interaction_states(
+           status,
+           object_id,
+           context,
+           current_user,
+           interaction_states \\ nil
+         ) do
+      # First, try to get flags from Dataloader results in context
+      favourited = context[:liked_by_me]
+      reblogged = context[:boosted_by_me]
+      bookmarked = context[:bookmarked_by_me]
+
+      # If Dataloader provided boolean values, use them (most efficient)
+      if is_boolean(favourited) && is_boolean(reblogged) && is_boolean(bookmarked) do
+        status
+        |> Map.put("favourited", favourited)
+        |> Map.put("reblogged", reblogged)
+        |> Map.put("bookmarked", bookmarked)
+      else
+        # Fallback to manual batch loading or individual queries
+        case interaction_states do
+          %{^object_id => states} when is_map(states) ->
+            # Use manually batch-loaded states (no queries)
+            status
+            |> Map.put("favourited", Map.get(states, :favourited, false))
+            |> Map.put("reblogged", Map.get(states, :reblogged, false))
+            |> Map.put("bookmarked", Map.get(states, :bookmarked, false))
+
+          _ ->
+            # Last resort: individual queries (backward compatibility, causes N+1)
+            if current_user && object_id do
+              try do
+                favourited = Bonfire.Social.Likes.liked?(current_user, object_id) || false
+                reblogged = Bonfire.Social.Boosts.boosted?(current_user, object_id) || false
+
+                bookmarked =
+                  Bonfire.Social.Bookmarks.bookmarked?(current_user, object_id) || false
+
+                status
+                |> Map.put("favourited", favourited)
+                |> Map.put("reblogged", reblogged)
+                |> Map.put("bookmarked", bookmarked)
+              rescue
+                # If any check fails (e.g., module not available), return status unchanged
+                _ -> status
+              end
+            else
+              status
+            end
+        end
+      end
     end
 
     defp extract_reblog(context, opts) do
@@ -203,17 +292,49 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp prepare_account(nil, _opts), do: nil
 
+    # Handle NotLoaded association (happens when subject is current_user due to optimization)
+    # In this case, use current_user from opts since that's who the subject is
+    defp prepare_account(%Ecto.Association.NotLoaded{}, opts) do
+      case Keyword.get(opts, :current_user) do
+        %{} = current_user ->
+          # Call prepare_user directly and ensure we get a JSON-safe map
+          try do
+            prepared =
+              Utils.maybe_apply(MeAdapter, :prepare_user, current_user, fallback_return: nil)
+
+            # Only use if it's a proper plain map with an ID (not a struct)
+            # Structs have a __struct__ key, plain maps don't
+            if is_map(prepared) && !Map.has_key?(prepared, :__struct__) &&
+                 (Map.has_key?(prepared, :id) || Map.has_key?(prepared, "id")) do
+              prepared
+            else
+              nil
+            end
+          rescue
+            _ -> nil
+          end
+
+        _ ->
+          nil
+      end
+    end
+
     defp prepare_account(user_data, _opts) do
       case user_data do
         %{} = user when map_size(user) > 0 ->
-          prepared = Utils.maybe_apply(MeAdapter, :prepare_user, user, fallback_return: user)
+          try do
+            prepared = Utils.maybe_apply(MeAdapter, :prepare_user, user, fallback_return: nil)
 
-          # Validate has required ID field
-          if is_map(prepared) &&
-               (Map.has_key?(prepared, :id) || Map.has_key?(prepared, "id")) do
-            prepared
-          else
-            nil
+            # Validate it's a plain map with required ID field (not a struct)
+            # Structs have a __struct__ key, plain maps don't
+            if is_map(prepared) && !Map.has_key?(prepared, :__struct__) &&
+                 (Map.has_key?(prepared, :id) || Map.has_key?(prepared, "id")) do
+              prepared
+            else
+              nil
+            end
+          rescue
+            _ -> nil
           end
 
         _ ->
@@ -279,7 +400,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           String.starts_with?(media_type, "audio/") -> "audio"
           true -> "unknown"
         end
-      IO.inspect(media, label: "Media Attachment cazz")
+
       %{
         "id" => get_field(media, :id) || "",
         "type" => type,
