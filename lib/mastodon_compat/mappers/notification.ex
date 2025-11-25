@@ -26,7 +26,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     use Bonfire.Common.Utils
     import Untangle
 
-    alias Bonfire.API.MastoCompat.{Schemas, Mappers}
+    alias Bonfire.API.MastoCompat.{Schemas, Mappers, Helpers}
+
+    import Helpers, only: [get_field: 2]
 
     @doc """
     Transform a Bonfire Activity into a Mastodon Notification.
@@ -186,31 +188,27 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     defp validate_notification(notification) when is_map(notification) do
-      # Validate minimum required fields
-      has_id = Map.get(notification, "id")
-      has_account = Map.get(notification, "account")
+      case Schemas.Notification.validate(notification) do
+        {:ok, valid_notification} ->
+          valid_notification
 
-      if has_id && has_account do
-        notification
-      else
-        warn(
-          %{
-            has_id: !!has_id,
-            has_account: !!has_account,
-            notification_id: Map.get(notification, "id")
-          },
-          "Notification missing required fields"
-        )
+        {:error, {:missing_fields, fields}} ->
+          warn(
+            "Notification missing required fields: #{inspect(fields)}, notification: #{inspect(notification)}"
+          )
 
-        nil
+          nil
+
+        {:error, {:invalid_type, type}} ->
+          warn("Notification has invalid type: #{inspect(type)}")
+          nil
+
+        {:error, reason} ->
+          warn("Notification validation failed: #{inspect(reason)}")
+          nil
       end
     end
 
     defp validate_notification(_), do: nil
-
-    # Helper to safely get nested fields
-    defp get_field(nil, _field), do: nil
-    defp get_field(data, field) when is_map(data), do: Map.get(data, field)
-    defp get_field(_, _), do: nil
   end
 end

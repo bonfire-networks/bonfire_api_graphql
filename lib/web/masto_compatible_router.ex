@@ -62,6 +62,9 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         # Bookmarks
         get "/bookmarks", Bonfire.API.MastoCompatible.TimelineController, :bookmarks
 
+        # Favourites
+        get "/favourites", Bonfire.API.MastoCompatible.TimelineController, :favourites
+
         # Timelines - specific routes before generic
         get "/timelines/home", Bonfire.API.MastoCompatible.TimelineController, :home
         get "/timelines/public", Bonfire.API.MastoCompatible.TimelineController, :public

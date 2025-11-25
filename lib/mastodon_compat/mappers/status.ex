@@ -28,8 +28,11 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     import Untangle
 
     alias Bonfire.API.MastoCompat.Schemas
-    alias Bonfire.Me.API.GraphQLMasto.Adapter, as: MeAdapter
+    alias Bonfire.API.MastoCompat.Helpers
+    alias Bonfire.API.MastoCompat.Mappers
     alias Bonfire.Social.Activities
+
+    import Helpers, only: [get_field: 2]
 
     @doc """
     Transform a Bonfire Activity into a Mastodon Status.
@@ -57,13 +60,17 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       # Determine if this is a boost/reblog
       is_boost = is_boost_activity?(context)
 
-      if is_boost do
-        # This is a boost - build status with nested reblog
-        build_boost_status(context, opts)
-      else
-        # Regular status
-        build_regular_status(context, opts)
-      end
+      status =
+        if is_boost do
+          # This is a boost - build status with nested reblog
+          build_boost_status(context, opts)
+        else
+          # Regular status
+          build_regular_status(context, opts)
+        end
+
+      # Validate before returning
+      validate_and_return(status)
     end
 
     @doc """
@@ -79,7 +86,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     """
     def from_post(post, opts \\ []) do
       context = build_post_context(post, opts)
-      build_regular_status(context, opts)
+      status = build_regular_status(context, opts)
+      validate_and_return(status)
     end
 
     # Private functions
@@ -117,15 +125,37 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp build_post_context(post, _opts) do
       activity = get_field(post, :activity) || %{}
       post_content = get_field(post, :post_content) || %{}
+      created = get_field(post, :created) || %{}
+      post_id = get_field(post, :id)
+
+      # Extract creator: try activity associations first, then Created mixin
+      creator =
+        get_field(activity, :creator) ||
+          get_field(activity, :subject) ||
+          get_field(created, :creator)
+
+      # Extract created_at: try activity first, then post, then extract from ULID
+      # Note: DatesTimes.date_from_pointer extracts timestamp from ULID without DB query
+      created_at =
+        get_field(activity, :created_at) ||
+          get_field(post, :created_at) ||
+          (post_id && Bonfire.Common.DatesTimes.date_from_pointer(post_id))
+
+      # Extract URI: try activity first, then post canonical_uri, then construct from ID
+      # Note: We construct a simple path to avoid N+1 queries from URIs.path/1
+      uri =
+        get_field(activity, :uri) ||
+          get_field(post, :canonical_uri) ||
+          (post_id && "/post/#{post_id}")
 
       %{
         post: post,
         activity: activity,
-        id: get_field(post, :id),
-        created_at: get_field(activity, :created_at) || get_field(post, :created_at),
-        uri: get_field(activity, :uri) || get_field(post, :canonical_uri),
+        id: post_id,
+        created_at: created_at,
+        uri: uri,
         post_content: post_content,
-        creator: get_field(activity, :creator) || get_field(activity, :subject),
+        creator: creator,
         media: get_field(post, :media) || get_field(activity, :media) || []
       }
     end
@@ -301,27 +331,42 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp prepare_account(%Ecto.Association.NotLoaded{}, _opts), do: nil
 
     defp prepare_account(user_data, _opts) do
-      case user_data do
-        %{} = user when map_size(user) > 0 ->
-          try do
-            prepared = Utils.maybe_apply(MeAdapter, :prepare_user, user, fallback_return: nil)
-
-            # Validate it's a plain map with required ID field (not a struct)
-            # Structs have a __struct__ key, plain maps don't
-            if is_map(prepared) && !Map.has_key?(prepared, :__struct__) &&
-                 (Map.has_key?(prepared, :id) || Map.has_key?(prepared, "id")) do
-              prepared
-            else
-              nil
-            end
-          rescue
-            _ -> nil
-          end
-
-        _ ->
-          nil
+      # Delegate to Account mapper - single source of truth for account normalization
+      # This ensures all account preparation uses the same normalization path
+      # (handles both GraphQL data and raw Ecto structs with profile/character associations)
+      case Mappers.Account.from_user(user_data) do
+        nil -> nil
+        account -> deep_clean_structs(account)
       end
     end
+
+    # Recursively remove or convert any remaining structs to prevent serialization errors
+    defp deep_clean_structs(value) when is_struct(value) do
+      # Convert Ecto NotLoaded to nil, other structs to maps (but skip them for safety)
+      case value do
+        %Ecto.Association.NotLoaded{} -> nil
+        %DateTime{} = dt -> DateTime.to_iso8601(dt)
+        %NaiveDateTime{} = dt -> NaiveDateTime.to_iso8601(dt)
+        %Date{} = d -> Date.to_iso8601(d)
+        # Skip other structs entirely (they shouldn't be in the output)
+        _ -> nil
+      end
+    end
+
+    defp deep_clean_structs(value) when is_map(value) do
+      value
+      |> Enum.map(fn {k, v} -> {k, deep_clean_structs(v)} end)
+      |> Enum.reject(fn {_k, v} -> is_nil(v) end)
+      |> Map.new()
+    end
+
+    defp deep_clean_structs(value) when is_list(value) do
+      value
+      |> Enum.map(&deep_clean_structs/1)
+      |> Enum.reject(&is_nil/1)
+    end
+
+    defp deep_clean_structs(value), do: value
 
     defp extract_content(context) do
       # Get content from different possible sources
@@ -396,9 +441,22 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp prepare_media_attachment(_), do: nil
 
-    # Helper to safely get nested fields
-    defp get_field(nil, _field), do: nil
-    defp get_field(data, field) when is_map(data), do: Map.get(data, field)
-    defp get_field(_, _), do: nil
+    # Validate status against schema before returning
+    defp validate_and_return(nil), do: nil
+
+    defp validate_and_return(status) do
+      case Schemas.Status.validate(status) do
+        {:ok, valid_status} ->
+          valid_status
+
+        {:error, {:missing_fields, fields}} ->
+          warn("Status missing required fields: #{inspect(fields)}, status: #{inspect(status)}")
+          nil
+
+        {:error, reason} ->
+          warn("Status validation failed: #{inspect(reason)}")
+          nil
+      end
+    end
   end
 end
