@@ -40,7 +40,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     import Untangle
 
     alias Bonfire.API.MastoCompat.Mappers
-    alias Bonfire.Social.API.Adapter.REST, as: RestAdapter
+    alias Bonfire.API.GraphQL.RestAdapter
 
     @doc """
     Common handler for all status interactions.
@@ -108,6 +108,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     defp fetch_and_respond(conn, current_user, id, interaction_type, flag, flag_value) do
+      # Use Objects.read which properly fetches objects with their activity context
       opts = [
         current_user: current_user,
         preload: [
@@ -120,24 +121,40 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         ]
       ]
 
-      case Bonfire.Social.Activities.read([id: id], opts) do
-        {:ok, activity} ->
-          prepared =
-            activity
-            |> Mappers.Status.from_activity(current_user: current_user)
-            |> Map.put(flag, flag_value)
-            |> deep_struct_to_map()
+      case Bonfire.Social.Objects.read(id, opts) do
+        {:ok, object} ->
+          debug(object, "Fetched object after #{interaction_type}")
 
-          Phoenix.Controller.json(conn, prepared)
+          # Objects.read returns a Post/Object with activity associations,
+          # so use from_post which knows how to extract activity data from the object
+          case Mappers.Status.from_post(object, current_user: current_user) do
+            nil ->
+              # Mapper returned nil (validation failed)
+              error("from_post returned nil", "Failed to map object after #{interaction_type}")
+              RestAdapter.error_fn({:error, :not_found}, conn)
+
+            status ->
+              prepared =
+                status
+                |> Map.put(flag, flag_value)
+                |> deep_struct_to_map()
+
+              Phoenix.Controller.json(conn, prepared)
+          end
 
         {:error, reason} ->
-          error(reason, "Failed to fetch activity after #{interaction_type}")
+          error(reason, "Failed to fetch object after #{interaction_type}")
           RestAdapter.error_fn({:error, reason}, conn)
       end
     end
 
-    # Helper to recursively convert all structs to JSON-safe maps
+    # Helper to recursively convert all structs to JSON-safe values
     # This ensures no Ecto structs leak through to Jason.encode!
+    defp deep_struct_to_map(%DateTime{} = dt), do: DateTime.to_iso8601(dt)
+    defp deep_struct_to_map(%NaiveDateTime{} = dt), do: NaiveDateTime.to_iso8601(dt)
+    defp deep_struct_to_map(%Date{} = d), do: Date.to_iso8601(d)
+    defp deep_struct_to_map(%Ecto.Association.NotLoaded{}), do: nil
+
     defp deep_struct_to_map(data) when is_struct(data) do
       data
       |> Map.from_struct()

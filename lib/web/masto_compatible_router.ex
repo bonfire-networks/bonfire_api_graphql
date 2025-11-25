@@ -21,6 +21,17 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
             Bonfire.API.MastoCompatible.TimelineController,
             :user_statuses
 
+        # Account actions - mute/unmute/block/unblock
+        post "/accounts/:id/mute", Bonfire.API.MastoCompatible.AccountController, :mute
+        post "/accounts/:id/unmute", Bonfire.API.MastoCompatible.AccountController, :unmute
+        post "/accounts/:id/block", Bonfire.API.MastoCompatible.AccountController, :block
+        post "/accounts/:id/unblock", Bonfire.API.MastoCompatible.AccountController, :unblock
+
+        # Account relationships - MUST come before /accounts/:id
+        get "/accounts/relationships",
+            Bonfire.API.MastoCompatible.AccountController,
+            :relationships
+
         get "/accounts/:id", Bonfire.API.MastoCompatible.AccountController, :show
 
         get "/preferences",
@@ -64,6 +75,10 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
         # Favourites
         get "/favourites", Bonfire.API.MastoCompatible.TimelineController, :favourites
+
+        # Mutes and Blocks lists
+        get "/mutes", Bonfire.API.MastoCompatible.AccountController, :mutes
+        get "/blocks", Bonfire.API.MastoCompatible.AccountController, :blocks
 
         # Timelines - specific routes before generic
         get "/timelines/home", Bonfire.API.MastoCompatible.TimelineController, :home
