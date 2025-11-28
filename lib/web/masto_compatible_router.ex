@@ -80,11 +80,34 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         get "/mutes", Bonfire.API.MastoCompatible.AccountController, :mutes
         get "/blocks", Bonfire.API.MastoCompatible.AccountController, :blocks
 
+        # Conversations (DM threads) - specific routes before generic
+        post "/conversations/:id/read",
+             Bonfire.API.MastoCompatible.ConversationController,
+             :mark_read
+
+        # TODO: delete "/conversations/:id", Bonfire.API.MastoCompatible.ConversationController, :delete
+        get "/conversations", Bonfire.API.MastoCompatible.ConversationController, :index
+
+        # Lists - specific routes before generic
+        get "/lists/:id/accounts", Bonfire.API.MastoCompatible.ListController, :accounts
+        post "/lists/:id/accounts", Bonfire.API.MastoCompatible.ListController, :add_accounts
+        delete "/lists/:id/accounts", Bonfire.API.MastoCompatible.ListController, :remove_accounts
+        get "/lists/:id", Bonfire.API.MastoCompatible.ListController, :show
+        put "/lists/:id", Bonfire.API.MastoCompatible.ListController, :update
+        delete "/lists/:id", Bonfire.API.MastoCompatible.ListController, :delete
+        get "/lists", Bonfire.API.MastoCompatible.ListController, :index
+        post "/lists", Bonfire.API.MastoCompatible.ListController, :create
+
         # Timelines - specific routes before generic
         get "/timelines/home", Bonfire.API.MastoCompatible.TimelineController, :home
         get "/timelines/public", Bonfire.API.MastoCompatible.TimelineController, :public
         get "/timelines/local", Bonfire.API.MastoCompatible.TimelineController, :local
         get "/timelines/tag/:hashtag", Bonfire.API.MastoCompatible.TimelineController, :hashtag
+
+        get "/timelines/list/:list_id",
+            Bonfire.API.MastoCompatible.TimelineController,
+            :list_timeline
+
         get "/timelines/:feed", Bonfire.API.MastoCompatible.TimelineController, :timeline
       end
 

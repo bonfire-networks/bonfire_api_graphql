@@ -82,6 +82,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp normalize_user_data(user) when is_map(user) do
       profile = extract_nested(user, :profile)
       character = extract_nested(user, :character)
+      peered = extract_nested(user, :peered)
 
       # If we have nested profile/character data, normalize it for MeAdapter
       if has_nested_data?(profile) || has_nested_data?(character) do
@@ -97,7 +98,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         # (display_name, avatar, avatar_static, header, header_static, note, acct, url)
         # so that after maybe_flatten(), keys match Mastodon API spec
         username = Map.get(character, :username)
-        canonical_uri = Map.get(character, :canonical_uri)
+        # For remote users, canonical_uri is on the peered mixin
+        canonical_uri =
+          Map.get(character, :canonical_uri) || Map.get(peered, :canonical_uri)
+
         avatar_url = extract_media_url(Map.get(profile, :icon))
         header_url = extract_media_url(Map.get(profile, :image))
 
@@ -180,7 +184,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       if has_id do
         account
       else
-        # Log warning in development
         warn(
           %{account_keys: Map.keys(account)},
           "Account missing required 'id' field"

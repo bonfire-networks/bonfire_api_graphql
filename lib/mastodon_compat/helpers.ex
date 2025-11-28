@@ -34,6 +34,15 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def get_field(nil, _key), do: nil
     def get_field(map, _key) when is_map(map) and map_size(map) == 0, do: nil
 
+    def get_field(map, key) when is_map(map) and is_atom(key) do
+      # Try atom key first, then string key (data can come in either format)
+      case Map.get(map, key) do
+        %Ecto.Association.NotLoaded{} -> nil
+        nil -> Map.get(map, Atom.to_string(key))
+        value -> value
+      end
+    end
+
     def get_field(map, key) when is_map(map) do
       case Map.get(map, key) do
         %Ecto.Association.NotLoaded{} -> nil

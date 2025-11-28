@@ -1,5 +1,6 @@
 defmodule Bonfire.API.GraphQL.RestAdapter do
   use Untangle
+  alias Bonfire.Common.Config
   alias Bonfire.Common.Enums
 
   defmodule EndpointConfig do
@@ -105,7 +106,7 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
           base_error = %{"error" => first_error[:message] || "GraphQL error"}
           # Only include details in dev/test environments for security
           error_with_details =
-            if Mix.env() in [:dev, :test] do
+            if Config.env() in [:dev, :test] do
               Map.put(base_error, "details", transform_data(errors))
             else
               base_error
@@ -117,7 +118,7 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
           base_error = %{"error" => "Internal server error"}
           # Only include details in dev/test environments for security
           error_with_details =
-            if Mix.env() in [:dev, :test] do
+            if Config.env() in [:dev, :test] do
               Map.put(base_error, "details", transform_data(other))
             else
               base_error
@@ -126,7 +127,9 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
           {500, error_with_details}
       end
 
-    Plug.Conn.send_resp(conn, status, Jason.encode!(error_response))
+    conn
+    |> Plug.Conn.put_resp_content_type("application/json")
+    |> Plug.Conn.send_resp(status, Jason.encode!(error_response))
   end
 
   def transform_data(data, transform_fun) when is_function(transform_fun, 1) do

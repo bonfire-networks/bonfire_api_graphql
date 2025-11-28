@@ -118,7 +118,16 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         # Extract engagement counts from GraphQL (from EdgeTotal system)
         like_count: get_field(activity, :like_count),
         boost_count: get_field(activity, :boost_count),
-        replies_count: get_field(activity, :replies_count)
+        replies_count: get_field(activity, :replies_count),
+        # Tags (including mentions) - try different association names:
+        # - :tags is used by GraphQL responses
+        # - :tagged is the Ecto mixin association name
+        tags:
+          get_field(activity, :tags) ||
+            get_field(object, :tags) ||
+            get_field(activity, :tagged) ||
+            get_field(object, :tagged) ||
+            []
       }
     end
 
@@ -156,7 +165,16 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         uri: uri,
         post_content: post_content,
         creator: creator,
-        media: get_field(post, :media) || get_field(activity, :media) || []
+        media: get_field(post, :media) || get_field(activity, :media) || [],
+        # Tags (including mentions) - try different association names:
+        # - :tags is used by GraphQL responses
+        # - :tagged is the Ecto mixin association name
+        tags:
+          get_field(post, :tags) ||
+            get_field(activity, :tags) ||
+            get_field(post, :tagged) ||
+            get_field(activity, :tagged) ||
+            []
       }
     end
 
@@ -194,7 +212,11 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       account = extract_account(context, opts)
       content_data = extract_content(context)
       media_attachments = prepare_media_attachments(context[:media])
-      object_id = context[:id] || context[:object_id]
+      # Use object_id (post ID) first to match batch loading which uses activity.object_id
+      object_id = context[:object_id] || context[:id]
+
+      # Extract mentions from batch-loaded data or context tags
+      mentions = extract_mentions(object_id, context, opts)
 
       # Build base status
       base_status =
@@ -208,6 +230,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           "text" => content_data.text,
           "spoiler_text" => content_data.spoiler_text,
           "media_attachments" => media_attachments,
+          # Mentions extracted from batch-loaded tags
+          "mentions" => mentions,
           # Threading fields for conversation display
           "in_reply_to_id" => context[:in_reply_to_id],
           "in_reply_to_account_id" => context[:in_reply_to_account_id],
@@ -230,6 +254,54 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         Keyword.get(opts, :current_user),
         Keyword.get(opts, :interaction_states)
       )
+    end
+
+    # Extract mentions for an object from batch-loaded data or context tags
+    # Priority: 1) mentions_by_object (batch-loaded), 2) context[:tags] (preloaded on object)
+    # Returns a list of Mastodon Mention objects
+    defp extract_mentions(nil, _context, _opts), do: []
+
+    defp extract_mentions(object_id, context, opts) do
+      mentions_by_object = Keyword.get(opts, :mentions_by_object, %{})
+      current_user = Keyword.get(opts, :current_user)
+
+      # Try batch-loaded mentions first
+      case Map.get(mentions_by_object, object_id) do
+        raw_mentions when is_list(raw_mentions) and raw_mentions != [] ->
+          Mappers.Mention.from_tags(raw_mentions, current_user: current_user)
+
+        [] ->
+          # Empty list means object was batch-loaded but has no mentions
+          []
+
+        nil ->
+          # Key not in map means object wasn't batch-loaded (e.g., conversations)
+          # Fallback to tags from context where tags are preloaded on the object directly
+          extract_mentions_from_context_tags(context, current_user)
+      end
+    end
+
+    # Extract mentions from the context object
+    # Priority: 1) use list_tags_mentions if post is an Ecto struct (can preload)
+    #          2) fallback to context[:tags] if already loaded
+    defp extract_mentions_from_context_tags(context, current_user) do
+      post = context[:post]
+      tags = context[:tags] || []
+
+      cond do
+        # If we have an Ecto struct, use list_tags_mentions which handles preloading
+        is_struct(post) ->
+          loaded_tags = Bonfire.Social.Tags.list_tags_mentions(post, current_user)
+          Mappers.Mention.from_tags(loaded_tags, current_user: current_user)
+
+        # If context has tags already preloaded, use them directly
+        is_list(tags) and tags != [] ->
+          Mappers.Mention.from_tags(tags, current_user: current_user)
+
+        # No tags available
+        true ->
+          []
+      end
     end
 
     # Add interaction states for current user
