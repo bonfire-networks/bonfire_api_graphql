@@ -21,7 +21,17 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
             Bonfire.API.MastoCompatible.TimelineController,
             :user_statuses
 
-        # Account actions - mute/unmute/block/unblock
+        get "/accounts/:id/followers",
+            Bonfire.API.MastoCompatible.AccountController,
+            :followers
+
+        get "/accounts/:id/following",
+            Bonfire.API.MastoCompatible.AccountController,
+            :following
+
+        # Account actions - follow/unfollow/mute/unmute/block/unblock
+        post "/accounts/:id/follow", Bonfire.API.MastoCompatible.AccountController, :follow
+        post "/accounts/:id/unfollow", Bonfire.API.MastoCompatible.AccountController, :unfollow
         post "/accounts/:id/mute", Bonfire.API.MastoCompatible.AccountController, :mute
         post "/accounts/:id/unmute", Bonfire.API.MastoCompatible.AccountController, :unmute
         post "/accounts/:id/block", Bonfire.API.MastoCompatible.AccountController, :block
@@ -39,6 +49,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
             :show_preferences
 
         get "/instance", Bonfire.API.MastoCompatible.InstanceController, :show
+        get "/custom_emojis", Bonfire.API.MastoCompatible.InstanceController, :custom_emojis
 
         post "/apps", Bonfire.API.MastoCompatible.AppController, :create
 
@@ -54,6 +65,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
             :reblogged_by
 
         get "/statuses/:id", Bonfire.API.MastoCompatible.StatusController, :show
+        delete "/statuses/:id", Bonfire.API.MastoCompatible.StatusController, :delete
 
         # Status POST interactions
         post "/statuses/:id/favourite", Bonfire.API.MastoCompatible.StatusController, :favourite
@@ -68,6 +80,9 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         post "/statuses/:id/unbookmark", Bonfire.API.MastoCompatible.StatusController, :unbookmark
 
         # Notifications
+        post "/notifications/clear", Bonfire.API.MastoCompatible.TimelineController, :clear_notifications
+        post "/notifications/:id/dismiss", Bonfire.API.MastoCompatible.TimelineController, :dismiss_notification
+        get "/notifications/:id", Bonfire.API.MastoCompatible.TimelineController, :notification
         get "/notifications", Bonfire.API.MastoCompatible.TimelineController, :notifications
 
         # Bookmarks
@@ -115,6 +130,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         pipe_through([:basic_json, :masto_api, :load_authorization, :load_current_auth])
 
         get "/instance", Bonfire.API.MastoCompatible.InstanceController, :show_v2
+        get "/search", Bonfire.API.MastoCompatible.SearchController, :search
       end
 
       # scope "/" do

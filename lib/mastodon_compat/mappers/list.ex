@@ -45,12 +45,14 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         warn(circle, "Circle missing id")
         nil
       else
-        %{
-          "id" => to_string(id),
-          "title" => get_circle_name(circle)
-        }
-        |> Schemas.List.new()
-        |> validate_and_return()
+        list =
+          %{
+            "id" => to_string(id),
+            "title" => get_circle_name(circle)
+          }
+          |> Schemas.List.new()
+
+        Helpers.validate_and_return(list, Schemas.List)
       end
     end
 
@@ -80,17 +82,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
             _ ->
               ""
           end
-      end
-    end
-
-    defp validate_and_return(list) do
-      case Schemas.List.validate(list) do
-        {:ok, valid} ->
-          valid
-
-        {:error, reason} ->
-          warn(reason, "List validation failed")
-          nil
       end
     end
   end

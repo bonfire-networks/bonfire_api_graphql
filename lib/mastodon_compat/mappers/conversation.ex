@@ -22,7 +22,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     alias Bonfire.API.MastoCompat.{Helpers, Mappers, Schemas}
     alias Bonfire.Social.Threads
 
-    import Helpers, only: [get_field: 2]
+    import Helpers, only: [get_field: 2, get_fields: 2]
 
     @doc """
     Transform a Bonfire thread message into a Mastodon Conversation.
@@ -56,7 +56,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
             "last_status" => build_last_status(message, opts)
           })
 
-        validate_and_return(conversation)
+        Helpers.validate_and_return(conversation, Schemas.Conversation)
       else
         warn(message, "Could not extract thread_id from message")
         nil
@@ -81,8 +81,11 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       participants =
         Threads.list_participants(message, thread_id, current_user: current_user)
 
+      # Skip expensive stats for conversation participants (N+1 query prevention)
+      account_opts = Keyword.merge(opts, skip_expensive_stats: true)
+
       participants
-      |> Enum.map(&Mappers.Account.from_user(&1, opts))
+      |> Enum.map(&Mappers.Account.from_user(&1, account_opts))
       |> Enum.reject(&is_nil/1)
       |> filter_current_user(current_user)
     end
@@ -134,26 +137,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       # - message.activity.subject for the sender
       # - message.tagged for mentions
       # Use from_post which handles this structure correctly
-      Mappers.Status.from_post(message, opts)
-    end
-
-    defp validate_and_return(conversation) do
-      case Schemas.Conversation.validate(conversation) do
-        {:ok, valid_conversation} ->
-          valid_conversation
-
-        {:error, {:missing_fields, fields}} ->
-          warn(
-            %{missing_fields: fields, conversation_id: conversation["id"]},
-            "Conversation validation failed - missing required fields"
-          )
-
-          nil
-
-        {:error, reason} ->
-          warn(reason, "Conversation validation failed")
-          nil
-      end
+      # Pass for_conversation: true so Status mapper sets visibility to "direct"
+      Mappers.Status.from_post(message, Keyword.put(opts, :for_conversation, true))
     end
   end
 end

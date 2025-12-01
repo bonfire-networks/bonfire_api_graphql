@@ -27,7 +27,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     alias Bonfire.API.MastoCompat.Helpers
 
-    import Helpers, only: [get_field: 2]
+    import Helpers, only: [get_field: 2, get_fields: 2]
 
     @doc """
     Transform a list of Bonfire tags to Mastodon Mention objects.
@@ -149,7 +149,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       # The tag itself might point to a user with character data
       # Try to get username/canonical_uri from nested structures
       profile = get_field(tag, :profile)
-      pointer = get_field(tag, :tag) || get_field(tag, :pointer)
+      pointer = get_fields(tag, [:tag, :pointer])
 
       cond do
         # Check if pointer has character data

@@ -28,7 +28,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     alias Bonfire.API.MastoCompat.{Schemas, Mappers, Helpers}
 
-    import Helpers, only: [get_field: 2]
+    import Helpers, only: [get_field: 2, get_fields: 2]
 
     @doc """
     Transform a Bonfire Activity into a Mastodon Notification.
@@ -69,8 +69,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         map_verb_to_type(verb_id, current_user: current_user, mentions: raw_mentions)
 
       # Extract subject (the account that triggered the notification)
+      # Skip expensive stats for notification accounts (N+1 query prevention)
       subject = get_subject(activity, opts)
-      account_data = Mappers.Account.from_user(subject)
+      account_data = Mappers.Account.from_user(subject, skip_expensive_stats: true)
 
       # Build status if this notification type includes one
       status_data =
@@ -110,7 +111,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           notification
         end
 
-      validate_notification(notification)
+      Helpers.validate_and_return(notification, Schemas.Notification)
     end
 
     def from_activity(_, _opts), do: nil
@@ -178,14 +179,14 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
       current_user_id &&
         Enum.any?(mentions, fn mention ->
-          mention_user_id = get_field(mention, :tag_id) || get_field(mention, :id)
+          mention_user_id = get_fields(mention, [:tag_id, :id])
           mention_user_id == current_user_id
         end)
     end
 
     # Get subject from activity or batch-loaded subjects
     defp get_subject(activity, opts) do
-      subject = get_field(activity, :account) || get_field(activity, :subject)
+      subject = get_fields(activity, [:account, :subject])
 
       if is_nil(subject) || subject == %{} do
         subject_id = get_field(activity, :subject_id)
@@ -239,7 +240,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       subject = get_subject(activity, opts)
 
       if object_id && subject do
-        account = Mappers.Account.from_user(subject)
+        account = Mappers.Account.from_user(subject, skip_expensive_stats: true)
 
         html_content =
           get_field(post_content, :content) ||
@@ -266,29 +267,5 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         nil
       end
     end
-
-    defp validate_notification(notification) when is_map(notification) do
-      case Schemas.Notification.validate(notification) do
-        {:ok, valid_notification} ->
-          valid_notification
-
-        {:error, {:missing_fields, fields}} ->
-          warn(
-            "Notification missing required fields: #{inspect(fields)}, notification: #{inspect(notification)}"
-          )
-
-          nil
-
-        {:error, {:invalid_type, type}} ->
-          warn("Notification has invalid type: #{inspect(type)}")
-          nil
-
-        {:error, reason} ->
-          warn("Notification validation failed: #{inspect(reason)}")
-          nil
-      end
-    end
-
-    defp validate_notification(_), do: nil
   end
 end

@@ -32,7 +32,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     alias Bonfire.API.MastoCompat.Mappers
     alias Bonfire.Social.Activities
 
-    import Helpers, only: [get_field: 2]
+    import Helpers, only: [get_field: 2, get_fields: 2]
 
     @doc """
     Transform a Bonfire Activity into a Mastodon Status.
@@ -70,7 +70,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         end
 
       # Validate before returning
-      validate_and_return(status)
+      Helpers.validate_and_return(status, Schemas.Status)
     end
 
     @doc """
@@ -87,7 +87,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def from_post(post, opts \\ []) do
       context = build_post_context(post, opts)
       status = build_regular_status(context, opts)
-      validate_and_return(status)
+      Helpers.validate_and_return(status, Schemas.Status)
     end
 
     # Private functions
@@ -104,7 +104,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         object: object,
         object_id: get_field(activity, :object_id),
         object_post_content: get_field(activity, :object_post_content),
-        subject: get_field(activity, :account) || get_field(activity, :subject),
+        subject: get_fields(activity, [:account, :subject]),
         verb: get_field(activity, :verb) |> get_field(:verb),
         media: get_field(activity, :media) || [],
         # Extract reply-to information for threading
@@ -239,9 +239,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           "favourites_count" => context[:like_count] || 0,
           "reblogs_count" => context[:boost_count] || 0,
           "replies_count" => context[:replies_count] || 0,
-          # TODO: Map actual visibility from Bonfire boundaries
-          "visibility" => "public",
-          # TODO: Map actual sensitive flag
+          # Visibility mapping: check context from caller (conversation mapper passes for_conversation: true)
+          "visibility" => map_visibility(opts),
+          # TODO: Map actual sensitive flag from content warnings
           "sensitive" => false
         })
 
@@ -406,39 +406,27 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       # Delegate to Account mapper - single source of truth for account normalization
       # This ensures all account preparation uses the same normalization path
       # (handles both GraphQL data and raw Ecto structs with profile/character associations)
-      case Mappers.Account.from_user(user_data) do
+      # Skip expensive stats for status accounts (N+1 query prevention)
+      # Feeds show accounts inline but don't display their follower/status counts
+      case Mappers.Account.from_user(user_data, skip_expensive_stats: true) do
         nil -> nil
-        account -> deep_clean_structs(account)
+        account -> Helpers.deep_struct_to_map(account, filter_nils: true, drop_unknown_structs: true)
       end
     end
 
-    # Recursively remove or convert any remaining structs to prevent serialization errors
-    defp deep_clean_structs(value) when is_struct(value) do
-      # Convert Ecto NotLoaded to nil, other structs to maps (but skip them for safety)
-      case value do
-        %Ecto.Association.NotLoaded{} -> nil
-        %DateTime{} = dt -> DateTime.to_iso8601(dt)
-        %NaiveDateTime{} = dt -> NaiveDateTime.to_iso8601(dt)
-        %Date{} = d -> Date.to_iso8601(d)
-        # Skip other structs entirely (they shouldn't be in the output)
-        _ -> nil
+    # Map Bonfire visibility to Mastodon visibility
+    # Mastodon visibility options: "public", "unlisted", "private", "direct"
+    # Currently detects DMs from conversation context; all else defaults to "public"
+    # TODO: Full boundary mapping would require checking Bonfire ACLs
+    defp map_visibility(opts) do
+      cond do
+        # Direct messages from conversation mapper
+        Keyword.get(opts, :for_conversation, false) -> "direct"
+        # TODO: Add followers-only detection when boundary info is available
+        # TODO: Add unlisted detection when boundary info is available
+        true -> "public"
       end
     end
-
-    defp deep_clean_structs(value) when is_map(value) do
-      value
-      |> Enum.map(fn {k, v} -> {k, deep_clean_structs(v)} end)
-      |> Enum.reject(fn {_k, v} -> is_nil(v) end)
-      |> Map.new()
-    end
-
-    defp deep_clean_structs(value) when is_list(value) do
-      value
-      |> Enum.map(&deep_clean_structs/1)
-      |> Enum.reject(&is_nil/1)
-    end
-
-    defp deep_clean_structs(value), do: value
 
     defp extract_content(context) do
       # Get content from different possible sources
@@ -502,33 +490,15 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       %{
         "id" => get_field(media, :id) || "",
         "type" => type,
-        "url" => get_field(media, :url) || get_field(media, :path) || "",
-        "preview_url" => get_field(media, :url) || get_field(media, :path) || "",
+        "url" => get_fields(media, [:url, :path]) || "",
+        "preview_url" => get_fields(media, [:url, :path]) || "",
         "remote_url" => nil,
         "meta" => %{},
-        "description" => get_field(media, :description) || get_field(media, :label) || "",
+        "description" => get_fields(media, [:description, :label]) || "",
         "blurhash" => nil
       }
     end
 
     defp prepare_media_attachment(_), do: nil
-
-    # Validate status against schema before returning
-    defp validate_and_return(nil), do: nil
-
-    defp validate_and_return(status) do
-      case Schemas.Status.validate(status) do
-        {:ok, valid_status} ->
-          valid_status
-
-        {:error, {:missing_fields, fields}} ->
-          warn("Status missing required fields: #{inspect(fields)}, status: #{inspect(status)}")
-          nil
-
-        {:error, reason} ->
-          warn("Status validation failed: #{inspect(reason)}")
-          nil
-      end
-    end
   end
 end

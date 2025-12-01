@@ -39,7 +39,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     use Bonfire.Common.Utils
     import Untangle
 
-    alias Bonfire.API.MastoCompat.Mappers
+    alias Bonfire.API.MastoCompat.{Mappers, Helpers}
     alias Bonfire.API.GraphQL.RestAdapter
 
     @doc """
@@ -137,7 +137,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
               prepared =
                 status
                 |> Map.put(flag, flag_value)
-                |> deep_struct_to_map()
+                |> Helpers.deep_struct_to_map()
 
               Phoenix.Controller.json(conn, prepared)
           end
@@ -147,32 +147,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           RestAdapter.error_fn({:error, reason}, conn)
       end
     end
-
-    # Helper to recursively convert all structs to JSON-safe values
-    # This ensures no Ecto structs leak through to Jason.encode!
-    defp deep_struct_to_map(%DateTime{} = dt), do: DateTime.to_iso8601(dt)
-    defp deep_struct_to_map(%NaiveDateTime{} = dt), do: NaiveDateTime.to_iso8601(dt)
-    defp deep_struct_to_map(%Date{} = d), do: Date.to_iso8601(d)
-    defp deep_struct_to_map(%Ecto.Association.NotLoaded{}), do: nil
-
-    defp deep_struct_to_map(data) when is_struct(data) do
-      data
-      |> Map.from_struct()
-      |> Map.drop([:__meta__])
-      |> deep_struct_to_map()
-    end
-
-    defp deep_struct_to_map(data) when is_map(data) do
-      data
-      |> Enum.map(fn {k, v} -> {k, deep_struct_to_map(v)} end)
-      |> Map.new()
-    end
-
-    defp deep_struct_to_map(data) when is_list(data) do
-      Enum.map(data, &deep_struct_to_map/1)
-    end
-
-    defp deep_struct_to_map(data), do: data
 
     @doc """
     Helper to get preload options for activity fetching.

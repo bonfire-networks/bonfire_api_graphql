@@ -18,7 +18,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     use Bonfire.UI.Common.Web, :controller
     import Untangle
 
-    alias Bonfire.Social.API.GraphQLMasto.Adapter
+    alias Bonfire.Boundaries.API.GraphQLMasto.Adapter
 
     @doc "Get all lists owned by the authenticated user"
     def index(conn, params) do
