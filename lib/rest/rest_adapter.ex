@@ -1,7 +1,7 @@
 defmodule Bonfire.API.GraphQL.RestAdapter do
   use Untangle
   alias Bonfire.Common.Config
-  alias Bonfire.Common.Enums
+  alias Bonfire.API.MastoCompat.Helpers
 
   defmodule EndpointConfig do
     defstruct query: nil, success_fn: nil, error_fn: nil
@@ -76,6 +76,10 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
     Phoenix.Controller.json(conn, transform_data(response))
   end
 
+  def json(conn, data) do
+    Phoenix.Controller.json(conn, transform_data(data))
+  end
+
   def error_fn(response, conn) do
     # error transformation logic
     {status, error_response} =
@@ -139,7 +143,11 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
   def transform_data(data, _), do: transform_data(data)
 
   def transform_data(data) when is_binary(data), do: data
-  def transform_data(%{} = data), do: Enums.struct_to_map(data, true)
+
+  def transform_data(%{} = data) do
+    Helpers.deep_struct_to_map(data, filter_nils: true)
+  end
+
   def transform_data(data) when is_list(data), do: Enum.map(data, &transform_data/1)
   def transform_data(data), do: inspect(data)
 end

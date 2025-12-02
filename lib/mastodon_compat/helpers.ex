@@ -126,14 +126,31 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def deep_struct_to_map(%Date{} = d, _opts), do: Date.to_iso8601(d)
     def deep_struct_to_map(%Ecto.Association.NotLoaded{}, _opts), do: nil
 
-    def deep_struct_to_map(data, opts) when is_struct(data) do
-      if Keyword.get(opts, :drop_unknown_structs, false) do
-        nil
-      else
-        data
-        |> Map.from_struct()
-        |> Map.drop([:__meta__])
-        |> deep_struct_to_map(opts)
+    def deep_struct_to_map(%{__struct__: struct_type}, _opts)
+        when struct_type in [
+               Phoenix.LiveView.Socket,
+               Phoenix.LiveView.Rendered,
+               Phoenix.LiveView.Component,
+               Phoenix.LiveView.Comprehension,
+               Plug.Conn,
+               Plug.Upload
+             ],
+        do: nil
+
+    def deep_struct_to_map(%{__struct__: struct_type} = data, opts) do
+      struct_name = Atom.to_string(struct_type)
+
+      cond do
+        String.starts_with?(struct_name, "Elixir.Phoenix.LiveView") -> nil
+        String.starts_with?(struct_name, "Elixir.Phoenix.Component") -> nil
+        String.starts_with?(struct_name, "Elixir.Surface") -> nil
+        String.starts_with?(struct_name, "Elixir.Plug.") -> nil
+        Keyword.get(opts, :drop_unknown_structs, false) -> nil
+        true ->
+          data
+          |> Map.from_struct()
+          |> Map.drop([:__meta__, :__context__, :__changed__, :socket, :assigns])
+          |> deep_struct_to_map(opts)
       end
     end
 

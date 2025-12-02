@@ -130,6 +130,16 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
             :list_timeline
 
         get "/timelines/:feed", Bonfire.API.MastoCompatible.TimelineController, :timeline
+
+        # Media endpoints
+        get "/media/:id", Bonfire.Files.Web.MastoMediaController, :show
+        put "/media/:id", Bonfire.Files.Web.MastoMediaController, :update
+        post "/media", Bonfire.Files.Web.MastoMediaController, :create
+
+        # Reports - specific route before generic
+        get "/reports/:id", Bonfire.API.MastoCompatible.ReportController, :show
+        get "/reports", Bonfire.API.MastoCompatible.ReportController, :index
+        post "/reports", Bonfire.API.MastoCompatible.ReportController, :create
       end
 
       scope "/api/v2" do
@@ -137,6 +147,9 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
         get "/instance", Bonfire.API.MastoCompatible.InstanceController, :show_v2
         get "/search", Bonfire.Search.Web.MastoSearchController, :search
+
+        # Media upload (async - returns 202 Accepted)
+        post "/media", Bonfire.Files.Web.MastoMediaController, :create_v2
       end
 
       # scope "/" do

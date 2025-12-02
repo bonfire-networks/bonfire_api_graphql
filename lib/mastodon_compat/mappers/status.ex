@@ -180,7 +180,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp build_regular_status(context, opts) do
       account = extract_account(context, opts)
       content_data = extract_content(context)
-      media_attachments = prepare_media_attachments(context[:media])
+      media_attachments = Mappers.MediaAttachment.from_media_list(context[:media])
       object_id = context[:object_id] || context[:id]
       mentions = extract_mentions(object_id, context, opts)
 
@@ -371,41 +371,5 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     defp strip_html_tags(_), do: ""
-
-    defp prepare_media_attachments(nil), do: []
-    defp prepare_media_attachments([]), do: []
-
-    defp prepare_media_attachments(media) when is_list(media) do
-      media
-      |> Enum.map(&prepare_media_attachment/1)
-      |> Enum.reject(&is_nil/1)
-    end
-
-    defp prepare_media_attachments(_other), do: []
-
-    defp prepare_media_attachment(media) when is_map(media) do
-      media_type = get_field(media, :media_type) || "unknown"
-
-      type =
-        cond do
-          String.starts_with?(media_type, "image/") -> "image"
-          String.starts_with?(media_type, "video/") -> "video"
-          String.starts_with?(media_type, "audio/") -> "audio"
-          true -> "unknown"
-        end
-
-      %{
-        "id" => get_field(media, :id) || "",
-        "type" => type,
-        "url" => get_fields(media, [:url, :path]) || "",
-        "preview_url" => get_fields(media, [:url, :path]) || "",
-        "remote_url" => nil,
-        "meta" => %{},
-        "description" => get_fields(media, [:description, :label]) || "",
-        "blurhash" => nil
-      }
-    end
-
-    defp prepare_media_attachment(_), do: nil
   end
 end
