@@ -87,17 +87,11 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       is_map(account) && (Map.has_key?(account, :id) || Map.has_key?(account, "id"))
     end
 
-    # ============================================
-    # Core Account Building
-    # ============================================
-
     defp build_account(user, opts) do
-      # Extract nested associations (handles Ecto structs, maps, NotLoaded)
       profile = extract_nested(user, :profile)
       character = extract_nested(user, :character)
       peered = extract_nested(character, :peered) || extract_nested(user, :peered)
 
-      # Extract all fields with fallbacks for both GraphQL aliases and Ecto names
       user_id = extract_id(user, character, profile)
       username = get_field(character, [:username, "username"])
       acct = get_field(character, [:acct, "acct"]) || username
@@ -105,29 +99,20 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       note_raw = get_field(profile, [:note, "note", :summary, "summary", :bio, "bio"])
       note_html = Text.maybe_markdown_to_html(note_raw) || ""
 
-      # URL: check character first, then peered (for remote users)
       url =
         get_field(character, [:url, "url", :canonical_uri, "canonical_uri"]) ||
           get_field(peered, [:canonical_uri, "canonical_uri"])
 
-      # Media URLs
       avatar = extract_media_url(profile, [:avatar, "avatar", :icon, "icon"])
       header = extract_media_url(profile, [:header, "header", :image, "image"])
-
-      # Timestamps
       created_at = extract_created_at(user)
-
-      # Stats (expensive queries - can be skipped or preloaded)
       {statuses_count, followers_count, following_count} = compute_stats(user, opts)
-
-      # Settings-based fields
       indexable = Bonfire.Common.Extend.module_enabled?(Bonfire.Search.Indexer, user)
 
       discoverable =
         Bonfire.Common.Settings.get([Bonfire.Me.Users, :undiscoverable], nil, current_user: user) !=
           true
 
-      # Build the final flat Mastodon account (all string keys)
       %{
         "id" => to_string(user_id),
         "username" => username || "",
@@ -146,9 +131,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         "following_count" => following_count,
         "indexable" => indexable,
         "discoverable" => discoverable,
-        # Source field (for /verify_credentials)
         "source" => build_source(note_raw, user, opts, indexable, discoverable),
-        # Default values for fields we don't fully support yet
         "locked" => false,
         "bot" => false,
         "group" => false,
@@ -165,18 +148,12 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       }
     end
 
-    # ============================================
-    # Field Extraction Helpers
-    # ============================================
-
-    # Extract ID from user or nested structures
     defp extract_id(user, character, profile) do
       get_field(user, [:id, "id"]) ||
         get_field(character, [:id, "id"]) ||
         get_field(profile, [:id, "id"])
     end
 
-    # Get first non-nil value from a list of possible field names
     defp get_field(nil, _keys), do: nil
     defp get_field(_map, []), do: nil
 
@@ -192,12 +169,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp get_field(_, _), do: nil
 
-    # Extract nested association, converting structs to maps
     defp extract_nested(nil, _key), do: %{}
     defp extract_nested(%{} = map, key) when map_size(map) == 0, do: %{}
 
     defp extract_nested(parent, key) when is_atom(key) and is_map(parent) do
-      # Try atom key first, then string key
       value = Map.get(parent, key) || Map.get(parent, Atom.to_string(key))
 
       case value do
@@ -211,7 +186,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp extract_nested(_, _), do: %{}
 
-    # Extract media URL from nested media field
     defp extract_media_url(map, keys) do
       media = get_field(map, keys)
       do_extract_media_url(media)
@@ -232,7 +206,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp do_extract_media_url(_), do: nil
 
-    # Extract and format created_at timestamp
     defp extract_created_at(user) do
       case get_field(user, [:created_at, "created_at"]) do
         %DateTime{} = dt ->
@@ -249,10 +222,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           end
       end
     end
-
-    # ============================================
-    # Stats Computation
-    # ============================================
 
     defp compute_stats(user, opts) do
       skip = Keyword.get(opts, :skip_expensive_stats, false)
@@ -347,7 +316,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       end
     end
 
-    # Build source field (used for /verify_credentials)
     defp build_source(note_raw, user, opts, indexable, discoverable) do
       skip_expensive = Keyword.get(opts, :skip_expensive_stats, false)
 
@@ -355,7 +323,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         "indexable" => indexable,
         "discoverable" => discoverable,
         "note" => note_raw || "",
-        "follow_requests_count" => if(skip_expensive, do: 0, else: get_follow_requests_count(user)),
+        "follow_requests_count" =>
+          if(skip_expensive, do: 0, else: get_follow_requests_count(user)),
         "hide_collections" => false,
         "attribution_domains" => [],
         "privacy" => "public",

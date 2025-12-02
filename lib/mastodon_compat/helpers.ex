@@ -6,6 +6,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     This module provides common utilities used across mappers to safely
     extract and transform data from Bonfire structures to Mastodon format.
     """
+    import Untangle
 
     @doc """
     Safely get a field from a map or struct, handling nil and NotLoaded associations.
@@ -35,7 +36,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def get_field(map, _key) when is_map(map) and map_size(map) == 0, do: nil
 
     def get_field(map, key) when is_map(map) and is_atom(key) do
-      # Try atom key first, then string key (data can come in either format)
       case Map.get(map, key) do
         %Ecto.Association.NotLoaded{} -> nil
         nil -> Map.get(map, Atom.to_string(key))
@@ -187,18 +187,15 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           valid
 
         {:error, {:missing_fields, fields}} ->
-          Untangle.warn(
-            "#{inspect(schema_module)} missing required fields: #{inspect(fields)}, entity: #{inspect(entity)}"
-          )
-
+          debug(entity, "#{inspect(schema_module)} missing required fields: #{inspect(fields)}")
           nil
 
         {:error, {:invalid_type, type}} ->
-          Untangle.warn("#{inspect(schema_module)} has invalid type: #{inspect(type)}")
+          debug(entity, "#{inspect(schema_module)} has invalid type: #{inspect(type)}")
           nil
 
         {:error, reason} ->
-          Untangle.warn("#{inspect(schema_module)} validation failed: #{inspect(reason)}")
+          debug(entity, "#{inspect(schema_module)} validation failed: #{inspect(reason)}")
           nil
       end
     end
@@ -259,13 +256,11 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       hashtag
       |> String.trim()
       |> String.trim_leading("#")
-      # Use Bonfire's hashtag normalization if available
       |> then(fn tag ->
         if Code.ensure_loaded?(Bonfire.Tag.Hashtag) and
              function_exported?(Bonfire.Tag.Hashtag, :normalize_name, 1) do
           Bonfire.Tag.Hashtag.normalize_name(tag)
         else
-          # Fallback: simple lowercase normalization
           String.downcase(tag)
         end
       end)

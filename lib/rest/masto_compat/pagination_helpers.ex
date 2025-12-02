@@ -316,7 +316,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       # Merge cursors at top level
       |> Map.merge(cursors)
       # Pass cursors to determine first vs last
-      |> Map.merge(extract_limit_with_direction(params, cursors, default: default_limit, max: max_limit))
+      |> Map.merge(
+        extract_limit_with_direction(params, cursors, default: default_limit, max: max_limit)
+      )
       |> atomize_pagination_keys()
     end
 

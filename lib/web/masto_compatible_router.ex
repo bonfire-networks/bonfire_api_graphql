@@ -80,8 +80,14 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         post "/statuses/:id/unbookmark", Bonfire.API.MastoCompatible.StatusController, :unbookmark
 
         # Notifications
-        post "/notifications/clear", Bonfire.API.MastoCompatible.TimelineController, :clear_notifications
-        post "/notifications/:id/dismiss", Bonfire.API.MastoCompatible.TimelineController, :dismiss_notification
+        post "/notifications/clear",
+             Bonfire.API.MastoCompatible.TimelineController,
+             :clear_notifications
+
+        post "/notifications/:id/dismiss",
+             Bonfire.API.MastoCompatible.TimelineController,
+             :dismiss_notification
+
         get "/notifications/:id", Bonfire.API.MastoCompatible.TimelineController, :notification
         get "/notifications", Bonfire.API.MastoCompatible.TimelineController, :notifications
 
@@ -130,7 +136,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         pipe_through([:basic_json, :masto_api, :load_authorization, :load_current_auth])
 
         get "/instance", Bonfire.API.MastoCompatible.InstanceController, :show_v2
-        get "/search", Bonfire.API.MastoCompatible.SearchController, :search
+        get "/search", Bonfire.Search.Web.MastoSearchController, :search
       end
 
       # scope "/" do

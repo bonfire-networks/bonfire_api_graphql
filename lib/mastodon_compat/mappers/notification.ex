@@ -51,8 +51,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         nil
     """
     def from_activity(activity, opts \\ [])
-
-    # Handle edge nodes
     def from_activity(%{node: activity}, opts), do: from_activity(activity, opts)
 
     def from_activity(activity, opts) when is_map(activity) do
@@ -60,20 +58,15 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       current_user = Keyword.get(opts, :current_user)
       object_id = get_field(activity, :object_id)
 
-      # Get mentions for this object to determine notification type
       mentions_by_object = Keyword.get(opts, :mentions_by_object, %{})
       raw_mentions = Map.get(mentions_by_object, object_id, [])
 
-      # Map verb to notification type (checking mentions for :create/:reply verbs)
       notification_type =
         map_verb_to_type(verb_id, current_user: current_user, mentions: raw_mentions)
 
-      # Extract subject (the account that triggered the notification)
-      # Skip expensive stats for notification accounts (N+1 query prevention)
       subject = get_subject(activity, opts)
       account_data = Mappers.Account.from_user(subject, skip_expensive_stats: true)
 
-      # Build status if this notification type includes one
       status_data =
         if should_include_status?(notification_type) do
           extract_status(activity, opts)
@@ -81,7 +74,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           nil
         end
 
-      # Fallback: try to get account from status if subject loading failed
       account_data =
         if is_nil(account_data) && is_map(status_data) do
           status_account = Map.get(status_data, "account")
@@ -95,7 +87,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           account_data
         end
 
-      # Build notification
       notification =
         Schemas.Notification.new(%{
           "id" => get_field(activity, :id),
@@ -170,9 +161,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       notification_type in ["mention", "status", "reblog", "favourite", "poll", "update"]
     end
 
-    # Private functions
-
-    # Checks if the current user is mentioned in the post's mentions list
     defp user_is_mentioned?(opts) do
       current_user_id = Keyword.get(opts, :current_user) |> id()
       mentions = Keyword.get(opts, :mentions, [])
@@ -184,7 +172,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         end)
     end
 
-    # Get subject from activity or batch-loaded subjects
     defp get_subject(activity, opts) do
       subject = get_fields(activity, [:account, :subject])
 
@@ -216,16 +203,12 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           end
 
         _ ->
-          # Unknown or missing object type - build fallback status from batch-loaded data
           fallback_status_from_activity(activity, opts)
       end
     end
 
-    # Build a minimal status from activity data and batch-loaded content
     defp fallback_status_from_activity(activity, opts) do
       object_id = get_field(activity, :object_id)
-
-      # Try to get post content from batch-loaded data
       post_content = get_field(activity, :object_post_content)
 
       post_content =
@@ -236,7 +219,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           post_content
         end
 
-      # Get subject from batch-loaded data
       subject = get_subject(activity, opts)
 
       if object_id && subject do
@@ -247,7 +229,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
             get_field(post_content, :html_body) ||
             ""
 
-        # Get mentions from batch-loaded mentions map
         mentions_by_object = Keyword.get(opts, :mentions_by_object, %{})
         raw_mentions = Map.get(mentions_by_object, object_id, [])
         current_user = Keyword.get(opts, :current_user)
