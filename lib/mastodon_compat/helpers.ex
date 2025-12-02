@@ -141,11 +141,21 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       struct_name = Atom.to_string(struct_type)
 
       cond do
-        String.starts_with?(struct_name, "Elixir.Phoenix.LiveView") -> nil
-        String.starts_with?(struct_name, "Elixir.Phoenix.Component") -> nil
-        String.starts_with?(struct_name, "Elixir.Surface") -> nil
-        String.starts_with?(struct_name, "Elixir.Plug.") -> nil
-        Keyword.get(opts, :drop_unknown_structs, false) -> nil
+        String.starts_with?(struct_name, "Elixir.Phoenix.LiveView") ->
+          nil
+
+        String.starts_with?(struct_name, "Elixir.Phoenix.Component") ->
+          nil
+
+        String.starts_with?(struct_name, "Elixir.Surface") ->
+          nil
+
+        String.starts_with?(struct_name, "Elixir.Plug.") ->
+          nil
+
+        Keyword.get(opts, :drop_unknown_structs, false) ->
+          nil
+
         true ->
           data
           |> Map.from_struct()

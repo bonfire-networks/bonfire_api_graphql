@@ -106,7 +106,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       |> Map.merge(duration_meta)
     end
 
-    defp calculate_aspect(width, height) when is_number(width) and is_number(height) and height > 0 do
+    defp calculate_aspect(width, height)
+         when is_number(width) and is_number(height) and height > 0 do
       Float.round(width / height, 6)
     end
 
