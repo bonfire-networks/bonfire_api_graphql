@@ -101,6 +101,23 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         get "/mutes", Bonfire.API.MastoCompatible.AccountController, :mutes
         get "/blocks", Bonfire.API.MastoCompatible.AccountController, :blocks
 
+        # Follow Requests - specific routes before generic
+        get "/follow_requests/outgoing",
+            Bonfire.API.MastoCompatible.AccountController,
+            :follow_requests_outgoing
+
+        post "/follow_requests/:account_id/authorize",
+             Bonfire.API.MastoCompatible.AccountController,
+             :authorize_follow_request
+
+        post "/follow_requests/:account_id/reject",
+             Bonfire.API.MastoCompatible.AccountController,
+             :reject_follow_request
+
+        get "/follow_requests",
+            Bonfire.API.MastoCompatible.AccountController,
+            :follow_requests
+
         # Conversations (DM threads) - specific routes before generic
         post "/conversations/:id/read",
              Bonfire.API.MastoCompatible.ConversationController,

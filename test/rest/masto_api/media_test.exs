@@ -185,7 +185,7 @@ defmodule Bonfire.API.MastoApi.MediaTest do
 
       assert response["id"] == media.id
       # Focus should be stored in meta
-      assert response["meta"]["focus"] || true
+      assert is_map(response["meta"])
     end
 
     test "returns 404 for media owned by another user", %{conn: conn} do
