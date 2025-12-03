@@ -53,6 +53,9 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
         post "/apps", Bonfire.API.MastoCompatible.AppController, :create
 
+        # Status creation - must come before /statuses/:id routes
+        post "/statuses", Bonfire.API.MastoCompatible.StatusController, :create
+
         # Status GET endpoints (more specific routes before generic)
         get "/statuses/:id/context", Bonfire.API.MastoCompatible.StatusController, :context
 
