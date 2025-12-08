@@ -15793,7 +15793,7 @@
         ]
       }
     },
-    "/api/v1/notification/{id}": {
+    "/api/v1/notifications/{id}": {
       "get": {
         "operationId": "notification",
         "parameters": [
