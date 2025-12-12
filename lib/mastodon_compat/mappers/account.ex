@@ -90,62 +90,70 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp build_account(user, opts) do
       profile = extract_nested(user, :profile)
       character = extract_nested(user, :character)
-      peered = extract_nested(character, :peered) || extract_nested(user, :peered)
-
-      user_id = extract_id(user, character, profile)
       username = get_field(character, [:username, "username"])
-      acct = get_field(character, [:acct, "acct"]) || username
-      display_name = get_field(profile, [:display_name, "display_name", :name, "name"])
-      note_raw = get_field(profile, [:note, "note", :summary, "summary", :bio, "bio"])
-      note_html = Text.maybe_markdown_to_html(note_raw) || ""
 
-      url =
-        get_field(character, [:url, "url", :canonical_uri, "canonical_uri"]) ||
-          get_field(peered, [:canonical_uri, "canonical_uri"])
+      # Return nil for users without username (BatchLoader will filter these out)
+      if is_nil(username) or username == "" do
+        nil
+      else
+        peered = extract_nested(character, :peered) || extract_nested(user, :peered)
+        user_id = extract_id(user, character, profile)
+        acct = get_field(character, [:acct, "acct"]) || username
+        display_name = get_field(profile, [:display_name, "display_name", :name, "name"])
+        note_raw = get_field(profile, [:note, "note", :summary, "summary", :bio, "bio"])
+        note_html = Text.maybe_markdown_to_html(note_raw) || ""
 
-      avatar = extract_media_url(profile, [:avatar, "avatar", :icon, "icon"])
-      header = extract_media_url(profile, [:header, "header", :image, "image"])
-      created_at = extract_created_at(user)
-      {statuses_count, followers_count, following_count} = compute_stats(user, opts)
-      indexable = Bonfire.Common.Extend.module_enabled?(Bonfire.Search.Indexer, user)
+        url =
+          get_field(character, [:url, "url", :canonical_uri, "canonical_uri"]) ||
+            get_field(peered, [:canonical_uri, "canonical_uri"]) ||
+            compute_canonical_url(user, character)
 
-      discoverable =
-        Bonfire.Common.Settings.get([Bonfire.Me.Users, :undiscoverable], nil, current_user: user) !=
-          true
+        avatar = extract_media_url(profile, [:avatar, "avatar", :icon, "icon"])
+        header = extract_media_url(profile, [:header, "header", :image, "image"])
+        created_at = extract_created_at(user)
+        {statuses_count, followers_count, following_count} = compute_stats(user, opts)
+        indexable = Bonfire.Common.Extend.module_enabled?(Bonfire.Search.Indexer, user)
 
-      %{
-        "id" => to_string(user_id),
-        "username" => username || "",
-        "acct" => acct || "",
-        "display_name" => display_name || "",
-        "note" => note_html,
-        "url" => url || "",
-        "uri" => url,
-        "avatar" => avatar || "",
-        "avatar_static" => avatar || "",
-        "header" => header || "",
-        "header_static" => header || "",
-        "created_at" => created_at,
-        "statuses_count" => statuses_count,
-        "followers_count" => followers_count,
-        "following_count" => following_count,
-        "indexable" => indexable,
-        "discoverable" => discoverable,
-        "source" => build_source(note_raw, user, opts, indexable, discoverable),
-        "locked" => false,
-        "bot" => false,
-        "group" => false,
-        "noindex" => not indexable,
-        "suspended" => false,
-        "limited" => false,
-        "moved" => nil,
-        "memorial" => nil,
-        "fields" => [],
-        "emojis" => [],
-        "roles" => [],
-        "hide_collections" => false,
-        "last_status_at" => created_at
-      }
+        discoverable =
+          Bonfire.Common.Settings.get([Bonfire.Me.Users, :undiscoverable], nil,
+            current_user: user
+          ) !=
+            true
+
+        %{
+          "id" => to_string(user_id),
+          "username" => username || "",
+          "acct" => acct || "",
+          "display_name" => display_name || "",
+          "note" => note_html,
+          "url" => url || "",
+          "uri" => url,
+          "avatar" => avatar || "",
+          "avatar_static" => avatar || "",
+          "header" => header || "",
+          "header_static" => header || "",
+          "created_at" => created_at,
+          "statuses_count" => statuses_count,
+          "followers_count" => followers_count,
+          "following_count" => following_count,
+          "indexable" => indexable,
+          "discoverable" => discoverable,
+          "source" => build_source(note_raw, user, opts, indexable, discoverable),
+          "locked" => false,
+          "bot" => false,
+          "group" => false,
+          "noindex" => not indexable,
+          "suspended" => false,
+          "limited" => false,
+          "moved" => nil,
+          "memorial" => nil,
+          "fields" => [],
+          "emojis" => [],
+          "roles" => [],
+          "hide_collections" => false,
+          "last_status_at" => created_at
+        }
+      end
     end
 
     defp extract_id(user, character, profile) do
@@ -221,6 +229,14 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
             _ -> DateTime.utc_now() |> DateTime.to_iso8601()
           end
       end
+    end
+
+    defp compute_canonical_url(user, character) do
+      # Compute URL using URIs.canonical_url when not found in stored data
+      Bonfire.Common.URIs.canonical_url(character, preload_if_needed: false) ||
+        Bonfire.Common.URIs.canonical_url(user, preload_if_needed: false)
+    rescue
+      _ -> nil
     end
 
     defp compute_stats(user, opts) do

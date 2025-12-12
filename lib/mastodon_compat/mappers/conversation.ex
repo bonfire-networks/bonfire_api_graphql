@@ -101,10 +101,11 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       accounts
     end
 
-    defp check_unread(message, opts) do
-      # Check if the message has been seen by the current user
-      # The :with_seen preload adds a `seen` field
-      seen = get_field(message, :seen)
+    defp check_unread(message, _opts) do
+      # The :with_seen preload adds seen to activity.seen (not directly on message)
+      # See activities.ex:864-866 for the preload structure
+      activity = get_field(message, :activity)
+      seen = get_field(activity, :seen)
 
       # If seen is nil or empty, it's unread
       # If seen exists (has an edge), it's been read

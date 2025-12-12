@@ -346,10 +346,20 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           get_field(context[:object], :post_content) ||
           %{}
 
-      html =
+      raw_content =
         get_field(post_content, :content) ||
           get_field(post_content, :html_body) ||
           ""
+
+      # Convert markdown to HTML if needed (matches GraphQL resolver behavior)
+      # When loaded via GraphQL, html_body goes through a resolver that calls maybe_markdown_to_html
+      # When loaded via Ecto directly (e.g., InteractionHandler for boost/like), we get raw DB value
+      html =
+        if is_binary(raw_content) and raw_content != "" do
+          Bonfire.Common.Text.maybe_markdown_to_html(raw_content, sanitize: true)
+        else
+          raw_content
+        end
 
       text =
         get_field(post_content, :name) ||

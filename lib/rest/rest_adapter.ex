@@ -3,18 +3,12 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
   alias Bonfire.Common.Config
   alias Bonfire.API.MastoCompat.Helpers
 
-  defmodule EndpointConfig do
-    defstruct query: nil, success_fn: nil, error_fn: nil
-  end
+  @doc """
+  Process a GraphQL response and transform it to JSON.
 
-  def endpoint(query, success_fn \\ nil, error_fn \\ nil) do
-    %EndpointConfig{
-      query: query,
-      success_fn: success_fn,
-      error_fn: error_fn
-    }
-  end
-
+  Takes the GraphQL result, extracts data by name, applies optional transformation,
+  and returns JSON response via conn.
+  """
   def return(name, ret, conn, transform_fun \\ nil) do
     case ret do
       {:error, e} ->
@@ -71,6 +65,18 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
 
   defp transform_response({:ok, response}, conn), do: success_fn(response, conn)
   defp transform_response({:error, response}, conn), do: error_fn(response, conn)
+
+  @doc """
+  Helper to require authentication and execute a function with the current user.
+
+  Returns 401 Unauthorized if no user is logged in.
+  """
+  def with_current_user(conn, fun) do
+    case conn.assigns[:current_user] do
+      nil -> error_fn({:error, :unauthorized}, conn)
+      user -> fun.(user)
+    end
+  end
 
   def success_fn(response, conn) do
     Phoenix.Controller.json(conn, transform_data(response))
