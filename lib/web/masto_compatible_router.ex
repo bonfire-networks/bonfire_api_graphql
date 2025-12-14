@@ -185,7 +185,6 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         get "/reports/:id", Bonfire.Social.Web.MastoReportController, :show
         get "/reports", Bonfire.Social.Web.MastoReportController, :index
         post "/reports", Bonfire.Social.Web.MastoReportController, :create
-
       end
 
       scope "/api/v2" do
