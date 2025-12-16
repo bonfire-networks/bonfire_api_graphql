@@ -6,23 +6,19 @@ defmodule Bonfire.API.MastoCompatible.InstanceController do
 
 
   def instance(conn, _) do
-    data = Bonfire.Common.URIs.base_uri(conn)
-    |> InstanceAdapter.show()
+    data =
+      Bonfire.Common.URIs.base_uri(conn)
+      |> InstanceAdapter.show()
 
-    json(
-      conn,
-      data)
-    )
+    json(conn, data)
   end
 
   def instance_v2(conn, _) do
-    data = (Bonfire.Common.URIs.base_uri(conn))
-    |> InstanceAdapter.show_v2()
+    data =
+      Bonfire.Common.URIs.base_uri(conn)
+      |> InstanceAdapter.show_v2()
 
-    json(
-      conn,
-      data)
-    )
+    json(conn, data)
   end
 
   @doc """
