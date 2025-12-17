@@ -21,6 +21,11 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
               Bonfire.Me.Web.MastoAccountController,
               :verify_credentials
 
+          # Account update credentials - MUST come before /accounts/:id
+          patch "/accounts/update_credentials",
+                Bonfire.Me.Web.MastoAccountController,
+                :update_credentials
+
           # More specific routes must come BEFORE less specific ones
           get "/accounts/:id/statuses",
               Bonfire.Social.Web.MastoTimelineController,

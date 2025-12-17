@@ -5,7 +5,7 @@ defmodule Bonfire.API.MastoCompatible.InstanceController do
   alias Bonfire.API.MastoCompatible.InstanceAdapter
 
 
-  def instance(conn, _) do
+  def show(conn, _) do
     data =
       Bonfire.Common.URIs.base_uri(conn)
       |> InstanceAdapter.show()
@@ -13,7 +13,7 @@ defmodule Bonfire.API.MastoCompatible.InstanceController do
     json(conn, data)
   end
 
-  def instance_v2(conn, _) do
+  def show_v2(conn, _) do
     data =
       Bonfire.Common.URIs.base_uri(conn)
       |> InstanceAdapter.show_v2()
