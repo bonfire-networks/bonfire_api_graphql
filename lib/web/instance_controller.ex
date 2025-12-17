@@ -4,7 +4,6 @@ defmodule Bonfire.API.MastoCompatible.InstanceController do
 
   alias Bonfire.API.MastoCompatible.InstanceAdapter
 
-
   def show(conn, _) do
     data =
       Bonfire.Common.URIs.base_uri(conn)
