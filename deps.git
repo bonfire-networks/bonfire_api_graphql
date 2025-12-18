@@ -1,4 +1,5 @@
 bonfire_common = "https://github.com/bonfire-networks/bonfire_common"
+# bonfire_open_id = "https://github.com/bonfire-networks/bonfire_open_id"
 bonfire_ui_common = "https://github.com/bonfire-networks/bonfire_ui_common"
 # bonfire_fail = "https://github.com/bonfire-networks/bonfire_fail"
 absinthe_client = "https://github.com/bonfire-networks/absinthe_client"
