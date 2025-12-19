@@ -96,6 +96,12 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
         {:error, :not_found} ->
           {404, %{"error" => "Not found"}}
 
+        {:error, :poll_expired} ->
+          {422, %{"error" => "Validation failed: Poll has already ended"}}
+
+        {:error, :already_voted} ->
+          {422, %{"error" => "Validation failed: You have already voted on this poll"}}
+
         {:error, reason} when is_binary(reason) ->
           {400, %{"error" => reason}}
 
