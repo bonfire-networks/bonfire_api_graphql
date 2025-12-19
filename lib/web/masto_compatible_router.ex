@@ -15,7 +15,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
       # import Bonfire.OpenID.Plugs.Authorize
 
       scope "/api/v1" do
-        pipe_through([:basic_json, :masto_api, :load_authorization, :load_current_auth])
+        pipe_through([:basic_json, :masto_api, :load_authorization])
 
         # add here to override wrong priority order of routes
         get "/accounts/verify_credentials",
@@ -203,7 +203,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
       end
 
       scope "/api/v2" do
-        pipe_through([:basic_json, :masto_api, :load_authorization, :load_current_auth])
+        pipe_through([:basic_json, :masto_api, :load_authorization])
 
         get "/instance", Bonfire.API.MastoCompatible.InstanceController, :show_v2
         get "/search", Bonfire.Search.Web.MastoSearchController, :search
@@ -216,7 +216,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
       end
 
       # scope "/" do
-      # pipe_through([:basic_json, :load_authorization, :load_current_auth])
+      # pipe_through([:basic_json, :load_authorization])
       # require Apical
       # Apical.router_from_file(unquote(@api_spec),
       #   controller: Bonfire.API.MastoCompatible,
