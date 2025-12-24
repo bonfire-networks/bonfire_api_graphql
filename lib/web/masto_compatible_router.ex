@@ -102,6 +102,8 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         post "/statuses/:id/unreblog", Bonfire.Social.Web.MastoStatusController, :unreblog
         post "/statuses/:id/bookmark", Bonfire.Social.Web.MastoStatusController, :bookmark
         post "/statuses/:id/unbookmark", Bonfire.Social.Web.MastoStatusController, :unbookmark
+        post "/statuses/:id/pin", Bonfire.Social.Web.MastoStatusController, :pin
+        post "/statuses/:id/unpin", Bonfire.Social.Web.MastoStatusController, :unpin
 
         # Notifications
         post "/notifications/clear",

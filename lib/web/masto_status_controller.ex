@@ -94,5 +94,21 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       %{"id" => id}
       |> then(&Adapter.unbookmark_status(&1, conn))
     end
+
+    @doc "Pin a status to profile"
+    def pin(conn, %{"id" => id} = params) do
+      debug(params, "POST /api/v1/statuses/#{id}/pin")
+
+      %{"id" => id}
+      |> then(&Adapter.pin_status(&1, conn))
+    end
+
+    @doc "Unpin a status from profile"
+    def unpin(conn, %{"id" => id} = params) do
+      debug(params, "POST /api/v1/statuses/#{id}/unpin")
+
+      %{"id" => id}
+      |> then(&Adapter.unpin_status(&1, conn))
+    end
   end
 end
