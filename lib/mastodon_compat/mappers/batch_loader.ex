@@ -17,8 +17,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     def preload_status_counts(users) when is_list(users) do
       Utils.maybe_apply(
-        Bonfire.Social.Posts.Counts,
-        :batch_load_for_users,
+        Bonfire.Posts,
+        :count_for_users,
         [users],
         fallback_return: %{}
       )
