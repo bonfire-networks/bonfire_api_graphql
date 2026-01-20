@@ -9,13 +9,35 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         # plug Oaskit.Plugs.SpecProvider, spec: Bonfire.API.MastoCompatible.Schema
       end
 
+      # Pipeline for authenticated routes that require email confirmation (Mastodon-compatible)
+      pipeline :require_confirmed do
+        plug Bonfire.OpenID.Plugs.RequireConfirmed
+      end
+
       # if Bonfire.Common.Extend.module_enabled?(Bonfire.OpenID.Plugs.Authorize) do
 
       IO.puts("Include Mastodon-compatible API routes...")
       # import Bonfire.OpenID.Plugs.Authorize
 
+      # Routes that work WITHOUT email confirmation (signup, lookup, resend confirmation)
       scope "/api/v1" do
         pipe_through([:basic_json, :masto_api, :load_authorization])
+
+        # Account registration - MUST work before email confirmation
+        post "/accounts", Bonfire.Me.Web.MastoSignupController, :create
+
+        # Account lookup by webfinger - allowed for unconfirmed accounts (to check username availability)
+        get "/accounts/lookup",
+            Bonfire.Me.Web.MastoAccountController,
+            :lookup
+
+        # Resend confirmation email
+        post "/emails/confirmations", Bonfire.Me.Web.MastoSignupController, :resend_confirmation
+      end
+
+      # Routes that REQUIRE email confirmation
+      scope "/api/v1" do
+        pipe_through([:basic_json, :masto_api, :load_authorization, :require_confirmed])
 
         # add here to override wrong priority order of routes
         get "/accounts/verify_credentials",
@@ -57,11 +79,6 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         get "/accounts/search",
             Bonfire.Me.Web.MastoAccountController,
             :search
-
-        # Account lookup by webfinger - MUST come before /accounts/:id
-        get "/accounts/lookup",
-            Bonfire.Me.Web.MastoAccountController,
-            :lookup
 
         get "/accounts/:id", Bonfire.Me.Web.MastoAccountController, :show
 
