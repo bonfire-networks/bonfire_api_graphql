@@ -19,6 +19,14 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
       IO.puts("Include Mastodon-compatible API routes...")
       # import Bonfire.OpenID.Plugs.Authorize
 
+      # Public routes (no auth required)
+      scope "/api/v1" do
+        pipe_through([:basic_json, :masto_api])
+
+        # App registration - used by clients to get client_id/secret before any user auth
+        post "/apps", Bonfire.API.MastoCompatible.AppController, :create
+      end
+
       # Routes that work WITHOUT email confirmation (signup, lookup, resend confirmation)
       scope "/api/v1" do
         pipe_through([:basic_json, :masto_api, :load_authorization])
@@ -88,8 +96,6 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
         get "/instance", Bonfire.API.MastoCompatible.InstanceController, :show
         get "/custom_emojis", Bonfire.API.MastoCompatible.InstanceController, :custom_emojis
-
-        post "/apps", Bonfire.API.MastoCompatible.AppController, :create
 
         # Status creation - must come before /statuses/:id routes
         post "/statuses", Bonfire.Posts.Web.MastoStatusController, :create
