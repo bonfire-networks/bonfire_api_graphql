@@ -221,6 +221,12 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         put "/media/:id", Bonfire.Files.Web.MastoMediaController, :update
         post "/media", Bonfire.Files.Web.MastoMediaController, :create
 
+        # Push subscription (web push notifications)
+        post "/push/subscription", Bonfire.Notify.Web.MastoPushController, :create
+        get "/push/subscription", Bonfire.Notify.Web.MastoPushController, :show
+        put "/push/subscription", Bonfire.Notify.Web.MastoPushController, :update
+        delete "/push/subscription", Bonfire.Notify.Web.MastoPushController, :delete
+
         # Reports - specific route before generic
         get "/reports/:id", Bonfire.Social.Web.MastoReportController, :show
         get "/reports", Bonfire.Social.Web.MastoReportController, :index
