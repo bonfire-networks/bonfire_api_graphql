@@ -93,6 +93,9 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
         {:error, :unauthorized} ->
           {401, %{"error" => "Unauthorized"}}
 
+        {:error, :forbidden} ->
+          {403, %{"error" => "Forbidden"}}
+
         {:error, :not_found} ->
           {404, %{"error" => "Not found"}}
 
@@ -103,10 +106,25 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
           {422, %{"error" => "Validation failed: You have already voted on this poll"}}
 
         {:error, reason} when is_binary(reason) ->
-          {400, %{"error" => reason}}
+          # Detect permission-related error strings and return 403 Forbidden
+          if String.contains?(String.downcase(reason), "permission") do
+            {403, %{"error" => "Forbidden"}}
+          else
+            {400, %{"error" => reason}}
+          end
 
         {:error, reason} when is_atom(reason) ->
           {400, %{"error" => Atom.to_string(reason)}}
+
+        # Handle Ecto Changeset errors (e.g., constraint violations, validation errors)
+        {:error, %Ecto.Changeset{} = changeset} ->
+          message = Bonfire.Common.Errors.error_msg(changeset)
+          # Treat constraint errors as "not found" for non-existent references
+          if String.contains?(message, "constraint") do
+            {404, %{"error" => "Record not found"}}
+          else
+            {422, %{"error" => "Validation failed: #{message}"}}
+          end
 
         # Handle GraphQL error lists
         [%{code: code} | _] = errors when is_list(errors) ->
@@ -142,9 +160,17 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
           {500, error_with_details}
       end
 
+    # Safely encode the error response, falling back to a simple error if encoding fails
+    body =
+      try do
+        Jason.encode!(error_response)
+      rescue
+        _ -> Jason.encode!(%{"error" => "Internal server error"})
+      end
+
     conn
     |> Plug.Conn.put_resp_content_type("application/json")
-    |> Plug.Conn.send_resp(status, Jason.encode!(error_response))
+    |> Plug.Conn.send_resp(status, body)
   end
 
   def transform_data(data, transform_fun) when is_function(transform_fun, 1) do

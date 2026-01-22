@@ -15,6 +15,22 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       |> then(&Adapter.show_status(&1, conn))
     end
 
+    @doc "Get the source (raw text) of a status for editing"
+    def source(conn, %{"id" => id} = params) do
+      debug(params, "GET /api/v1/statuses/#{id}/source")
+
+      %{"id" => id}
+      |> then(&Adapter.status_source(&1, conn))
+    end
+
+    @doc "Edit a status"
+    def update(conn, %{"id" => id} = params) do
+      debug(params, "PUT /api/v1/statuses/#{id}")
+
+      params
+      |> then(&Adapter.update_status(&1, conn))
+    end
+
     @doc "Delete a status"
     def delete(conn, %{"id" => id} = params) do
       debug(params, "DELETE /api/v1/statuses/#{id}")

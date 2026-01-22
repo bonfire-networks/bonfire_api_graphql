@@ -19,6 +19,12 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
       IO.puts("Include Mastodon-compatible API routes...")
       # import Bonfire.OpenID.Plugs.Authorize
 
+      # Health check endpoints (Kubernetes-style probes)
+      scope "/" do
+        get "/livez", Bonfire.API.MastoCompatible.HealthController, :livez
+        get "/readyz", Bonfire.API.MastoCompatible.HealthController, :readyz
+      end
+
       # Public routes (no auth required)
       scope "/api/v1" do
         pipe_through([:basic_json, :masto_api])
@@ -57,6 +63,10 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
               Bonfire.Me.Web.MastoAccountController,
               :update_credentials
 
+        # Markers - timeline position tracking (stub for client compatibility)
+        get "/markers", Bonfire.API.MastoCompatible.MarkersController, :index
+        post "/markers", Bonfire.API.MastoCompatible.MarkersController, :create
+
         # More specific routes must come BEFORE less specific ones
         get "/accounts/:id/statuses",
             Bonfire.Social.Web.MastoTimelineController,
@@ -88,6 +98,11 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
             Bonfire.Me.Web.MastoAccountController,
             :search
 
+        # Themes - MUST come before /accounts/:id (not implemented, return empty array)
+        get "/accounts/themes",
+            Bonfire.API.MastoCompatible.InstanceController,
+            :themes
+
         get "/accounts/:id", Bonfire.Me.Web.MastoAccountController, :show
 
         get "/preferences",
@@ -111,7 +126,10 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
             Bonfire.Social.Web.MastoStatusController,
             :reblogged_by
 
+        get "/statuses/:id/source", Bonfire.Social.Web.MastoStatusController, :source
+
         get "/statuses/:id", Bonfire.Social.Web.MastoStatusController, :show
+        put "/statuses/:id", Bonfire.Social.Web.MastoStatusController, :update
         delete "/statuses/:id", Bonfire.Social.Web.MastoStatusController, :delete
 
         # Status POST interactions
@@ -199,6 +217,11 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         post "/tags/:name/unfollow", Bonfire.Tag.Web.MastoTagController, :unfollow
         get "/tags/:name", Bonfire.Tag.Web.MastoTagController, :show
         get "/followed_tags", Bonfire.Tag.Web.MastoTagController, :followed
+
+        # Featured tags - pinned hashtags on user profile
+        get "/featured_tags", Bonfire.Tag.Web.MastoTagController, :featured
+        post "/featured_tags", Bonfire.Tag.Web.MastoTagController, :feature
+        delete "/featured_tags/:id", Bonfire.Tag.Web.MastoTagController, :unfeature
 
         # Polls - view and vote (specific routes before generic)
         post "/polls/:id/votes", Bonfire.Poll.Web.MastoPollController, :vote

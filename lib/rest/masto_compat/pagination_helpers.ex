@@ -116,7 +116,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     using the page_info cursors from GraphQL responses.
 
     ## Options
-    - `:cursor_field` - Field format for cursor encoding (default: {:activity, :id})
+    - `:cursor_field` - Field format for cursor encoding (default: :id)
 
     ## Examples
 
@@ -383,8 +383,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         validate_encoded_cursor(id)
       else
         # Plain ID - create cursor map matching Bonfire's cursor_fields format
-        # cursor_fields: [{{:activity, :id}, :desc}]
-        # cursor must be: %{{:activity, :id} => id}
+        # cursor_fields: [{:id, :desc}]
+        # cursor must be: %{id: id}
         encode_plain_id_cursor(id)
       end
     end
@@ -392,15 +392,31 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def encode_cursor_for_graphql(_), do: {:error, :invalid_cursor_format}
 
     @doc """
-    Validate that an already-encoded cursor can be decoded properly.
+    Validate and normalize an already-encoded cursor.
+
+    Normalizes cursor field names for backward compatibility:
+    - `{:activity, :id}` -> `:id` (old format)
     """
     def validate_encoded_cursor(cursor) do
       case Base.url_decode64(cursor) do
         {:ok, binary} ->
           # Try to decode the Erlang term to ensure it's valid
           try do
-            _term = :erlang.binary_to_term(binary, [:safe])
-            {:ok, cursor}
+            term = :erlang.binary_to_term(binary, [:safe])
+            # Normalize cursor field names for backward compatibility
+            normalized = normalize_cursor_fields(term)
+
+            if normalized != term do
+              # Re-encode with normalized field names
+              new_cursor =
+                normalized
+                |> :erlang.term_to_binary()
+                |> Base.url_encode64()
+
+              {:ok, new_cursor}
+            else
+              {:ok, cursor}
+            end
           rescue
             ArgumentError -> {:error, :invalid_erlang_term}
           end
@@ -410,16 +426,30 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       end
     end
 
+    # Normalize old cursor field formats to current format
+    defp normalize_cursor_fields(cursor) when is_map(cursor) do
+      cursor
+      |> Enum.map(fn
+        # Convert old {:activity, :id} format to just :id
+        {{:activity, :id}, value} -> {:id, value}
+        # Keep other fields as-is
+        other -> other
+      end)
+      |> Enum.into(%{})
+    end
+
+    defp normalize_cursor_fields(other), do: other
+
     @doc """
     Encode a plain ULID as a cursor.
 
     Creates a cursor map matching Bonfire's cursor_fields format:
-    `%{{:activity, :id} => id}`
+    `%{id: id}`
     """
     def encode_plain_id_cursor(id) do
       try do
         cursor =
-          %{{:activity, :id} => id}
+          %{id: id}
           |> :erlang.term_to_binary()
           |> Base.url_encode64()
 
@@ -499,11 +529,13 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       case get_field(page_info, :cursor_fields) do
         [{field, _direction} | _] -> field
         [field | _] when is_atom(field) or is_tuple(field) -> field
-        _ -> {:activity, :id}
+        # Default to :id to match FeedLoader's cursor_fields: [id: :desc]
+        _ -> :id
       end
     end
 
-    defp extract_cursor_field(_), do: {:activity, :id}
+    # Default to :id to match FeedLoader's cursor_fields: [id: :desc]
+    defp extract_cursor_field(_), do: :id
 
     defp get_field(map, key) when is_map(map) do
       Map.get(map, key) || Map.get(map, to_string(key))

@@ -27,4 +27,15 @@ defmodule Bonfire.API.MastoCompatible.InstanceController do
   def custom_emojis(conn, _params) do
     json(conn, InstanceAdapter.custom_emojis())
   end
+
+  @doc """
+  Returns available CSS themes for the web UI.
+  GET /api/v1/accounts/themes
+
+  Bonfire uses Tailwind/DaisyUI with dynamic theming, so we return an empty array
+  since client apps don't need this for their own styling.
+  """
+  def themes(conn, _params) do
+    json(conn, [])
+  end
 end
