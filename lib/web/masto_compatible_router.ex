@@ -269,6 +269,14 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         post "/media", Bonfire.Files.Web.MastoMediaController, :create_v2
       end
 
+      scope "/api/bonfire-v1" do
+        pipe_through([:basic_json, :masto_api, :load_authorization])
+
+        get "/locations", Bonfire.Geolocate.Web.MastoLocationsController, :index
+        get "/locations/:id", Bonfire.Geolocate.Web.MastoLocationsController, :show
+        # add custom endpoints here
+      end
+
       # scope "/" do
       # pipe_through([:basic_json, :load_authorization])
       # require Apical
