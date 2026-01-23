@@ -63,6 +63,15 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
               Bonfire.Me.Web.MastoAccountController,
               :update_credentials
 
+        # Account deletion and migration
+        post "/accounts/delete", Bonfire.Me.Web.MastoAccountController, :delete_account
+        post "/accounts/alias", Bonfire.Me.Web.MastoAccountController, :alias_account
+        post "/accounts/move", Bonfire.Me.Web.MastoAccountController, :move_account
+
+        # Profile image deletion
+        delete "/profile/avatar", Bonfire.Me.Web.MastoAccountController, :delete_avatar
+        delete "/profile/header", Bonfire.Me.Web.MastoAccountController, :delete_header
+
         # Markers - timeline position tracking (stub for client compatibility)
         get "/markers", Bonfire.API.MastoCompatible.MarkersController, :index
         post "/markers", Bonfire.API.MastoCompatible.MarkersController, :create
@@ -79,6 +88,16 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         get "/accounts/:id/following",
             Bonfire.Me.Web.MastoAccountController,
             :following
+
+        # Account featured tags - get pinned hashtags for any account
+        get "/accounts/:id/featured_tags",
+            Bonfire.Tag.Web.MastoTagController,
+            :account_featured_tags
+
+        # Account lists - get lists containing an account
+        get "/accounts/:id/lists",
+            Bonfire.Boundaries.Web.MastoListController,
+            :account_lists
 
         # Account actions - follow/unfollow/mute/unmute/block/unblock
         post "/accounts/:id/follow", Bonfire.Me.Web.MastoAccountController, :follow

@@ -57,5 +57,16 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     # Suggestions endpoint (v2)
     def suggestions(conn, params), do: Adapter.suggestions(params, conn)
+
+    # Profile image deletion endpoints
+    def delete_avatar(conn, params), do: Adapter.delete_avatar(params, conn)
+    def delete_header(conn, params), do: Adapter.delete_header(params, conn)
+
+    # Account deletion endpoint
+    def delete_account(conn, params), do: Adapter.delete_account(params, conn)
+
+    # Account migration endpoints
+    def alias_account(conn, params), do: Adapter.alias_account(params, conn)
+    def move_account(conn, params), do: Adapter.move_account(params, conn)
   end
 end

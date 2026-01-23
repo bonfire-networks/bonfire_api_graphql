@@ -49,6 +49,31 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     def from_hashtag(_, _opts), do: nil
 
+    @doc """
+    Transform a Bonfire Hashtag to a Mastodon FeaturedTag.
+
+    FeaturedTag has additional fields:
+    - `statuses_count` - Number of statuses with this hashtag by the user (not implemented)
+    - `last_status_at` - Date of last status with this hashtag (not implemented)
+    """
+    def from_featured_hashtag(hashtag) when is_map(hashtag) do
+      name = extract_name(hashtag)
+
+      if name do
+        %{
+          "id" => extract_id(hashtag),
+          "name" => name,
+          "url" => build_tag_url(name),
+          "statuses_count" => 0,
+          "last_status_at" => nil
+        }
+      else
+        nil
+      end
+    end
+
+    def from_featured_hashtag(_), do: nil
+
     defp extract_name(hashtag) do
       e(hashtag, :named, :name, nil) ||
         e(hashtag, :name, nil)
