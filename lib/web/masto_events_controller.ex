@@ -19,8 +19,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     """
     def events_timeline(conn, params) do
       debug(params, "GET /api/bonfire-v1/timelines/events")
-      events = EventsAdapter.list_events(params, conn)
-      json(conn, events)
+      # feed_by_name returns conn with response already sent
+      EventsAdapter.list_events(params, conn)
     end
 
     @doc """
@@ -30,8 +30,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     """
     def user_events(conn, %{"id" => user_id} = params) do
       debug({user_id, params}, "GET /api/bonfire-v1/accounts/:id/events")
-      events = EventsAdapter.list_user_events(user_id, params, conn)
-      json(conn, events)
+      # feed_by_name returns conn with response already sent
+      EventsAdapter.list_user_events(user_id, params, conn)
     end
 
     @doc """

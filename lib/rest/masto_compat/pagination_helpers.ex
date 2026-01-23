@@ -298,21 +298,43 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         iex> build_feed_params(%{"limit" => "10", "max_id" => "abc"}, %{"feed_name" => "my"})
         %{filter: %{"feed_name" => "my", "time_limit" => 0}, after: "encoded...", first: 10}
     """
-    def build_feed_params(params, filter, opts \\ []) do
+    @pagination_keys [
+      "limit",
+      "max_id",
+      "min_id",
+      "since_id",
+      :limit,
+      :max_id,
+      :min_id,
+      :since_id
+    ]
+
+    def build_feed_params(params, filters, opts \\ []) do
       default_limit = Keyword.get(opts, :default_limit, 20)
       max_limit = Keyword.get(opts, :max_limit, 40)
 
+      # Get valid feed filter keys (atom and string versions)
+      valid_filter_keys = Bonfire.Social.API.GraphQL.feed_filter_keys()
+      # valid_filter_keys ++ 
+      valid_filter_keys =
+        Enum.map(valid_filter_keys, &to_string/1)
+
+      # Extract pagination params and valid filter params separately
+      {params, extra_filters} = Map.split(params, @pagination_keys)
+
       # Build filter without pagination cursors (cursors are top-level GraphQL args, not filters)
-      filter_without_pagination =
-        filter
+      filters_without_pagination =
+        filters
+        |> Map.merge(extra_filters)
+        |> Map.take(valid_filter_keys)
         # Disable Bonfire's default 1-month time limit for Mastodon API
-        |> Map.put("time_limit", 0)
+        |> Map.put_new("time_limit", 0)
 
       # Extract pagination cursors first to determine direction
       cursors = extract_pagination_cursors(params)
 
       # Atomize pagination keys because pagination_args_filter expects atom keys
-      %{"filter" => filter_without_pagination}
+      %{"filter" => filters_without_pagination}
       # Merge cursors at top level
       |> Map.merge(cursors)
       # Pass cursors to determine first vs last
