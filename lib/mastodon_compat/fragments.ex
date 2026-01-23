@@ -74,7 +74,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         verb
       }
       subject {
-        #{@user_profile}
+        ... on User {
+          #{@user_profile}
+        }
       }
     """
 
@@ -119,7 +121,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         verb
       }
       subject {
-        #{@user_profile}
+        ... on User {
+          #{@user_profile}
+        }
       }
       object {
         ... on Post {
