@@ -1,5 +1,6 @@
 if Application.compile_env(:bonfire_social, :modularity) != :disabled do
   defmodule Bonfire.Social.Web.MastoReportController do
+    # TODO: move to extension
     @moduledoc """
     Mastodon-compatible Reports endpoints.
 

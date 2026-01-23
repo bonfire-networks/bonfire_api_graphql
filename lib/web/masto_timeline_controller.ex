@@ -1,5 +1,6 @@
 if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
   defmodule Bonfire.Social.Web.MastoTimelineController do
+    # TODO: move to extension
     @moduledoc """
     Mastodon-compatible timeline endpoints.
 
@@ -15,9 +16,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     @doc "Home timeline for authenticated user"
     def home(conn, params) do
-      params
-      |> PaginationHelpers.build_feed_params(%{"feed_name" => "my"})
-      |> then(&Adapter.feed(&1, conn))
+      feed_by_name(conn, "my", params)
     end
 
     @doc "Public/federated timeline with optional local filter"
@@ -25,15 +24,17 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       # Mastodon API convention: ?local=true for local-only, otherwise federated
       feed_name = if params["local"] == "true", do: "local", else: "explore"
 
-      params
-      |> PaginationHelpers.build_feed_params(%{"feed_name" => feed_name})
-      |> then(&Adapter.feed(&1, conn))
+      feed_by_name(conn, feed_name, params)
     end
 
     @doc "Local timeline - shows only local instance activities"
     def local(conn, params) do
+      feed_by_name(conn, "local", params)
+    end
+
+    def feed_by_name(conn, feed_name, params) do
       params
-      |> PaginationHelpers.build_feed_params(%{"feed_name" => "local"})
+      |> PaginationHelpers.build_feed_params(%{"feed_name" => feed_name})
       |> then(&Adapter.feed(&1, conn))
     end
 
@@ -54,10 +55,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     @doc "Named timeline (public, local, etc.)"
-    def timeline(conn, %{"feed" => feed} = params) do
-      params
-      |> PaginationHelpers.build_feed_params(%{"feed_name" => feed})
-      |> then(&Adapter.feed(&1, conn))
+    def timeline(conn, %{"feed" => feed_name} = params) do
+      feed_by_name(conn, feed_name, params)
     end
 
     @doc "List timeline - shows posts from accounts in a list"

@@ -1,6 +1,7 @@
 if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
   defmodule Bonfire.Me.Web.MastoAccountController do
     @moduledoc "Mastodon-compatible Account endpoints (users, profiles, relationships)"
+    # TODO: move to extension
 
     use Bonfire.UI.Common.Web, :controller
 

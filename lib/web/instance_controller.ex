@@ -1,6 +1,7 @@
 defmodule Bonfire.API.MastoCompatible.InstanceController do
   use Bonfire.UI.Common.Web, :controller
   use Bonfire.Common.Config
+  # TODO: move to extension
 
   alias Bonfire.API.MastoCompatible.InstanceAdapter
 

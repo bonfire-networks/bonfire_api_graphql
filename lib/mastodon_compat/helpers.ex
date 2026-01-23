@@ -7,6 +7,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     extract and transform data from Bonfire structures to Mastodon format.
     """
     import Untangle
+    alias Bonfire.Common.Types
 
     @doc """
     Safely get a field from a map or struct, handling nil and NotLoaded associations.
@@ -40,6 +41,21 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         %Ecto.Association.NotLoaded{} -> nil
         nil -> Map.get(map, Atom.to_string(key))
         value -> value
+      end
+    end
+
+    def get_field(map, key) when is_map(map) and is_binary(key) do
+      case Map.get(map, key) do
+        %Ecto.Association.NotLoaded{} ->
+          nil
+
+        nil ->
+          if key = Types.maybe_to_atom(key) do
+            Map.get(map, key)
+          end
+
+        value ->
+          value
       end
     end
 

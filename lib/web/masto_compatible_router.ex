@@ -272,6 +272,10 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
       scope "/api/bonfire-v1" do
         pipe_through([:basic_json, :masto_api, :load_authorization])
 
+        get "/timelines/events", Bonfire.Social.Events.MastoEventsController, :events_timeline
+        get "/accounts/:id/events", Bonfire.Social.Events.MastoEventsController, :user_events
+        get "/events/:id", Bonfire.Social.Events.MastoEventsController, :show
+
         get "/locations", Bonfire.Geolocate.Web.MastoLocationsController, :index
         get "/locations/:id", Bonfire.Geolocate.Web.MastoLocationsController, :show
         # add custom endpoints here

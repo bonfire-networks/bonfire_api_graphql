@@ -52,16 +52,22 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     def from_activity(activity, opts \\ []) do
       activity = Activities.prepare_subject_and_creator(activity, opts)
-      context = build_activity_context(activity, opts)
 
-      status =
-        if is_boost_activity?(context) do
-          build_boost_status(context, opts)
-        else
-          build_regular_status(context, opts)
-        end
+      # Check if this is an event activity
+      if is_event_activity?(activity) do
+        Bonfire.Social.Events.API.GraphQLMasto.EventsAdapter.build_event_status(activity, opts)
+      else
+        context = build_activity_context(activity, opts)
 
-      Helpers.validate_and_return(status, Schemas.Status)
+        status =
+          if is_boost_activity?(context) do
+            build_boost_status(context, opts)
+          else
+            build_regular_status(context, opts)
+          end
+
+        Helpers.validate_and_return(status, Schemas.Status)
+      end
     end
 
     @doc """
@@ -177,7 +183,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       })
     end
 
-    defp build_regular_status(context, opts) do
+    def build_regular_status(context, opts) do
       account = extract_account(context, opts)
       content_data = extract_content(context)
       media_attachments = Mappers.MediaAttachment.from_media_list(context[:media])
@@ -381,5 +387,29 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     defp strip_html_tags(_), do: ""
+
+    # Event detection and handling
+
+    defp is_event_activity?(activity) do
+      object = get_field(activity, :object)
+      typename = get_field(object, :__typename)
+
+      if typename == "Other" do
+        get_field(object, :json)
+        |> is_event_json?()
+      else
+        false
+      end
+    end
+
+    defp is_event_json?(json) when is_map(json) do
+      case json do
+        %{"object" => %{"type" => "Event"}} -> true
+        %{"type" => "Event"} -> true
+        _ -> false
+      end
+    end
+
+    defp is_event_json?(_), do: false
   end
 end
