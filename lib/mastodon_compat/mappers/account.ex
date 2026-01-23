@@ -108,8 +108,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
             get_field(peered, [:canonical_uri, "canonical_uri"]) ||
             compute_canonical_url(user, character)
 
-        avatar = extract_media_url(profile, [:avatar, "avatar", :icon, "icon"])
-        header = extract_media_url(profile, [:header, "header", :image, "image"])
+        avatar = extract_media_url(profile, [:avatar, "avatar", :icon, "icon"]) || default_avatar()
+        header = extract_media_url(profile, [:header, "header", :image, "image"]) || default_header()
         created_at = extract_created_at(user)
         {statuses_count, followers_count, following_count} = compute_stats(user, opts)
         indexable = Bonfire.Common.Extend.module_enabled?(Bonfire.Search.Indexer, user)
@@ -128,10 +128,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           "note" => note_html,
           "url" => url || "",
           "uri" => url,
-          "avatar" => avatar || "",
-          "avatar_static" => avatar || "",
-          "header" => header || "",
-          "header_static" => header || "",
+          "avatar" => avatar,
+          "avatar_static" => avatar,
+          "header" => header,
+          "header_static" => header,
           "created_at" => created_at,
           "statuses_count" => statuses_count,
           "followers_count" => followers_count,
@@ -345,8 +345,17 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         "attribution_domains" => [],
         "privacy" => "public",
         "sensitive" => false,
-        "language" => ""
+        "language" => "",
+        "fields" => []
       }
+    end
+
+    defp default_avatar do
+      Bonfire.Common.URIs.base_url() <> "/images/avatar.png"
+    end
+
+    defp default_header do
+      Bonfire.Common.URIs.base_url() <> "/images/bonfire-icon.png"
     end
   end
 end
