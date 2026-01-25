@@ -108,8 +108,12 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
             get_field(peered, [:canonical_uri, "canonical_uri"]) ||
             compute_canonical_url(user, character)
 
-        avatar = extract_media_url(profile, [:avatar, "avatar", :icon, "icon"]) || default_avatar()
-        header = extract_media_url(profile, [:header, "header", :image, "image"]) || default_header()
+        avatar =
+          extract_media_url(profile, [:avatar, "avatar", :icon, "icon"]) || default_avatar()
+
+        header =
+          extract_media_url(profile, [:header, "header", :image, "image"]) || default_header()
+
         created_at = extract_created_at(user)
         {statuses_count, followers_count, following_count} = compute_stats(user, opts)
         indexable = Bonfire.Common.Extend.module_enabled?(Bonfire.Search.Indexer, user)
@@ -204,15 +208,32 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp do_extract_media_url(url) when is_binary(url), do: url
 
     defp do_extract_media_url(media) when is_struct(media) do
-      Map.get(media, :path) || Map.get(media, :url)
+      case Map.get(media, :path) || Map.get(media, :url) do
+        url when is_binary(url) -> url
+        _ -> build_url_from_file(media)
+      end
     end
 
     defp do_extract_media_url(media) when is_map(media) do
-      Map.get(media, :path) || Map.get(media, :url) ||
-        Map.get(media, "path") || Map.get(media, "url")
+      case Map.get(media, :path) || Map.get(media, :url) ||
+             Map.get(media, "path") || Map.get(media, "url") do
+        url when is_binary(url) -> url
+        _ -> build_url_from_file(media)
+      end
     end
 
     defp do_extract_media_url(_), do: nil
+
+    defp build_url_from_file(media) do
+      case e(media, :file, :file_name, nil) do
+        name when is_binary(name) ->
+          # Use full_url to return absolute URLs for Mastodon API clients
+          Bonfire.Files.full_url(nil, media)
+
+        _ ->
+          nil
+      end
+    end
 
     defp extract_created_at(user) do
       case get_field(user, [:created_at, "created_at"]) do
