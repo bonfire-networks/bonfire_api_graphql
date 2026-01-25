@@ -108,8 +108,12 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
             get_field(peered, [:canonical_uri, "canonical_uri"]) ||
             compute_canonical_url(user, character)
 
-        avatar = extract_media_url(profile, [:avatar, "avatar", :icon, "icon"]) || default_avatar()
-        header = extract_media_url(profile, [:header, "header", :image, "image"]) || default_header()
+        avatar =
+          extract_media_url(profile, [:avatar, "avatar", :icon, "icon"]) || default_avatar()
+
+        header =
+          extract_media_url(profile, [:header, "header", :image, "image"]) || default_header()
+
         created_at = extract_created_at(user)
         {statuses_count, followers_count, following_count} = compute_stats(user, opts)
         indexable = Bonfire.Common.Extend.module_enabled?(Bonfire.Search.Indexer, user)
