@@ -3,22 +3,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     @moduledoc """
     Maps Bonfire User objects to Mastodon Account format.
 
-    This module is the single source of truth for transforming Bonfire users
-    into Mastodon-compatible account objects. It handles:
-    - Field extraction from both GraphQL responses (aliased names) and Ecto structs (schema names)
-    - Stats computation (with options to skip or use preloaded values)
-    - Building the final flat Mastodon account structure
-
-    ## Usage
-
-        # Basic account transformation
-        Mappers.Account.from_user(user)
-
-        # Skip expensive stats for list endpoints
-        Mappers.Account.from_user(user, skip_expensive_stats: true)
-
-        # Use preloaded stats (batch loading optimization)
-        Mappers.Account.from_user(user, follow_counts: %{followers: 10, following: 5}, status_count: 42)
+    Pass `skip_expensive_stats: true` for list endpoints, or provide preloaded
+    counts via `follow_counts` and `status_count` opts.
     """
 
     use Bonfire.Common.Utils
@@ -166,6 +152,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         get_field(profile, [:id, "id"])
     end
 
+    # Differs from Helpers.get_field/2: also treats "" as nil for account field extraction
     defp get_field(nil, _keys), do: nil
     defp get_field(_map, []), do: nil
 
@@ -199,40 +186,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp extract_nested(_, _), do: %{}
 
     defp extract_media_url(map, keys) do
-      media = get_field(map, keys)
-      do_extract_media_url(media)
-    end
-
-    defp do_extract_media_url(nil), do: nil
-    defp do_extract_media_url(%Ecto.Association.NotLoaded{}), do: nil
-    defp do_extract_media_url(url) when is_binary(url), do: url
-
-    defp do_extract_media_url(media) when is_struct(media) do
-      case Map.get(media, :path) || Map.get(media, :url) do
-        url when is_binary(url) -> url
-        _ -> build_url_from_file(media)
-      end
-    end
-
-    defp do_extract_media_url(media) when is_map(media) do
-      case Map.get(media, :path) || Map.get(media, :url) ||
-             Map.get(media, "path") || Map.get(media, "url") do
-        url when is_binary(url) -> url
-        _ -> build_url_from_file(media)
-      end
-    end
-
-    defp do_extract_media_url(_), do: nil
-
-    defp build_url_from_file(media) do
-      case e(media, :file, :file_name, nil) do
-        name when is_binary(name) ->
-          # Use full_url to return absolute URLs for Mastodon API clients
-          Bonfire.Files.full_url(nil, media)
-
-        _ ->
-          nil
-      end
+      get_field(map, keys)
+      |> Bonfire.API.MastoCompat.Helpers.resolve_media_url()
     end
 
     defp extract_created_at(user) do
@@ -289,26 +244,24 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     defp get_followers_count(user) do
-      user_id = Bonfire.Common.Types.uid(user)
-
-      if user_id do
-        user
-        |> Bonfire.Common.Repo.maybe_preload(:follow_count, follow_pointers: false)
-        |> e(:follow_count, :object_count, 0)
-      else
-        0
+      case get_follow_count(user) do
+        %{object_count: count} when is_integer(count) -> count
+        _ -> 0
       end
     end
 
     defp get_following_count(user) do
+      case get_follow_count(user) do
+        %{subject_count: count} when is_integer(count) -> count
+        _ -> 0
+      end
+    end
+
+    defp get_follow_count(user) do
       user_id = Bonfire.Common.Types.uid(user)
 
       if user_id do
-        user
-        |> Bonfire.Common.Repo.maybe_preload(:follow_count, follow_pointers: false)
-        |> e(:follow_count, :subject_count, 0)
-      else
-        0
+        Bonfire.Common.Repo.get(Bonfire.Data.Social.FollowCount, user_id)
       end
     end
 

@@ -16,7 +16,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
       # if Bonfire.Common.Extend.module_enabled?(Bonfire.OpenID.Plugs.Authorize) do
 
-      IO.puts("Include Mastodon-compatible API routes...")
+      # Mastodon-compatible API routes
       # import Bonfire.OpenID.Plugs.Authorize
 
       # Health check endpoints (Kubernetes-style probes)
@@ -214,7 +214,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
              Bonfire.Messages.Web.MastoConversationController,
              :mark_read
 
-        # TODO: delete "/conversations/:id", Bonfire.Messages.Web.MastoConversationController, :delete
+        delete "/conversations/:id", Bonfire.Messages.Web.MastoConversationController, :delete
         get "/conversations", Bonfire.Messages.Web.MastoConversationController, :index
 
         # Lists - specific routes before generic
@@ -286,6 +286,9 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
         # Media upload (async - returns 202 Accepted)
         post "/media", Bonfire.Files.Web.MastoMediaController, :create_v2
+
+        # Notifications (proxied to v1 handler for now; grouped format is a follow-up)
+        get "/notifications", Bonfire.Social.Web.MastoTimelineController, :notifications
       end
 
       scope "/api/bonfire-v1" do

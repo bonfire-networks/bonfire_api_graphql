@@ -1,67 +1,14 @@
 if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
   defmodule Bonfire.API.MastoCompat.InteractionHandler do
-    @moduledoc """
-    Handles user interactions with statuses (like/unlike/boost/unboost).
-
-    This module consolidates the common pattern for interaction mutations:
-    1. Check authorization
-    2. Perform the interaction via Bonfire context
-    3. Fetch the updated activity with proper preloads
-    4. Transform to Mastodon Status format
-    5. Set the appropriate interaction flag
-
-    Previously, this pattern was duplicated across 4 functions (~178 lines).
-    Now it's a single reusable function.
-
-    ## Usage
-
-        # Like a status
-        InteractionHandler.handle_interaction(
-          conn,
-          id,
-          interaction_type: :like,
-          context_fn: &Bonfire.Social.Likes.like/2,
-          flag: "favourited",
-          flag_value: true
-        )
-
-        # Boost a status
-        InteractionHandler.handle_interaction(
-          conn,
-          id,
-          interaction_type: :boost,
-          context_fn: &Bonfire.Social.Boosts.boost/2,
-          flag: "reblogged",
-          flag_value: true
-        )
-    """
+    @moduledoc "Common handler for status interactions (like/unlike/boost/unboost/bookmark)."
 
     use Bonfire.Common.Utils
     import Untangle
 
-    alias Bonfire.API.MastoCompat.{Mappers, Helpers}
+    alias Bonfire.API.MastoCompat.{Mappers, Schemas, Helpers}
     alias Bonfire.API.GraphQL.RestAdapter
 
-    @doc """
-    Common handler for all status interactions.
-
-    ## Options
-
-    - `:interaction_type` - Type of interaction (for logging): :like, :unlike, :boost, :unboost
-    - `:context_fn` - The Bonfire context function to call (e.g., &Bonfire.Social.Likes.like/2)
-    - `:flag` - The Mastodon status flag to set: "favourited" or "reblogged"
-    - `:flag_value` - Value to set for the flag: true or false
-
-    ## Examples
-
-        iex> handle_interaction(conn, "123",
-        ...>   interaction_type: :like,
-        ...>   context_fn: &Bonfire.Social.Likes.like/2,
-        ...>   flag: "favourited",
-        ...>   flag_value: true
-        ...> )
-        %Plug.Conn{...}
-    """
+    @doc "Perform an interaction and return the updated status. Opts: :interaction_type, :context_fn, :flag, :flag_value."
     def handle_interaction(conn, id, opts) do
       interaction_type = Keyword.fetch!(opts, :interaction_type)
       context_fn = Keyword.fetch!(opts, :context_fn)
@@ -85,8 +32,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       end
     end
 
-    # Private functions
-
     defp perform_interaction(
            conn,
            current_user,
@@ -97,9 +42,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
            flag_value
          ) do
       case context_fn.(current_user, id) do
-        {:ok, _result} ->
-          debug(id, "#{interaction_type} completed successfully")
-          fetch_and_respond(conn, current_user, id, interaction_type, flag, flag_value)
+        {:ok, result} ->
+          fetch_and_respond(conn, current_user, id, interaction_type, flag, flag_value, result)
 
         {:error, reason} ->
           error(reason, "#{interaction_type} error")
@@ -107,8 +51,15 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       end
     end
 
-    defp fetch_and_respond(conn, current_user, id, interaction_type, flag, flag_value) do
-      # Use Objects.read which properly fetches objects with their activity context
+    defp fetch_and_respond(
+           conn,
+           current_user,
+           id,
+           interaction_type,
+           flag,
+           flag_value,
+           interaction_result
+         ) do
       opts = [
         current_user: current_user,
         preload: [
@@ -123,46 +74,39 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
       case Bonfire.Social.Objects.read(id, opts) do
         {:ok, object} ->
-          debug(object, "Fetched object after #{interaction_type}")
-
-          # Objects.read returns a Post/Object with activity associations,
-          # so use from_post which knows how to extract activity data from the object
           case Mappers.Status.from_post(object, current_user: current_user) do
             nil ->
-              # Mapper returned nil (validation failed)
-              error("from_post returned nil", "Failed to map object after #{interaction_type}")
               RestAdapter.error_fn({:error, :not_found}, conn)
 
             status ->
               prepared =
-                status
-                |> Map.put(flag, flag_value)
+                if interaction_type in [:boost, :unboost] do
+                  wrap_as_boost(status, current_user, interaction_result, flag_value)
+                else
+                  Map.put(status, flag, flag_value)
+                end
                 |> Helpers.deep_struct_to_map()
 
               Phoenix.Controller.json(conn, prepared)
           end
 
         {:error, reason} ->
-          error(reason, "Failed to fetch object after #{interaction_type}")
           RestAdapter.error_fn({:error, reason}, conn)
       end
     end
 
-    @doc """
-    Helper to get preload options for activity fetching.
-    Exposed for testing and consistency.
-    """
-    def activity_preload_opts do
-      [
-        preload: [
-          :with_subject,
-          :with_creator,
-          :with_media,
-          :with_object_more,
-          :with_object_peered,
-          :with_reply_to
-        ]
-      ]
+    defp wrap_as_boost(original_status, current_user, boost_result, reblogged) do
+      booster_account = Mappers.Account.from_user(current_user, skip_expensive_stats: true)
+      boost_id = Helpers.get_field(boost_result, :id)
+
+      Schemas.Status.new(%{
+        "id" => boost_id || original_status["id"],
+        "created_at" => DateTime.utc_now() |> DateTime.to_iso8601(),
+        "account" => booster_account,
+        "content" => "",
+        "reblog" => Map.put(original_status, "reblogged", reblogged),
+        "reblogged" => reblogged
+      })
     end
   end
 end
