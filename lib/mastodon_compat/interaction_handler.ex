@@ -41,13 +41,19 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
            flag,
            flag_value
          ) do
-      case context_fn.(current_user, id) do
-        {:ok, result} ->
-          fetch_and_respond(conn, current_user, id, interaction_type, flag, flag_value, result)
+      try do
+        case context_fn.(current_user, id) do
+          {:ok, result} ->
+            fetch_and_respond(conn, current_user, id, interaction_type, flag, flag_value, result)
 
-        {:error, reason} ->
-          error(reason, "#{interaction_type} error")
-          RestAdapter.error_fn({:error, reason}, conn)
+          {:error, reason} ->
+            error(reason, "#{interaction_type} error")
+            RestAdapter.error_fn({:error, reason}, conn)
+        end
+      rescue
+        e ->
+          error(e, "#{interaction_type} error")
+          RestAdapter.error_fn({:error, :not_found}, conn)
       end
     end
 
