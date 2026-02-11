@@ -274,6 +274,9 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         put "/push/subscription", Bonfire.Notify.Web.MastoPushController, :update
         delete "/push/subscription", Bonfire.Notify.Web.MastoPushController, :delete
 
+        # TODO: SSE streaming for real-time notifications
+        # get "/streaming", Bonfire.Notify.Web.MastoStreamingController, :stream
+
         # Reports - specific route before generic
         get "/reports/:id", Bonfire.Social.Web.MastoReportController, :show
         get "/reports", Bonfire.Social.Web.MastoReportController, :index
