@@ -37,6 +37,11 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
       scope "/api/v1" do
         pipe_through([:basic_json, :masto_api, :load_authorization])
 
+        # Verify app credentials - returns the Application entity for the token's OAuth app
+        get "/apps/verify_credentials",
+            Bonfire.API.MastoCompatible.AppController,
+            :verify_credentials
+
         # Account registration - MUST work before email confirmation
         post "/accounts", Bonfire.Me.Web.MastoSignupController, :create
 
