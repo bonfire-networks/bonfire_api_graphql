@@ -199,7 +199,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           Bonfire.Common.URIs.based_url(url)
 
         _ ->
-          case Bonfire.Common.Media.image_url(user) do
+          # Use banner_url (not image_url which can return icon/avatar for federated users)
+          case Bonfire.Common.Media.banner_url(user) do
             url when is_binary(url) and url != "" ->
               Bonfire.Common.URIs.based_url(url)
 
