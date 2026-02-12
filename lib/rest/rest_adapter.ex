@@ -126,26 +126,13 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
             {422, %{"error" => "Validation failed: #{message}"}}
           end
 
-        # Handle GraphQL error lists
-        [%{code: code} | _] = errors when is_list(errors) ->
-          status =
-            case code do
-              :unauthorized -> 401
-              :not_found -> 404
-              _ -> 400
-            end
+        # Handle wrapped GraphQL error lists (from adapter calls like error_fn({:error, errors}, conn))
+        {:error, [_ | _] = errors} ->
+          graphql_error_response(errors)
 
-          first_error = List.first(errors)
-          base_error = %{"error" => first_error[:message] || "GraphQL error"}
-          # Only include details in dev/test environments for security
-          error_with_details =
-            if Config.env() in [:dev, :test] do
-              Map.put(base_error, "details", transform_data(errors))
-            else
-              base_error
-            end
-
-          {status, error_with_details}
+        # Handle direct GraphQL error lists (from transform_response path)
+        [_ | _] = errors ->
+          graphql_error_response(errors)
 
         other ->
           base_error = %{"error" => "Internal server error"}
@@ -171,6 +158,41 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
     conn
     |> Plug.Conn.put_resp_content_type("application/json")
     |> Plug.Conn.send_resp(status, body)
+  end
+
+  defp graphql_error_response(errors) when is_list(errors) do
+    first_error = List.first(errors) || %{}
+    code = first_error[:code]
+
+    status =
+      case code do
+        :unauthorized -> 401
+        :not_found -> 404
+        :forbidden -> 403
+        _ -> 400
+      end
+
+    message = first_error[:message] || "Request failed"
+
+    # Detect auth-related messages even without a :code key
+    status =
+      if status == 400 and is_binary(message) and
+           String.contains?(String.downcase(message), ["log in", "logged in", "unauthorized"]) do
+        401
+      else
+        status
+      end
+
+    base_error = %{"error" => message}
+
+    error_with_details =
+      if Config.env() in [:dev, :test] do
+        Map.put(base_error, "details", transform_data(errors))
+      else
+        base_error
+      end
+
+    {status, error_with_details}
   end
 
   def transform_data(data, transform_fun) when is_function(transform_fun, 1) do

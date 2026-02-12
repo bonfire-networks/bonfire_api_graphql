@@ -207,7 +207,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           "favourites_count" => context[:like_count] || 0,
           "reblogs_count" => context[:boost_count] || 0,
           "replies_count" => context[:replies_count] || 0,
-          "visibility" => map_visibility(opts),
+          "visibility" => map_visibility(object_id, opts),
           "sensitive" => false
         })
 
@@ -340,10 +340,67 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       end
     end
 
-    # TODO: Full boundary mapping would require checking Bonfire ACLs
-    defp map_visibility(opts) do
-      if Keyword.get(opts, :for_conversation, false), do: "direct", else: "public"
+    defp map_visibility(object_id, opts) do
+      cond do
+        Keyword.get(opts, :for_conversation, false) ->
+          "direct"
+
+        is_nil(object_id) ->
+          "public"
+
+        true ->
+          # Check batch-loaded data first, fall back to individual query
+          visibility_by_object = Keyword.get(opts, :visibility_by_object, %{})
+
+          acl_ids =
+            Map.get(visibility_by_object, object_id) ||
+              Bonfire.Boundaries.Controlleds.list_preset_acl_ids_on_object(object_id)
+
+          # For private vs direct distinction, check followers grants
+          followers_grant_objects = Keyword.get(opts, :followers_grant_objects, nil)
+
+          acl_ids_to_visibility(acl_ids, object_id, followers_grant_objects)
+      end
     end
+
+    defp acl_ids_to_visibility(acl_ids, object_id, followers_grant_objects)
+         when is_struct(acl_ids, MapSet) do
+      if MapSet.size(acl_ids) == 0 do
+        # No preset ACLs = mentions-only or followers-only
+        # Check if the object has a grant to the followers circle to distinguish
+        has_followers =
+          cond do
+            is_struct(followers_grant_objects, MapSet) ->
+              MapSet.member?(followers_grant_objects, object_id)
+
+            not is_nil(object_id) ->
+              Bonfire.Boundaries.Controlleds.object_has_followers_grant?(object_id)
+
+            true ->
+              false
+          end
+
+        if has_followers, do: "private", else: "direct"
+      else
+        remote_ids = MapSet.new(Bonfire.Boundaries.Acls.remote_public_acl_ids())
+        has_remote = not MapSet.disjoint?(acl_ids, remote_ids)
+
+        preset_acls = Bonfire.Common.Config.get!(:preset_acls_match)
+        public_ids = MapSet.new(Bonfire.Boundaries.Acls.preset_acl_ids("public", preset_acls))
+        local_ids = MapSet.new(Bonfire.Boundaries.Acls.preset_acl_ids("local", preset_acls))
+        has_public = not MapSet.disjoint?(acl_ids, public_ids)
+        has_local = not MapSet.disjoint?(acl_ids, local_ids)
+
+        cond do
+          has_remote -> "public"
+          has_public -> "unlisted"
+          has_local -> "unlisted"
+          true -> "direct"
+        end
+      end
+    end
+
+    defp acl_ids_to_visibility(_, _, _), do: "public"
 
     defp extract_content(context) do
       post_content =

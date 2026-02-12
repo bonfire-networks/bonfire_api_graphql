@@ -33,6 +33,15 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         post "/apps", Bonfire.API.MastoCompatible.AppController, :create
       end
 
+      # Trends - public endpoints (no auth required)
+      scope "/api/v1" do
+        pipe_through([:basic_json, :masto_api])
+
+        get "/trends/links", Bonfire.Social.Web.MastoTrendsController, :links
+        get "/trends/statuses", Bonfire.Social.Web.MastoTrendsController, :statuses
+        get "/trends/tags", Bonfire.Social.Web.MastoTrendsController, :tags
+      end
+
       # Routes that work WITHOUT email confirmation (signup, lookup, resend confirmation)
       scope "/api/v1" do
         pipe_through([:basic_json, :masto_api, :load_authorization])
@@ -126,6 +135,11 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         get "/accounts/themes",
             Bonfire.API.MastoCompatible.InstanceController,
             :themes
+
+        # Familiar followers - MUST come before /accounts/:id
+        get "/accounts/familiar_followers",
+            Bonfire.Me.Web.MastoAccountController,
+            :familiar_followers
 
         get "/accounts/:id", Bonfire.Me.Web.MastoAccountController, :show
 
