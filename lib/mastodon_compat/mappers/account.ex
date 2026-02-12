@@ -94,11 +94,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
             get_field(peered, [:canonical_uri, "canonical_uri"]) ||
             compute_canonical_url(user, character)
 
-        avatar =
-          extract_media_url(profile, [:avatar, "avatar", :icon, "icon"]) || default_avatar()
-
-        header =
-          extract_media_url(profile, [:header, "header", :image, "image"]) || default_header()
+        avatar = resolve_avatar_url(user, profile)
+        header = resolve_header_url(user, profile)
 
         created_at = extract_created_at(user)
         {statuses_count, followers_count, following_count} = compute_stats(user, opts)
@@ -185,9 +182,35 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp extract_nested(_, _), do: %{}
 
-    defp extract_media_url(map, keys) do
-      get_field(map, keys)
-      |> Bonfire.API.MastoCompat.Helpers.resolve_media_url()
+    defp resolve_avatar_url(user, profile) do
+      # First try the GraphQL-resolved URL (from the `avatar: icon` alias in fragments)
+      case get_field(profile, [:avatar, "avatar"]) do
+        url when is_binary(url) and url != "" ->
+          url
+
+        _ ->
+          # Fall back to bonfire_common's robust avatar_url which handles all data shapes:
+          # raw Media structs, icon associations, icon_id, remote HTTP URLs, etc.
+          # Pass the full user so it can traverse user.profile.icon if needed
+          Bonfire.Common.Media.avatar_url(user)
+          |> Bonfire.Common.URIs.based_url()
+      end
+    end
+
+    defp resolve_header_url(user, profile) do
+      case get_field(profile, [:header, "header"]) do
+        url when is_binary(url) and url != "" ->
+          url
+
+        _ ->
+          case Bonfire.Common.Media.image_url(user) do
+            url when is_binary(url) and url != "" ->
+              Bonfire.Common.URIs.based_url(url)
+
+            _ ->
+              Bonfire.Common.URIs.base_url() <> "/images/bonfire-icon.png"
+          end
+      end
     end
 
     defp extract_created_at(user) do
@@ -322,14 +345,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         "language" => "",
         "fields" => []
       }
-    end
-
-    defp default_avatar do
-      Bonfire.Common.URIs.base_url() <> "/images/avatar.png"
-    end
-
-    defp default_header do
-      Bonfire.Common.URIs.base_url() <> "/images/bonfire-icon.png"
     end
   end
 end
