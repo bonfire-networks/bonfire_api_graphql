@@ -183,15 +183,11 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp extract_nested(_, _), do: %{}
 
     defp resolve_avatar_url(user, profile) do
-      # First try the GraphQL-resolved URL (from the `avatar: icon` alias in fragments)
       case get_field(profile, [:avatar, "avatar"]) do
         url when is_binary(url) and url != "" ->
-          url
+          Bonfire.Common.URIs.based_url(url)
 
         _ ->
-          # Fall back to bonfire_common's robust avatar_url which handles all data shapes:
-          # raw Media structs, icon associations, icon_id, remote HTTP URLs, etc.
-          # Pass the full user so it can traverse user.profile.icon if needed
           Bonfire.Common.Media.avatar_url(user)
           |> Bonfire.Common.URIs.based_url()
       end
@@ -200,7 +196,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp resolve_header_url(user, profile) do
       case get_field(profile, [:header, "header"]) do
         url when is_binary(url) and url != "" ->
-          url
+          Bonfire.Common.URIs.based_url(url)
 
         _ ->
           case Bonfire.Common.Media.image_url(user) do
