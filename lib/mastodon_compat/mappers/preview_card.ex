@@ -95,13 +95,17 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp extract_dimension(metadata, key) do
       case e(metadata, "oembed", key, nil) || e(metadata, "facebook", "image:" <> key, nil) do
-        n when is_integer(n) -> n
+        n when is_integer(n) ->
+          n
+
         s when is_binary(s) ->
           case Integer.parse(s) do
             {n, _} -> n
             _ -> 0
           end
-        _ -> 0
+
+        _ ->
+          0
       end
     end
 
@@ -114,7 +118,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         e(metadata, "facebook", "image", nil) ||
         e(metadata, "image", "url", nil) ||
         e(metadata, "image", nil)
-      |> unwrap_value()
+        |> unwrap_value()
     end
 
     defp build_history(media) do
