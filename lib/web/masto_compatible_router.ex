@@ -282,19 +282,24 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         put "/media/:id", Bonfire.Files.Web.MastoMediaController, :update
         post "/media", Bonfire.Files.Web.MastoMediaController, :create
 
+        # TODO: move these routes to Notify?
         # Push subscription (web push notifications)
         post "/push/subscription", Bonfire.Notify.Web.MastoPushController, :create
         get "/push/subscription", Bonfire.Notify.Web.MastoPushController, :show
         put "/push/subscription", Bonfire.Notify.Web.MastoPushController, :update
         delete "/push/subscription", Bonfire.Notify.Web.MastoPushController, :delete
 
-        # TODO: SSE streaming for real-time notifications
-        # get "/streaming", Bonfire.Notify.Web.MastoStreamingController, :stream
-
         # Reports - specific route before generic
         get "/reports/:id", Bonfire.Social.Web.MastoReportController, :show
         get "/reports", Bonfire.Social.Web.MastoReportController, :index
         post "/reports", Bonfire.Social.Web.MastoReportController, :create
+      end
+
+      # SSE streaming (no :browser or :basic_json pipeline — they restrict Accept headers)
+      scope "/api/v1-bonfire", Bonfire.Notify.Web do
+        pipe_through([:load_current_auth, :load_authorization])
+
+        get "/streaming", StreamingController, :stream
       end
 
       scope "/api/v2" do
@@ -313,7 +318,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         get "/notifications", Bonfire.Social.Web.MastoTimelineController, :notifications
       end
 
-      scope "/api/bonfire-v1" do
+      scope "/api/v1-bonfire" do
         pipe_through([:basic_json, :masto_api, :load_authorization])
 
         get "/timelines/events", Bonfire.Social.Events.MastoEventsController, :events_timeline
