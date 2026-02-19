@@ -11,7 +11,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
       # Pipeline for authenticated routes that require email confirmation (Mastodon-compatible)
       pipeline :require_confirmed do
-        plug Bonfire.OpenID.Plugs.RequireConfirmed
+        plug Bonfire.API.GraphQL.Plugs.RequireConfirmed
       end
 
       # if Bonfire.Common.Extend.module_enabled?(Bonfire.OpenID.Plugs.Authorize) do
@@ -42,7 +42,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         get "/trends/tags", Bonfire.Social.Web.MastoTrendsController, :tags
       end
 
-      # Routes that work WITHOUT email confirmation (signup, lookup, resend confirmation)
+      # Routes that don't require authentication but still check if user is logged in (signup etc)
       scope "/api/v1" do
         pipe_through([:basic_json, :masto_api, :load_authorization])
 
@@ -54,6 +54,10 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         # Account registration - MUST work before email confirmation
         post "/accounts", Bonfire.Me.Web.MastoSignupController, :create
 
+        get "/accounts/verify_credentials",
+            Bonfire.Me.Web.MastoAccountController,
+            :verify_credentials
+
         # Account lookup by webfinger - allowed for unconfirmed accounts (to check username availability)
         get "/accounts/lookup",
             Bonfire.Me.Web.MastoAccountController,
@@ -61,30 +65,26 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
         # Resend confirmation email
         post "/emails/confirmations", Bonfire.Me.Web.MastoSignupController, :resend_confirmation
+
+        # Status GET endpoints (more specific routes before generic, doesn't require auth to view public statuses)
+        get "/statuses/:id/context", Bonfire.Social.Web.MastoStatusController, :context
+
+        get "/statuses/:id/favourited_by",
+            Bonfire.Social.Web.MastoStatusController,
+            :favourited_by
+
+        get "/statuses/:id/reblogged_by",
+            Bonfire.Social.Web.MastoStatusController,
+            :reblogged_by
+
+        get "/statuses/:id/source", Bonfire.Social.Web.MastoStatusController, :source
+
+        get "/statuses/:id", Bonfire.Social.Web.MastoStatusController, :show
       end
 
-      # Routes that REQUIRE email confirmation
+      # Routes that require authentication but work WITHOUT email confirmation 
       scope "/api/v1" do
-        pipe_through([:basic_json, :masto_api, :load_authorization, :require_confirmed])
-
-        # add here to override wrong priority order of routes
-        get "/accounts/verify_credentials",
-            Bonfire.Me.Web.MastoAccountController,
-            :verify_credentials
-
-        # Account update credentials - MUST come before /accounts/:id
-        patch "/accounts/update_credentials",
-              Bonfire.Me.Web.MastoAccountController,
-              :update_credentials
-
-        # Account deletion and migration
-        post "/accounts/delete", Bonfire.Me.Web.MastoAccountController, :delete_account
-        post "/accounts/alias", Bonfire.Me.Web.MastoAccountController, :alias_account
-        post "/accounts/move", Bonfire.Me.Web.MastoAccountController, :move_account
-
-        # Profile image deletion
-        delete "/profile/avatar", Bonfire.Me.Web.MastoAccountController, :delete_avatar
-        delete "/profile/header", Bonfire.Me.Web.MastoAccountController, :delete_header
+        pipe_through([:basic_json, :masto_api, :load_authorization, :require_authenticated_user])
 
         # Markers - timeline position tracking (stub for client compatibility)
         get "/markers", Bonfire.API.MastoCompatible.MarkersController, :index
@@ -112,14 +112,6 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         get "/accounts/:id/lists",
             Bonfire.Boundaries.Web.MastoListController,
             :account_lists
-
-        # Account actions - follow/unfollow/mute/unmute/block/unblock
-        post "/accounts/:id/follow", Bonfire.Me.Web.MastoAccountController, :follow
-        post "/accounts/:id/unfollow", Bonfire.Me.Web.MastoAccountController, :unfollow
-        post "/accounts/:id/mute", Bonfire.Me.Web.MastoAccountController, :mute
-        post "/accounts/:id/unmute", Bonfire.Me.Web.MastoAccountController, :unmute
-        post "/accounts/:id/block", Bonfire.Me.Web.MastoAccountController, :block
-        post "/accounts/:id/unblock", Bonfire.Me.Web.MastoAccountController, :unblock
 
         # Account relationships - MUST come before /accounts/:id
         get "/accounts/relationships",
@@ -150,45 +142,6 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         get "/instance", Bonfire.API.MastoCompatible.InstanceController, :show
         get "/custom_emojis", Bonfire.API.MastoCompatible.InstanceController, :custom_emojis
 
-        # Status creation - must come before /statuses/:id routes
-        post "/statuses", Bonfire.Posts.Web.MastoStatusController, :create
-
-        # Status GET endpoints (more specific routes before generic)
-        get "/statuses/:id/context", Bonfire.Social.Web.MastoStatusController, :context
-
-        get "/statuses/:id/favourited_by",
-            Bonfire.Social.Web.MastoStatusController,
-            :favourited_by
-
-        get "/statuses/:id/reblogged_by",
-            Bonfire.Social.Web.MastoStatusController,
-            :reblogged_by
-
-        get "/statuses/:id/source", Bonfire.Social.Web.MastoStatusController, :source
-
-        get "/statuses/:id", Bonfire.Social.Web.MastoStatusController, :show
-        put "/statuses/:id", Bonfire.Social.Web.MastoStatusController, :update
-        delete "/statuses/:id", Bonfire.Social.Web.MastoStatusController, :delete
-
-        # Status POST interactions
-        post "/statuses/:id/favourite", Bonfire.Social.Web.MastoStatusController, :favourite
-
-        post "/statuses/:id/unfavourite",
-             Bonfire.Social.Web.MastoStatusController,
-             :unfavourite
-
-        post "/statuses/:id/reblog", Bonfire.Social.Web.MastoStatusController, :reblog
-        post "/statuses/:id/unreblog", Bonfire.Social.Web.MastoStatusController, :unreblog
-        post "/statuses/:id/bookmark", Bonfire.Social.Web.MastoStatusController, :bookmark
-        post "/statuses/:id/unbookmark", Bonfire.Social.Web.MastoStatusController, :unbookmark
-        post "/statuses/:id/pin", Bonfire.Social.Web.MastoStatusController, :pin
-        post "/statuses/:id/unpin", Bonfire.Social.Web.MastoStatusController, :unpin
-
-        # Notifications
-        post "/notifications/clear",
-             Bonfire.Social.Web.MastoTimelineController,
-             :clear_notifications
-
         # Notification requests (pending follow requests) - MUST come before /notifications/:id
         get "/notifications/requests",
             Bonfire.Social.Web.MastoTimelineController,
@@ -210,6 +163,78 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         # Mutes and Blocks lists
         get "/mutes", Bonfire.Me.Web.MastoAccountController, :mutes
         get "/blocks", Bonfire.Me.Web.MastoAccountController, :blocks
+
+        get "/lists", Bonfire.Boundaries.Web.MastoListController, :index
+
+        # Timelines - specific routes before generic
+        get "/timelines/home", Bonfire.Social.Web.MastoTimelineController, :home
+        get "/timelines/public", Bonfire.Social.Web.MastoTimelineController, :public
+        get "/timelines/local", Bonfire.Social.Web.MastoTimelineController, :local
+
+        get "/timelines/:feed", Bonfire.Social.Web.MastoTimelineController, :timeline
+
+        # Media endpoints
+        get "/media/:id", Bonfire.Files.Web.MastoMediaController, :show
+      end
+
+      # Routes that REQUIRE email confirmation
+      scope "/api/v1" do
+        pipe_through([
+          :basic_json,
+          :masto_api,
+          :load_authorization,
+          :require_authenticated_user,
+          :require_confirmed
+        ])
+
+        # NOTE: add here to override wrong priority order of routes
+
+        # Account update credentials - MUST come before /accounts/:id
+        patch "/accounts/update_credentials",
+              Bonfire.Me.Web.MastoAccountController,
+              :update_credentials
+
+        # Account deletion and migration
+        post "/accounts/delete", Bonfire.Me.Web.MastoAccountController, :delete_account
+        post "/accounts/alias", Bonfire.Me.Web.MastoAccountController, :alias_account
+        post "/accounts/move", Bonfire.Me.Web.MastoAccountController, :move_account
+
+        # Profile image deletion
+        delete "/profile/avatar", Bonfire.Me.Web.MastoAccountController, :delete_avatar
+        delete "/profile/header", Bonfire.Me.Web.MastoAccountController, :delete_header
+
+        # Account actions - follow/unfollow/mute/unmute/block/unblock
+        post "/accounts/:id/follow", Bonfire.Me.Web.MastoAccountController, :follow
+        post "/accounts/:id/unfollow", Bonfire.Me.Web.MastoAccountController, :unfollow
+        post "/accounts/:id/mute", Bonfire.Me.Web.MastoAccountController, :mute
+        post "/accounts/:id/unmute", Bonfire.Me.Web.MastoAccountController, :unmute
+        post "/accounts/:id/block", Bonfire.Me.Web.MastoAccountController, :block
+        post "/accounts/:id/unblock", Bonfire.Me.Web.MastoAccountController, :unblock
+
+        # Status creation - must come before /statuses/:id routes
+        post "/statuses", Bonfire.Posts.Web.MastoStatusController, :create
+
+        put "/statuses/:id", Bonfire.Social.Web.MastoStatusController, :update
+        delete "/statuses/:id", Bonfire.Social.Web.MastoStatusController, :delete
+
+        # Status POST interactions
+        post "/statuses/:id/favourite", Bonfire.Social.Web.MastoStatusController, :favourite
+
+        post "/statuses/:id/unfavourite",
+             Bonfire.Social.Web.MastoStatusController,
+             :unfavourite
+
+        post "/statuses/:id/reblog", Bonfire.Social.Web.MastoStatusController, :reblog
+        post "/statuses/:id/unreblog", Bonfire.Social.Web.MastoStatusController, :unreblog
+        post "/statuses/:id/bookmark", Bonfire.Social.Web.MastoStatusController, :bookmark
+        post "/statuses/:id/unbookmark", Bonfire.Social.Web.MastoStatusController, :unbookmark
+        post "/statuses/:id/pin", Bonfire.Social.Web.MastoStatusController, :pin
+        post "/statuses/:id/unpin", Bonfire.Social.Web.MastoStatusController, :unpin
+
+        # Notifications
+        post "/notifications/clear",
+             Bonfire.Social.Web.MastoTimelineController,
+             :clear_notifications
 
         # Follow Requests - specific routes before generic
         get "/follow_requests/outgoing",
@@ -247,7 +272,6 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         get "/lists/:id", Bonfire.Boundaries.Web.MastoListController, :show
         put "/lists/:id", Bonfire.Boundaries.Web.MastoListController, :update
         delete "/lists/:id", Bonfire.Boundaries.Web.MastoListController, :delete
-        get "/lists", Bonfire.Boundaries.Web.MastoListController, :index
         post "/lists", Bonfire.Boundaries.Web.MastoListController, :create
 
         # Tags - follow/unfollow hashtags (specific routes before generic)
@@ -265,20 +289,13 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         post "/polls/:id/votes", Bonfire.Poll.Web.MastoPollController, :vote
         get "/polls/:id", Bonfire.Poll.Web.MastoPollController, :show
 
-        # Timelines - specific routes before generic
-        get "/timelines/home", Bonfire.Social.Web.MastoTimelineController, :home
-        get "/timelines/public", Bonfire.Social.Web.MastoTimelineController, :public
-        get "/timelines/local", Bonfire.Social.Web.MastoTimelineController, :local
         get "/timelines/tag/:hashtag", Bonfire.Social.Web.MastoTimelineController, :hashtag
 
         get "/timelines/list/:list_id",
             Bonfire.Social.Web.MastoTimelineController,
             :list_timeline
 
-        get "/timelines/:feed", Bonfire.Social.Web.MastoTimelineController, :timeline
-
-        # Media endpoints
-        get "/media/:id", Bonfire.Files.Web.MastoMediaController, :show
+        # media
         put "/media/:id", Bonfire.Files.Web.MastoMediaController, :update
         post "/media", Bonfire.Files.Web.MastoMediaController, :create
 
@@ -297,13 +314,13 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
       # SSE streaming (no :browser or :basic_json pipeline — they restrict Accept headers)
       scope "/api/v1-bonfire", Bonfire.Notify.Web do
-        pipe_through([:load_current_auth, :load_authorization])
+        pipe_through([:load_current_auth, :load_authorization, :require_authenticated_user])
 
         get "/streaming", StreamingController, :stream
       end
 
       scope "/api/v2" do
-        pipe_through([:basic_json, :masto_api, :load_authorization])
+        pipe_through([:basic_json, :masto_api, :load_authorization, :require_authenticated_user])
 
         get "/instance", Bonfire.API.MastoCompatible.InstanceController, :show_v2
         get "/search", Bonfire.Search.Web.MastoSearchController, :search
@@ -319,7 +336,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
       end
 
       scope "/api/v1-bonfire" do
-        pipe_through([:basic_json, :masto_api, :load_authorization])
+        pipe_through([:basic_json, :masto_api, :load_authorization, :require_authenticated_user])
 
         get "/timelines/events", Bonfire.Social.Events.MastoEventsController, :events_timeline
         get "/accounts/:id/events", Bonfire.Social.Events.MastoEventsController, :user_events
