@@ -90,14 +90,29 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp build_activity_context(activity, _opts) do
       object = get_field(activity, :object)
       replied = get_field(activity, :replied)
+      activity_id = get_field(activity, :id)
+      object_id = get_field(activity, :object_id)
+
+      uri =
+        get_field(activity, :uri) ||
+          get_field(object, :canonical_uri) ||
+          Bonfire.Common.URIs.canonical_url(object, preload_if_needed: false) ||
+          Bonfire.Common.URIs.canonical_url(activity, preload_if_needed: false) ||
+          (object_id && "/post/#{object_id}") ||
+          (activity_id && "/post/#{activity_id}")
+
+      created_at =
+        get_field(activity, :created_at) ||
+          get_field(object, :created_at) ||
+          (activity_id && Bonfire.Common.DatesTimes.date_from_pointer(activity_id))
 
       %{
         activity: activity,
-        id: get_field(activity, :id),
-        created_at: get_field(activity, :created_at),
-        uri: get_field(activity, :uri),
+        id: activity_id,
+        created_at: created_at,
+        uri: uri,
         object: object,
-        object_id: get_field(activity, :object_id),
+        object_id: object_id,
         object_post_content: get_field(activity, :object_post_content),
         subject: get_fields(activity, [:account, :subject]),
         verb: get_field(activity, :verb) |> get_field(:verb),
@@ -216,7 +231,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         object_id,
         context,
         Keyword.get(opts, :current_user),
-        Keyword.get(opts, :interaction_states)
+        Keyword.get(opts, :interaction_states),
+        opts
       )
     end
 
@@ -234,15 +250,23 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           []
 
         nil ->
-          extract_mentions_from_context_tags(context, current_user)
+          extract_mentions_from_context_tags(context, current_user, opts)
       end
     end
 
-    defp extract_mentions_from_context_tags(context, current_user) do
+    defp extract_mentions_from_context_tags(context, current_user, opts \\ []) do
       post = context[:post]
       tags = context[:tags] || []
 
       cond do
+        Keyword.get(opts, :lightweight, false) ->
+          # Skip DB query for tags in lightweight mode (streaming)
+          if is_list(tags) and tags != [] do
+            Mappers.Mention.from_tags(tags, current_user: current_user)
+          else
+            []
+          end
+
         is_struct(post) ->
           loaded_tags = Bonfire.Social.Tags.list_tags_mentions(post, current_user)
           Mappers.Mention.from_tags(loaded_tags, current_user: current_user)
@@ -260,7 +284,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
            object_id,
            context,
            current_user,
-           interaction_states \\ nil
+           interaction_states \\ nil,
+           opts \\ []
          ) do
       favourited = context[:liked_by_me]
       reblogged = context[:boosted_by_me]
@@ -272,6 +297,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         |> Map.put("reblogged", reblogged)
         |> Map.put("bookmarked", bookmarked)
       else
+        lightweight? = Keyword.get(opts, :lightweight, false)
+
         case interaction_states do
           %{^object_id => states} when is_map(states) ->
             status
@@ -280,17 +307,27 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
             |> Map.put("bookmarked", Map.get(states, :bookmarked, false))
 
           _ when current_user != nil and object_id != nil ->
-            favourited = Bonfire.Social.Likes.liked?(current_user, object_id) || false
-            reblogged = Bonfire.Social.Boosts.boosted?(current_user, object_id) || false
-            bookmarked = Bonfire.Social.Bookmarks.bookmarked?(current_user, object_id) || false
+            if lightweight? do
+              status
+              |> Map.put("favourited", false)
+              |> Map.put("reblogged", false)
+              |> Map.put("bookmarked", false)
+            else
+              favourited = Bonfire.Social.Likes.liked?(current_user, object_id) || false
+              reblogged = Bonfire.Social.Boosts.boosted?(current_user, object_id) || false
+              bookmarked = Bonfire.Social.Bookmarks.bookmarked?(current_user, object_id) || false
 
-            status
-            |> Map.put("favourited", favourited)
-            |> Map.put("reblogged", reblogged)
-            |> Map.put("bookmarked", bookmarked)
+              status
+              |> Map.put("favourited", favourited)
+              |> Map.put("reblogged", reblogged)
+              |> Map.put("bookmarked", bookmarked)
+            end
 
           _ ->
             status
+            |> Map.put("favourited", false)
+            |> Map.put("reblogged", false)
+            |> Map.put("bookmarked", false)
         end
       end
     end
@@ -346,6 +383,11 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           "direct"
 
         is_nil(object_id) ->
+          "public"
+
+        Keyword.get(opts, :lightweight, false) and
+            not Keyword.has_key?(opts, :visibility_by_object) ->
+          # In lightweight mode without pre-loaded visibility data, default to public
           "public"
 
         true ->
