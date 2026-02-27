@@ -399,6 +399,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     Returns `{:ok, cursor}` or `{:error, reason}`.
     """
     def encode_cursor_for_graphql(id) when is_binary(id) do
+      # URL-decode first in case cursor came through Link header (%3D -> =)
+      id = URI.decode(id)
+
       # Check if already base64 encoded (starts with "g3" from Erlang term format)
       if String.match?(id, ~r/^g3[A-Za-z0-9_-]+=*$/) do
         # Already encoded - validate it can be decoded

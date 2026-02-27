@@ -82,7 +82,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         get "/statuses/:id", Bonfire.Social.Web.MastoStatusController, :show
       end
 
-      # Routes that require authentication but work WITHOUT email confirmation 
+      # Routes that require authentication but work WITHOUT email confirmation
       scope "/api/v1" do
         pipe_through([:basic_json, :masto_api, :load_authorization, :require_authenticated_user])
 
@@ -312,7 +312,18 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         post "/reports", Bonfire.Social.Web.MastoReportController, :create
       end
 
+      # Streaming health check (public, no auth required)
+      scope "/api/v1" do
+        get "/streaming/health", Bonfire.Notify.Web.StreamingController, :health
+      end
+
       # SSE streaming (no :browser or :basic_json pipeline — they restrict Accept headers)
+      scope "/api/v1", Bonfire.Notify.Web do
+        pipe_through([:load_current_auth, :load_authorization, :require_authenticated_user])
+
+        get "/streaming", StreamingController, :stream
+      end
+
       scope "/api/v1-bonfire", Bonfire.Notify.Web do
         pipe_through([:load_current_auth, :load_authorization, :require_authenticated_user])
 
@@ -353,7 +364,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
       # Apical.router_from_file(unquote(@api_spec),
       #   controller: Bonfire.API.MastoCompatible,
       #   nest_all_json: false, # If enabled, nest all json request body payloads under the "_json" key. Otherwise objects payloads will be merged into `conn.params`.
-      #   root: "/", 
+      #   root: "/",
       #   dump: :all # temp: ony for debug
       # )
       # end

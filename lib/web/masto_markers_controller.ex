@@ -7,6 +7,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     alias Bonfire.API.GraphQL.RestAdapter
     alias Bonfire.Social.Markers
 
+    # Mastodon spec only supports these timelines
+    @mastodon_timelines ["home", "notifications"]
+
     @doc "GET /api/v1/markers"
     def index(conn, params) do
       case conn.assigns[:current_user] do
@@ -27,7 +30,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
         current_user ->
           result =
-            Markers.valid_timelines()
+            @mastodon_timelines
             |> Enum.reduce(%{}, fn timeline, acc ->
               case params[timeline] do
                 %{"last_read_id" => id} when is_binary(id) and id != "" ->
@@ -48,13 +51,13 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp requested_timelines(params) do
       case params["timeline[]"] || params["timeline"] do
         nil ->
-          Markers.valid_timelines()
+          @mastodon_timelines
 
         list when is_list(list) ->
-          Enum.filter(list, &(&1 in Markers.valid_timelines()))
+          Enum.filter(list, &(&1 in @mastodon_timelines))
 
         single when is_binary(single) ->
-          if single in Markers.valid_timelines(), do: [single], else: []
+          if single in @mastodon_timelines, do: [single], else: []
       end
     end
   end
