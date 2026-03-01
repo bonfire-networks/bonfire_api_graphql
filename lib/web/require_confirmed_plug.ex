@@ -69,7 +69,7 @@ defmodule Bonfire.API.GraphQL.Plugs.RequireConfirmed do
   #        %{email: %{confirmed_at: confirmed_at}} when not is_nil(confirmed_at) <-
   #          Bonfire.Me.Accounts.Queries.login_by_account_id(account_id)
   #          |> Bonfire.Common.Repo.maybe_one()
-  #          |> flood("queried account") do
+  #          |> debug("queried account") do
   #     true
   #   else
   #     _ -> false
