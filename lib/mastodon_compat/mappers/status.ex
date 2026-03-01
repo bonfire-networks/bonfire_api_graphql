@@ -212,6 +212,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           "uri" => context[:uri],
           "url" => context[:uri],
           "account" => account,
+          "name" => content_data.name,
           "content" => content_data.html,
           "text" => content_data.text,
           "spoiler_text" => content_data.spoiler_text,
@@ -470,11 +471,13 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         get_field(post_content, :name) ||
           strip_html_tags(html)
 
+      name = get_field(post_content, :name)
       spoiler_text = get_field(post_content, :summary) || ""
 
       %{
         html: html,
         text: text,
+        name: name,
         spoiler_text: spoiler_text
       }
     end

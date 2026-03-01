@@ -80,6 +80,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         "muted" => false,
         "bookmarked" => false,
         "pinned" => false,
+        "name" => nil,
 
         # Additional optional fields
         "filtered" => [],
