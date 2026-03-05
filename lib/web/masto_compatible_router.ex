@@ -54,10 +54,6 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         # Account registration - MUST work before email confirmation
         post "/accounts", Bonfire.Me.Web.MastoSignupController, :create
 
-        get "/accounts/verify_credentials",
-            Bonfire.Me.Web.MastoAccountController,
-            :verify_credentials
-
         # Account lookup by webfinger - allowed for unconfirmed accounts (to check username availability)
         get "/accounts/lookup",
             Bonfire.Me.Web.MastoAccountController,
@@ -132,6 +128,12 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         get "/accounts/familiar_followers",
             Bonfire.Me.Web.MastoAccountController,
             :familiar_followers
+
+        # Verify credentials - MUST come before /accounts/:id
+        # Confirmation check is handled in the adapter (returns 403 for unconfirmed)
+        get "/accounts/verify_credentials",
+            Bonfire.Me.Web.MastoAccountController,
+            :verify_credentials
 
         get "/accounts/:id", Bonfire.Me.Web.MastoAccountController, :show
 
@@ -330,11 +332,16 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         get "/streaming", StreamingController, :stream
       end
 
+      # Public v2 routes (no auth required, but still load user if present)
       scope "/api/v2" do
-        pipe_through([:basic_json, :masto_api, :load_authorization, :require_authenticated_user])
+        pipe_through([:basic_json, :masto_api, :load_authorization])
 
         get "/instance", Bonfire.API.MastoCompatible.InstanceController, :show_v2
         get "/search", Bonfire.Search.Web.MastoSearchController, :search
+      end
+
+      scope "/api/v2" do
+        pipe_through([:basic_json, :masto_api, :load_authorization, :require_authenticated_user])
 
         # Suggestions - accounts to follow
         get "/suggestions", Bonfire.Me.Web.MastoAccountController, :suggestions
