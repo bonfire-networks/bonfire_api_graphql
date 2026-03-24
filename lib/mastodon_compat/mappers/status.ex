@@ -335,22 +335,28 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp extract_reblog(context, opts) do
       object = context[:object]
+      typename = get_field(object, :__typename)
 
-      case get_field(object, :__typename) do
-        "Boost" ->
+      cond do
+        typename == "Boost" or is_struct(object, Bonfire.Data.Social.Boost) ->
           edge = get_field(object, :edge)
           original_post = get_field(edge, :object)
 
-          if get_field(original_post, :__typename) == "Post" do
-            from_post(original_post, Keyword.merge(opts, is_reblog: true))
-          else
-            nil
+          cond do
+            get_field(original_post, :__typename) == "Post" ->
+              from_post(original_post, Keyword.merge(opts, is_reblog: true))
+
+            is_struct(original_post) and not is_struct(original_post, Ecto.Association.NotLoaded) ->
+              from_post(original_post, Keyword.merge(opts, is_reblog: true))
+
+            true ->
+              nil
           end
 
-        "Post" ->
+        typename == "Post" or is_struct(object, Bonfire.Data.Social.Post) ->
           from_post(object, Keyword.merge(opts, is_reblog: true))
 
-        _ ->
+        true ->
           nil
       end
     end
