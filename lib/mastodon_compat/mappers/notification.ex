@@ -54,7 +54,14 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def from_activity(%{node: activity}, opts), do: from_activity(activity, opts)
 
     def from_activity(activity, opts) when is_map(activity) do
-      verb_id = get_field(activity, :verb) |> get_field(:verb)
+      # Handle both GraphQL maps (verb: %{verb: "Create"}) and Ecto structs (verb: %Verb{verb: "Create"} or verb_id: "...")
+      verb_id =
+        case get_field(activity, :verb) do
+          %{verb: v} when is_binary(v) -> v
+          v when is_binary(v) -> v
+          _ -> get_field(activity, :verb_id)
+        end
+
       current_user = Keyword.get(opts, :current_user)
       object_id = get_field(activity, :object_id)
 
@@ -87,11 +94,17 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           account_data
         end
 
+      activity_id = get_field(activity, :id)
+
+      created_at =
+        get_field(activity, :created_at) || get_field(activity, :date) ||
+          (activity_id && Bonfire.Common.DatesTimes.date_from_pointer(activity_id))
+
       notification =
         Schemas.Notification.new(%{
-          "id" => get_field(activity, :id),
+          "id" => activity_id,
           "type" => notification_type,
-          "created_at" => get_field(activity, :created_at),
+          "created_at" => created_at,
           "account" => account_data
         })
 
