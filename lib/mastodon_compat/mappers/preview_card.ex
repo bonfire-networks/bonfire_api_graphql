@@ -41,7 +41,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
       %{
         "url" => path,
-        "title" => Media.media_label(media) || "",
+        "title" => Media.media_label_and_alt(media) || "",
         "description" => Media.description(media) || "",
         "type" => card_type(metadata),
         "author_name" => extract_author_name(metadata),
