@@ -7,17 +7,11 @@ defmodule Bonfire.API.GraphQL.Auth do
   alias Bonfire.Me.Accounts
   alias Bonfire.Me.Users
 
-  def token_new(ids) do
-    Phoenix.Token.encrypt(Bonfire.Common.Config.endpoint_module(), secret(), ids)
-  end
+  @token_salt "bonfire_api_bearer_token_v1"
 
-  def token_verify(token) do
-    Phoenix.Token.decrypt(Bonfire.Common.Config.endpoint_module(), secret(), token)
-  end
+  def token_new(ids), do: Bonfire.Me.Auth.BearerToken.sign(ids, salt: @token_salt)
 
-  defp secret() do
-    Application.fetch_env!(:bonfire, :encryption_salt)
-  end
+  def token_verify(token), do: Bonfire.Me.Auth.BearerToken.verify(token, salt: @token_salt)
 
   @doc """
   Resolver for login mutation for Bonfire.API.GraphQL.CommonSchema
@@ -140,10 +134,33 @@ defmodule Bonfire.API.GraphQL.Auth do
   def set_session_from_context(conn, _), do: conn
 
   def build_context(conn) do
-    case Plug.Conn.get_req_header(conn, "authorization") do
-      [] -> build_context_from_session(conn)
-      [val | _] -> build_context_from_token(conn, val)
+    cond do
+      # load_authorization plug already verified an OAuth2/OpenID bearer token,
+      # or LoadCurrentUser populated current_user from session
+      conn.assigns[:current_user] || conn.assigns[:current_token] ->
+        build_context_from_assigns(conn)
+
+      # Fall back to Phoenix.Token bearer (e.g. issued by login mutation or embed)
+      match?([_ | _], Plug.Conn.get_req_header(conn, "authorization")) ->
+        [val | _] = Plug.Conn.get_req_header(conn, "authorization")
+        build_context_from_token(conn, val)
+
+      true ->
+        %{}
     end
+  end
+
+  defp build_context_from_assigns(conn) do
+    user = conn.assigns[:current_user]
+    token = conn.assigns[:current_token]
+
+    %{
+      current_user: user,
+      current_username: username(user),
+      current_account: user && GraphQL.current_account(user),
+      current_account_id: (user && uid(user)) || (token && token.sub),
+      current_token: token
+    }
   end
 
   defp build_context_from_token(conn, val) do
@@ -159,41 +176,8 @@ defmodule Bonfire.API.GraphQL.Auth do
         current_account_id: uid(account)
       }
     else
-      _ ->
-        %{
-          current_user: nil,
-          current_username: nil,
-          current_account: nil,
-          current_account_id: nil
-        }
+      _ -> %{}
     end
-  end
-
-  @doc """
-  Once authenticated, load the context based on session (called from `Bonfire.API.GraphQL.Plugs.GraphQLContext`)
-  """
-  defp build_context_from_session(conn) do
-    dump(Plug.Conn.get_session(conn), "session")
-    dump(conn.assigns, "assigns")
-
-    context = %{
-      current_account_id:
-        conn.assigns[:current_account_id] ||
-          Plug.Conn.get_session(conn, :current_account_id),
-      current_account: current_account(conn.assigns),
-      current_username:
-        conn.assigns[:current_username] ||
-          Plug.Conn.get_session(conn, :current_username),
-      current_user_id:
-        conn.assigns[:current_user_id] ||
-          Plug.Conn.get_session(conn, :current_user_id),
-      current_user: conn.assigns[:current_user]
-    }
-
-    # load the user from DB here once and for all
-    Map.merge(context, %{
-      current_user: GraphQL.current_user(context)
-    })
   end
 
   def user_by({account, username}) do
