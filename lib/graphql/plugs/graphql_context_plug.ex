@@ -7,7 +7,10 @@ defmodule Bonfire.API.GraphQL.Plugs.GraphQLContext do
   def init(opts), do: opts
 
   def call(conn, _) do
-    context = Bonfire.API.GraphQL.Auth.build_context(conn)
+    context =
+      Bonfire.API.GraphQL.Auth.build_context(conn)
+      |> Map.put(:ip, conn.remote_ip |> :inet.ntoa() |> to_string())
+
     Absinthe.Plug.put_options(conn, context: context)
   end
 end

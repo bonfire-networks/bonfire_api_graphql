@@ -7,6 +7,10 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
       # Define a pipeline for API routes with Oaskit/JSV validation
       pipeline :masto_api do
         # plug Oaskit.Plugs.SpecProvider, spec: Bonfire.API.MastoCompatible.Schema
+        plug :rate_limit,
+          key_prefix: :api,
+          scale_ms: 60_000,
+          limit: 60
       end
 
       # Pipeline for authenticated routes that require email confirmation (Mastodon-compatible)
@@ -27,7 +31,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
       # Public routes (no auth required)
       scope "/api/v1" do
-        pipe_through([:basic_json, :masto_api])
+        pipe_through([:basic_json, :masto_api, :throttle_forms])
 
         # App registration - used by clients to get client_id/secret before any user auth
         post "/apps", Bonfire.API.MastoCompatible.AppController, :create
@@ -44,7 +48,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
       # Routes that don't require authentication but still check if user is logged in (signup etc)
       scope "/api/v1" do
-        pipe_through([:basic_json, :masto_api, :load_authorization])
+        pipe_through([:basic_json, :masto_api, :throttle_forms, :load_authorization])
 
         # Verify app credentials - returns the Application entity for the token's OAuth app
         get "/apps/verify_credentials",
