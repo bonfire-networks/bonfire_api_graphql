@@ -28,7 +28,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
       conn = masto_api_conn(conn, user: me, account: account)
 
-      {:ok, conn: conn, me: me, account: account, post: post}
+      {:ok, conn: conn, me: me, account: account, poster: poster, post: post}
     end
 
     describe "GET /api/v1/markers" do
@@ -53,7 +53,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           |> get("/api/v1/markers?timeline[]=home")
           |> json_response(200)
 
-        assert response["home"]["last_read_id"]
+        assert response["home"]["last_read_id"] == post.id
         assert response["home"]["version"] == 0
         assert is_binary(response["home"]["updated_at"])
       end
@@ -80,6 +80,49 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
         assert response["home"]["last_read_id"] == post.id
         assert response["home"]["version"] == 0
+      end
+
+      test "keeps the furthest marker when an older item is marked later", %{
+        conn: conn,
+        poster: poster,
+        post: older_post
+      } do
+        {:ok, newer_post} =
+          Posts.publish(
+            current_user: poster,
+            post_attrs: %{post_content: %{html_body: "A newer post for markers test"}},
+            boundary: "public"
+          )
+
+        assert newer_post.id > older_post.id
+
+        conn
+        |> post("/api/v1/markers", %{
+          "home" => %{"last_read_id" => newer_post.id}
+        })
+        |> json_response(200)
+
+        response_after_newer =
+          conn
+          |> get("/api/v1/markers?timeline[]=home")
+          |> json_response(200)
+
+        assert response_after_newer["home"]["last_read_id"] == newer_post.id
+
+        conn
+        |> post("/api/v1/markers", %{
+          "home" => %{"last_read_id" => older_post.id}
+        })
+        |> json_response(200)
+
+        response_after_older =
+          conn
+          |> get("/api/v1/markers?timeline[]=home")
+          |> json_response(200)
+
+        assert response_after_older["home"]["last_read_id"] == newer_post.id
+        assert response_after_older["home"]["version"] == 0
+        assert is_binary(response_after_older["home"]["updated_at"])
       end
 
       test "requires authentication" do
