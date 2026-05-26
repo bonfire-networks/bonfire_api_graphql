@@ -107,7 +107,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           ) !=
             true
 
-        %{
+        account = %{
           "id" => to_string(user_id),
           "username" => username || "",
           "acct" => acct || "",
@@ -125,7 +125,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           "following_count" => following_count,
           "indexable" => indexable,
           "discoverable" => discoverable,
-          "source" => build_source(note_raw, user, opts, indexable, discoverable),
           "locked" => false,
           "bot" => false,
           "group" => false,
@@ -140,6 +139,12 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           "hide_collections" => false,
           "last_status_at" => created_at
         }
+
+        if Keyword.get(opts, :include_source, false) do
+          Map.put(account, "source", build_source(note_raw, user, opts, indexable, discoverable))
+        else
+          account
+        end
       end
     end
 
