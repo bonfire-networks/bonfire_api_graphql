@@ -69,7 +69,13 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         "favourite",
         "poll",
         "status",
-        "update"
+        "update",
+        "admin.sign_up",
+        "admin.report",
+        "severed_relationships",
+        "moderation_warning",
+        "quote",
+        "quoted_update"
       ]
     end
 

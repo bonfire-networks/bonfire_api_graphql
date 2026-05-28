@@ -17,6 +17,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     - `poll` - A poll you have voted in or created has ended
     - `status` - Someone you enabled notifications for has posted
     - `update` - A status you interacted with has been edited
+    - `quote` - Someone quoted one of your statuses
+    - `quoted_update` - A status you quoted has been edited
 
     ## Usage
 
@@ -29,6 +31,20 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     alias Bonfire.API.MastoCompat.{Schemas, Mappers, Helpers}
 
     import Helpers, only: [get_field: 2, get_fields: 2]
+
+    @type_to_masto %{
+      favourite: "favourite",
+      reblog: "reblog",
+      follow: "follow",
+      follow_request: "follow_request",
+      poll: "poll",
+      mention: "mention",
+      admin_report: "admin.report",
+      quote: "quote",
+      quoted_update: "quoted_update",
+      status: "status",
+      update: "update"
+    }
 
     @doc """
     Transform a Bonfire Activity into a Mastodon Notification.
@@ -50,6 +66,19 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         iex> from_activity(invalid_activity)
         nil
     """
+    def from_candidate(%{__struct__: Bonfire.Social.Notifications.Candidate} = candidate, opts \\ []) do
+      opts =
+        candidate
+        |> Map.get(:status_context, [])
+        |> Keyword.merge(opts)
+        |> Keyword.put(:notification_type, Map.fetch!(@type_to_masto, Map.get(candidate, :type)))
+        |> Keyword.put(:subject, Map.get(candidate, :actor))
+        |> Keyword.put(:mentions, Map.get(candidate, :mentions, []))
+        |> Keyword.put(:status_post, Map.get(candidate, :status_post))
+
+      from_activity(Map.get(candidate, :activity), opts)
+    end
+
     def from_activity(activity, opts \\ [])
     def from_activity(%{node: activity}, opts), do: from_activity(activity, opts)
 
@@ -66,56 +95,65 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       object_id = get_field(activity, :object_id)
 
       mentions_by_object = Keyword.get(opts, :mentions_by_object, %{})
-      raw_mentions = Map.get(mentions_by_object, object_id, [])
+      raw_mentions = Keyword.get(opts, :mentions) || Map.get(mentions_by_object, object_id, [])
 
       notification_type =
-        map_verb_to_type(verb_id, current_user: current_user, mentions: raw_mentions)
+        Keyword.get(opts, :notification_type) ||
+          map_verb_to_type(verb_id,
+            current_user: current_user,
+            mentions: raw_mentions,
+            edge_table_id: get_field(get_field(activity, :edge), :table_id)
+          )
 
-      subject = get_subject(activity, opts)
-      account_data = Mappers.Account.from_user(subject, skip_expensive_stats: true)
+      if is_nil(notification_type) do
+        nil
+      else
+        subject = get_subject(activity, opts)
+        account_data = Mappers.Account.from_user(subject, skip_expensive_stats: true)
 
-      status_data =
-        if should_include_status?(notification_type) do
-          extract_status(activity, opts)
-        else
-          nil
-        end
-
-      account_data =
-        if is_nil(account_data) && is_map(status_data) do
-          status_account = Map.get(status_data, "account")
-
-          if is_map(status_account) && Map.get(status_account, "id") do
-            status_account
+        status_data =
+          if should_include_status?(notification_type) do
+            extract_status(notification_type, activity, opts)
           else
             nil
           end
-        else
-          account_data
-        end
 
-      activity_id = get_field(activity, :id)
+        account_data =
+          if is_nil(account_data) && is_map(status_data) do
+            status_account = Map.get(status_data, "account")
 
-      created_at =
-        get_field(activity, :created_at) || get_field(activity, :date) ||
-          (activity_id && Bonfire.Common.DatesTimes.date_from_pointer(activity_id))
+            if is_map(status_account) && Map.get(status_account, "id") do
+              status_account
+            else
+              nil
+            end
+          else
+            account_data
+          end
 
-      notification =
-        Schemas.Notification.new(%{
-          "id" => activity_id,
-          "type" => notification_type,
-          "created_at" => created_at,
-          "account" => account_data
-        })
+        activity_id = get_field(activity, :id)
 
-      notification =
-        if status_data do
-          Map.put(notification, "status", status_data)
-        else
-          notification
-        end
+        created_at =
+          get_field(activity, :created_at) || get_field(activity, :date) ||
+            (activity_id && Bonfire.Common.DatesTimes.date_from_pointer(activity_id))
 
-      Helpers.validate_and_return(notification, Schemas.Notification)
+        notification =
+          Schemas.Notification.new(%{
+            "id" => activity_id,
+            "type" => notification_type,
+            "created_at" => created_at,
+            "account" => account_data
+          })
+
+        notification =
+          if status_data do
+            Map.put(notification, "status", status_data)
+          else
+            notification
+          end
+
+        Helpers.validate_and_return(notification, Schemas.Notification)
+      end
     end
 
     def from_activity(_, _opts), do: nil
@@ -123,8 +161,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     @doc """
     Maps a Bonfire verb ID to a Mastodon notification type.
 
-    For `:create` and `:reply` activities, checks if the current user was mentioned
-    to distinguish between "mention" (user was @mentioned) and "status" (subscribed to author).
+    For `:create` and `:reply` activities, only returns "mention" when the
+    current user was mentioned. Unsupported or unmentioned activities return
+    `nil` so the Mastodon notifications endpoint can drop them.
 
     ## Options
 
@@ -134,44 +173,78 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def map_verb_to_type(verb_id, opts \\ [])
 
     def map_verb_to_type(nil, _opts) do
-      warn(nil, "Notification has nil verb_id, defaulting to 'status'")
-      "status"
+      warn(nil, "Notification has nil verb_id, dropping")
+      nil
     end
 
     def map_verb_to_type(verb_id, opts) do
       cond do
-        verb_id == Bonfire.Boundaries.Verbs.get_id!(:like) ->
+        verb_id == verb_id(:like) ->
           "favourite"
 
-        verb_id == Bonfire.Boundaries.Verbs.get_id!(:boost) ->
+        verb_id == verb_id(:boost) ->
           "reblog"
 
-        verb_id == Bonfire.Boundaries.Verbs.get_id!(:follow) ->
+        verb_id == verb_id(:follow) ->
           "follow"
 
-        verb_id == Bonfire.Boundaries.Verbs.get_id!(:request) ->
-          "follow_request"
+        verb_id == verb_id(:request) ->
+          request_type(opts)
 
-        verb_id == Bonfire.Boundaries.Verbs.get_id!(:create) ->
-          if user_is_mentioned?(opts), do: "mention", else: "status"
+        verb_id == verb_id(:vote) ->
+          "poll"
 
-        verb_id == Bonfire.Boundaries.Verbs.get_id!(:reply) ->
-          if user_is_mentioned?(opts), do: "mention", else: "status"
+        verb_id == verb_id(:create) ->
+          if user_is_mentioned?(opts), do: "mention"
 
-        verb_id == Bonfire.Boundaries.Verbs.get_id!(:flag) ->
+        verb_id == verb_id(:reply) ->
+          if user_is_mentioned?(opts), do: "mention"
+
+        verb_id == verb_id(:flag) ->
           "admin.report"
 
         true ->
-          warn(verb_id, "Unknown verb ID in notification, defaulting to 'status'")
-          "status"
+          warn(verb_id, "Unknown verb ID in Mastodon notification mapper, dropping")
+          nil
       end
+    end
+
+    defp verb_id(slug) do
+      maybe_apply(Bonfire.Boundaries.Verbs, :get_id!, [slug], fallback_return: nil)
     end
 
     @doc """
     Determines if a notification type should include a status object.
     """
     def should_include_status?(notification_type) do
-      notification_type in ["mention", "status", "reblog", "favourite", "poll", "update"]
+      notification_type in [
+        "mention",
+        "status",
+        "reblog",
+        "favourite",
+        "poll",
+        "update",
+        "quote",
+        "quoted_update"
+      ]
+    end
+
+    defp quote_request?(opts) do
+      Keyword.get(opts, :edge_table_id) ==
+        maybe_apply(Bonfire.Social.Quotes, :quote_verb_id, [], fallback_return: nil)
+    end
+
+    defp follow_request?(opts) do
+      Keyword.get(opts, :edge_table_id) ==
+        Bonfire.Common.Types.table_id(Bonfire.Data.Social.Follow)
+    end
+
+    defp request_type(opts) do
+      cond do
+        quote_request?(opts) -> "quote"
+        follow_request?(opts) -> "follow_request"
+        true -> nil
+      end
     end
 
     defp user_is_mentioned?(opts) do
@@ -186,18 +259,44 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     defp get_subject(activity, opts) do
-      subject = get_fields(activity, [:account, :subject])
+      subject_id = get_field(activity, :subject_id)
+      subjects_by_id = Keyword.get(opts, :subjects_by_id, %{})
+      batch_subject = subject_id && Map.get(subjects_by_id, subject_id)
+      subject = Keyword.get(opts, :subject) || get_fields(activity, [:account, :subject])
 
-      if is_nil(subject) || subject == %{} do
-        subject_id = get_field(activity, :subject_id)
-        subjects_by_id = Keyword.get(opts, :subjects_by_id, %{})
-        Map.get(subjects_by_id, subject_id)
-      else
-        subject
+      cond do
+        present_subject?(batch_subject) ->
+          batch_subject
+
+        present_subject?(subject) ->
+          subject
+
+        true ->
+          nil
       end
     end
 
-    defp extract_status(activity, opts) do
+    defp extract_status("quote", activity, opts) do
+      case Keyword.get(opts, :status_post) || get_field(get_field(activity, :edge), :subject) do
+        quote_post when is_map(quote_post) ->
+          Mappers.Status.from_post(quote_post, Keyword.merge(opts, for_notification: true))
+
+        _ ->
+          nil
+      end
+    end
+
+    defp extract_status(_notification_type, activity, opts) do
+      case Keyword.get(opts, :status_post) do
+        status_post when is_map(status_post) ->
+          Mappers.Status.from_post(status_post, Keyword.merge(opts, for_notification: true))
+
+        _ ->
+          extract_status_from_activity(activity, opts)
+      end
+    end
+
+    defp extract_status_from_activity(activity, opts) do
       object = get_field(activity, :object)
       typename = get_field(object, :__typename)
 
@@ -246,12 +345,14 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         raw_mentions = Map.get(mentions_by_object, object_id, [])
         current_user = Keyword.get(opts, :current_user)
         mentions = Mappers.Mention.from_tags(raw_mentions, current_user: current_user)
+        status_created_at = fallback_status_created_at(activity, object_id)
+        status_uri = fallback_status_uri(activity, object_id)
 
         Schemas.Status.new(%{
           "id" => object_id,
-          "created_at" => get_field(activity, :created_at),
-          "uri" => get_field(activity, :uri),
-          "url" => get_field(activity, :uri),
+          "created_at" => status_created_at,
+          "uri" => status_uri,
+          "url" => status_uri,
           "account" => account,
           "content" => html_content,
           "spoiler_text" => get_field(post_content, :summary) || "",
@@ -261,5 +362,26 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         nil
       end
     end
+
+    defp fallback_status_created_at(activity, object_id) do
+      activity_id = get_field(activity, :id)
+
+      get_field(activity, :created_at) ||
+        get_field(activity, :date) ||
+        (object_id && Bonfire.Common.DatesTimes.date_from_pointer(object_id)) ||
+        (activity_id && Bonfire.Common.DatesTimes.date_from_pointer(activity_id))
+    end
+
+    defp fallback_status_uri(activity, object_id) do
+      get_field(activity, :uri) ||
+        get_field(activity, :url) ||
+        (object_id && Bonfire.Common.URIs.maybe_generate_canonical_url(object_id)) ||
+        (object_id && "/post/#{object_id}")
+    end
+
+    defp present_subject?(nil), do: false
+    defp present_subject?(%Ecto.Association.NotLoaded{}), do: false
+    defp present_subject?(%{} = subject), do: map_size(subject) > 0
+    defp present_subject?(_), do: true
   end
 end
