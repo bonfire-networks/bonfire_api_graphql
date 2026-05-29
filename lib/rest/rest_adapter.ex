@@ -134,6 +134,9 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
         [_ | _] = errors ->
           graphql_error_response(errors)
 
+        {:error, %Bonfire.Fail{status: status, message: message}} ->
+          {status, %{"error" => message}}
+
         other ->
           base_error = %{"error" => "Internal server error"}
           # Only include details in dev/test environments for security
