@@ -246,7 +246,9 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
     end
 
     describe "notification mapper fallback status" do
-      test "builds a valid mention notification when activity object is not preloaded", %{user: user} do
+      test "builds a valid mention notification when activity object is not preloaded", %{
+        user: user
+      } do
         subject = Bonfire.Me.Fake.fake_user!()
         activity_id = "01KS7CHQQ6Y8KQR9A7X4EBPJPM"
         object_id = "01KS62C1KD0B917AG5F0H0N7BP"
