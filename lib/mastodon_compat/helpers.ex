@@ -267,12 +267,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def get_fields(_map, []), do: nil
 
     def get_fields(map, keys) when is_map(map) and is_list(keys) do
-      Enum.find_value(keys, fn key ->
-        case Map.get(map, key) do
-          %Ecto.Association.NotLoaded{} -> nil
-          value -> value
-        end
-      end)
+      # Delegate to get_field/2 so each key gets the same atom→string fallback (GraphQL
+      # nodes are string-keyed) and NotLoaded handling; return the first present value.
+      Enum.find_value(keys, &get_field(map, &1))
     end
 
     def get_fields(_, _), do: nil

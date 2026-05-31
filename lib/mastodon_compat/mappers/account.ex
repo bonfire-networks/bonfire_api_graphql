@@ -233,12 +233,18 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     defp compute_canonical_url(user, character) do
-      # Compute URL using URIs.canonical_url when not found in stored data
-      Bonfire.Common.URIs.canonical_url(character, preload_if_needed: false) ||
-        Bonfire.Common.URIs.canonical_url(user, preload_if_needed: false)
+      # Fallback when no stored URL. Only attempt on real structs — a GraphQL-shaped string-keyed
+      # map (e.g. %{"username" => "ivan"}) can't be resolved and makes URIs.canonical_url log a
+      # "no case matched" warning. GraphQL actors already carry the URL as `canonicalUri`.
+      canonical_from_struct(character) || canonical_from_struct(user)
     rescue
       _ -> nil
     end
+
+    defp canonical_from_struct(thing) when is_struct(thing),
+      do: Bonfire.Common.URIs.canonical_url(thing, preload_if_needed: false)
+
+    defp canonical_from_struct(_), do: nil
 
     defp compute_stats(user, opts) do
       skip = Keyword.get(opts, :skip_expensive_stats, false)

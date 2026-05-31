@@ -126,7 +126,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     """
     def add_link_headers(conn, _params, page_info, items, opts \\ []) do
       base_url = build_base_url(conn)
-      base_params = Map.take(conn.params, ["limit"])
+      base_params = link_base_params(conn)
 
       cursor_field = Keyword.get(opts, :cursor_field) || extract_cursor_field(page_info)
       cursor_for_record_fun = get_field(page_info, :cursor_for_record_fun) || (&Enums.id/1)
@@ -149,7 +149,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       # Add "next" link (older posts) using end_cursor
       links =
         if end_cursor && !is_last_page do
-          query_params = base_params |> Map.put("max_id", end_cursor) |> URI.encode_query()
+          query_params = base_params |> Map.put("max_id", end_cursor) |> encode_link_query()
           next_link = "<#{base_url}?#{query_params}>; rel=\"next\""
           links ++ [next_link]
         else
@@ -159,7 +159,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       # Add "prev" link (newer posts) using start_cursor
       links =
         if start_cursor do
-          query_params = base_params |> Map.put("min_id", start_cursor) |> URI.encode_query()
+          query_params = base_params |> Map.put("min_id", start_cursor) |> encode_link_query()
           prev_link = "<#{base_url}?#{query_params}>; rel=\"prev\""
           links ++ [prev_link]
         else
@@ -182,7 +182,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     """
     def add_simple_link_headers(conn, _params, page_info, items) do
       base_url = build_base_url(conn)
-      base_params = Map.take(conn.params, ["limit"])
+      base_params = link_base_params(conn)
 
       start_cursor = get_simple_cursor(page_info, :start_cursor, items, :first)
       end_cursor = get_simple_cursor(page_info, :end_cursor, items, :last)
@@ -190,8 +190,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       links = []
 
       links =
-        if end_cursor do
-          query_params = base_params |> Map.put("max_id", end_cursor) |> URI.encode_query()
+        if end_cursor && not last_page?(page_info) do
+          query_params = base_params |> Map.put("max_id", end_cursor) |> encode_link_query()
           next_link = "<#{base_url}?#{query_params}>; rel=\"next\""
           links ++ [next_link]
         else
@@ -200,7 +200,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
       links =
         if start_cursor do
-          query_params = base_params |> Map.put("min_id", start_cursor) |> URI.encode_query()
+          query_params = base_params |> Map.put("min_id", start_cursor) |> encode_link_query()
           prev_link = "<#{base_url}?#{query_params}>; rel=\"prev\""
           links ++ [prev_link]
         else
@@ -538,8 +538,51 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     # Private Helpers
     # ==========================================
 
+    # Cursor params are replaced per-page; every other query param (filters like
+    # local/only_media/tagged/types[]/account_id, plus limit) must be preserved so
+    # the next/prev links keep the caller's filter on subsequent pages.
+    @cursor_param_keys ~w(max_id min_id since_id)
+
+    defp link_base_params(conn) do
+      Map.drop(conn.query_params || %{}, @cursor_param_keys)
+    end
+
+    # Like URI.encode_query/1 but preserves Mastodon array params (e.g.
+    # `exclude_types[]=poll`), which Phoenix parses into list values that
+    # URI.encode_query/1 cannot encode.
+    defp encode_link_query(params) do
+      params
+      |> Enum.flat_map(fn
+        {key, values} when is_list(values) ->
+          base = String.trim_trailing(to_string(key), "[]")
+          Enum.map(values, &{base <> "[]", &1})
+
+        {key, value} ->
+          [{key, value}]
+      end)
+      |> URI.encode_query()
+    end
+
+    # Only treat as the last page when the cursor source explicitly says so, so we
+    # stop emitting a dead `next` link at the end of a feed without risking dropping
+    # valid `next` links when the flag is absent.
+    defp last_page?(page_info) when is_map(page_info) do
+      Map.get(page_info, :has_next_page, Map.get(page_info, "has_next_page")) == false
+    end
+
+    defp last_page?(_), do: false
+
     defp build_base_url(conn) do
-      # Omit standard ports (80 for HTTP, 443 for HTTPS)
+      # Prefer the instance's configured public base URL (correct behind a
+      # reverse-proxy / TLS terminator), falling back to the connection's own
+      # scheme/host when no instance URL is configured (e.g. some test setups).
+      case Bonfire.Common.URIs.base_url() do
+        base when is_binary(base) and base != "" -> base <> conn.request_path
+        _ -> conn_base_url(conn)
+      end
+    end
+
+    defp conn_base_url(conn) do
       port_part =
         case {conn.scheme, conn.port} do
           {"https", 443} -> ""

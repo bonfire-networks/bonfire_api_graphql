@@ -41,20 +41,25 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
            flag,
            flag_value
          ) do
-      try do
-        case context_fn.(current_user, id) do
-          {:ok, result} ->
-            fetch_and_respond(conn, current_user, id, interaction_type, flag, flag_value, result)
+      case run_interaction(context_fn, current_user, id, interaction_type) do
+        {:ok, result} ->
+          # Called OUTSIDE the rescue: an unexpected crash while reloading/mapping the
+          # status must surface (500), not masquerade as a 404.
+          fetch_and_respond(conn, current_user, id, interaction_type, flag, flag_value, result)
 
-          {:error, reason} ->
-            error(reason, "#{interaction_type} error")
-            RestAdapter.error_fn({:error, reason}, conn)
-        end
-      rescue
-        e ->
-          error(e, "#{interaction_type} error")
-          RestAdapter.error_fn({:error, :not_found}, conn)
+        {:error, reason} ->
+          error(reason, "#{interaction_type} error")
+          RestAdapter.error_fn({:error, reason}, conn)
       end
+    end
+
+    # Rescue scoped to only the interaction context call.
+    defp run_interaction(context_fn, current_user, id, interaction_type) do
+      context_fn.(current_user, id)
+    rescue
+      e ->
+        error(e, "#{interaction_type} crashed")
+        {:error, :not_found}
     end
 
     defp fetch_and_respond(
@@ -68,14 +73,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
          ) do
       opts = [
         current_user: current_user,
-        preload: [
-          :with_subject,
-          :with_creator,
-          :with_media,
-          :with_object_more,
-          :with_object_peered,
-          :with_reply_to
-        ]
+        preload: Bonfire.API.MastoCompat.FeedPipeline.single_status_preloads()
       ]
 
       case Bonfire.Social.Objects.read(id, opts) do

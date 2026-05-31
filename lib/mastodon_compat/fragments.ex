@@ -15,10 +15,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     ## Available Fragments
 
-    - `user_profile/0` - Fields for Account mapping (profile, character, etc.)
-    - `post_content/0` - Fields for Status content mapping
-    - `activity_base/0` - Base fields for Activity mapping
-    - `media_attachment/0` - Fields for MediaAttachment mapping
+    - `user_profile/0` - Account/profile fields (`... on User`)
+    - `actor_fields/0` - Actor (subject/creator) selection covering User + Category (groups)
+    - `post_content/0` - Status content fields
+    - `media/0` - Media fields for status queries
     """
 
     # ===========================================
@@ -50,6 +50,18 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     @doc "GraphQL fragment for user/account profile data"
     def user_profile, do: @user_profile
 
+    # Actor (subject/creator) selection for the raw `Absinthe.run` masto read paths. camelCase
+    # field names with snake_case aliases (the inline-query style those adapters use), and it
+    # MUST cover every actor type in the :any_character union — User AND Category (groups) — or
+    # group-authored activities resolve to an untyped actor and get dropped on validation.
+    @actor_fields """
+    ... on User { id character { username url: canonicalUri } profile { name summary } }
+    ... on Category { id character { username url: canonicalUri } profile { name summary } }
+    """
+
+    @doc "Actor (subject/creator) fields for `Absinthe.run` masto queries — covers User + Category."
+    def actor_fields, do: @actor_fields
+
     # ===========================================
     # Status / Post fragments
     # ===========================================
@@ -62,26 +74,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     @doc "GraphQL fragment for post/status content"
     def post_content, do: @post_content
-
-    # ===========================================
-    # Activity fragments
-    # ===========================================
-
-    @activity_base """
-      id
-      date
-      verb {
-        verb
-      }
-      subject {
-        ... on User {
-          #{@user_profile}
-        }
-      }
-    """
-
-    @doc "GraphQL fragment for activity base fields"
-    def activity_base, do: @activity_base
 
     # ===========================================
     # Media fragments
@@ -99,40 +91,5 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     @doc "GraphQL fragment for media fields (used in status queries)"
     def media, do: @media
-
-    @media_attachment """
-      id
-      media_type
-      path
-      metadata
-    """
-
-    @doc "GraphQL fragment for media attachment fields (alternative format)"
-    def media_attachment, do: @media_attachment
-
-    # ===========================================
-    # Notification fragments
-    # ===========================================
-
-    @notification """
-      id
-      date
-      verb {
-        verb
-      }
-      subject {
-        ... on User {
-          #{@user_profile}
-        }
-      }
-      object {
-        ... on Post {
-          #{@post_content}
-        }
-      }
-    """
-
-    @doc "GraphQL fragment for notification fields"
-    def notification, do: @notification
   end
 end

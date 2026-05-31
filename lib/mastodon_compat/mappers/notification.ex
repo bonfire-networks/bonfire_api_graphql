@@ -66,7 +66,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         iex> from_activity(invalid_activity)
         nil
     """
-    def from_candidate(%{__struct__: Bonfire.Social.Notifications.Candidate} = candidate, opts \\ []) do
+    def from_candidate(
+          %{__struct__: Bonfire.Social.API.GraphQLMasto.NotificationCandidate} = candidate,
+          opts \\ []
+        ) do
       opts =
         candidate
         |> Map.get(:status_context, [])

@@ -105,6 +105,9 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
         {:error, :already_voted} ->
           {422, %{"error" => "Validation failed: You have already voted on this poll"}}
 
+        {:error, {:unprocessable_entity, message}} ->
+          {422, %{"error" => "Validation failed: #{message}"}}
+
         {:error, reason} when is_binary(reason) ->
           # Detect permission-related error strings and return 403 Forbidden
           if String.contains?(String.downcase(reason), "permission") do
