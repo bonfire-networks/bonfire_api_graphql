@@ -41,6 +41,31 @@ defmodule Bonfire.API.GraphQL.CommonSchema do
     end
   end
 
+  object :subject do
+    field(:id, non_null(:string))
+    field(:label, :string)
+  end
+
+  object :key_value_entry do
+    field(:key, non_null(:string))
+    field(:value, non_null(:string))
+  end
+
+  object :key_boolean_entry do
+    field(:key, non_null(:string))
+    field(:value, non_null(:boolean))
+  end
+
+  input_object :key_value_input do
+    field(:key, non_null(:string))
+    field(:value, non_null(:string))
+  end
+
+  input_object :key_boolean_input do
+    field(:key, non_null(:string))
+    field(:value, non_null(:boolean))
+  end
+
   input_object :paginate do
     field(:limit, :integer)
     field(:before, list_of(non_null(:cursor)))

@@ -223,6 +223,29 @@ defmodule Bonfire.API.GraphQL do
 
   def validate_cursor(_, _), do: not_found()
 
+  def parse_cool_scalar(%Absinthe.Blueprint.Input.String{
+        schema_node: %Absinthe.Type.Scalar{name: "URI"},
+        value: v
+      }),
+      do: {:ok, v}
+
+  def parse_cool_scalar(%Absinthe.Blueprint.Input.String{
+        schema_node: %Absinthe.Type.NonNull{of_type: %Absinthe.Type.Scalar{name: "URI"}},
+        value: v
+      }),
+      do: {:ok, v}
+
+  def parse_cool_scalar(value), do: {:ok, value}
+
+  def serialize_cool_scalar(%{value: value}), do: value
+  def serialize_cool_scalar(value), do: value
+
+  @doc "Combine per-query data filters with any filters injected by the API info context"
+  def fetch_data_filters(fetch_function_filters \\ [], info) do
+    api_query_filters = for {k, v} <- Map.get(info, :data_filters, %{}), into: [], do: {k, v}
+    [api_query_filters ++ fetch_function_filters]
+  end
+
   def predicated(fun) when is_function(fun, 1), do: &predicate_result(fun.(&1))
 
   def predicated(fun, arg) when is_function(fun, 1),

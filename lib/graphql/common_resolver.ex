@@ -80,6 +80,54 @@ defmodule Bonfire.API.GraphQL.CommonResolver do
   def is_hidden_edge(parent, _, _), do: {:ok, not is_nil(parent.hidden_at)}
   def is_deleted_edge(parent, _, _), do: {:ok, not is_nil(parent.deleted_at)}
 
+  def scope_edge(%{in_scope_of: ids}, page_opts, info),
+    do: context_edges(%{context_ids: ids}, page_opts, info)
+
+  def scope_edge(%{context_id: id}, page_opts, info),
+    do: scope_edge(%{in_scope_of: [id]}, page_opts, info)
+
+  def scope_edge(_, _, _), do: {:ok, nil}
+
+  def current_location_edge(%{current_location_id: id} = thing, _, _) when not is_nil(id) do
+    thing = Bonfire.Common.Config.repo().preload(thing, :current_location)
+
+    if module = Bonfire.Common.Extend.maybe_module(Bonfire.Geolocate.Geolocations) do
+      {:ok, module.populate_coordinates(Map.get(thing, :current_location, nil))}
+    else
+      {:ok, Map.get(thing, :current_location)}
+    end
+  end
+
+  def current_location_edge(_, _, _), do: {:ok, nil}
+
+  def at_location_edge(%{at_location_id: id} = thing, _, _) when not is_nil(id) do
+    thing = Bonfire.Common.Config.repo().preload(thing, :at_location)
+
+    if module = Bonfire.Common.Extend.maybe_module(Bonfire.Geolocate.Geolocations) do
+      {:ok, module.populate_coordinates(Map.get(thing, :at_location, nil))}
+    else
+      {:ok, Map.get(thing, :at_location)}
+    end
+  end
+
+  def at_location_edge(_, _, _), do: {:ok, nil}
+
+  def tags_edges(a, b, c) do
+    if module = Bonfire.Common.Extend.maybe_module(Bonfire.Tag.GraphQL.TagResolver) do
+      module.tags_edges(a, b, c)
+    else
+      {:ok, nil}
+    end
+  end
+
+  def maybe_upload(user, changes, info) do
+    if module = Bonfire.Common.Extend.maybe_module(Bonfire.Files.GraphQL) do
+      module.upload(user, changes, info)
+    else
+      {:ok, %{}}
+    end
+  end
+
   # FIXME
   if Bonfire.Common.Extend.module_enabled?(Bonfire.Common.Repo.Delete) do
     def delete(%{context_id: id}, info) do

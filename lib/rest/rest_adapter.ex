@@ -9,35 +9,36 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
   Takes the GraphQL result, extracts data by name, applies optional transformation,
   and returns JSON response via conn.
   """
-  def return(name, ret, conn, transform_fun \\ nil) do
-    case ret do
-      {:error, e} ->
-        # Handle error tuples directly (e.g., from unauthorized requests)
-        error(e)
+  def return(name, ret, conn, transform_fun \\ nil, opts \\ []) do
+    result =
+      case ret do
+        {:error, e} ->
+          error(e)
 
-      %{data: data, errors: errors} ->
-        # Check if we actually have data after extraction
-        extracted_data = ret_data(data, name)
+        %{data: data, errors: errors} ->
+          extracted_data = ret_data(data, name)
 
-        if extracted_data do
-          # Partial data with errors - log errors but return data
-          warn(errors, "partial_graphql_errors")
-          {:ok, transform_data(extracted_data, transform_fun)}
-        else
-          # No data, only errors - treat as full error
+          if extracted_data do
+            warn(errors, "partial_graphql_errors")
+            {:ok, transform_data(extracted_data, transform_fun, opts)}
+          else
+            error(errors)
+          end
+
+        %{data: data} ->
+          {:ok, ret_data(data, name) |> transform_data(transform_fun, opts)}
+
+        %{errors: errors} ->
           error(errors)
-        end
 
-      %{data: data} ->
-        {:ok, ret_data(data, name) |> transform_data(transform_fun)}
+        other ->
+          error(other, "unexpected_graphql_response")
+      end
 
-      %{errors: errors} ->
-        error(errors)
-
-      other ->
-        error(other, "unexpected_graphql_response")
+    case result do
+      {:ok, response} -> success_fn(response, conn, opts)
+      {:error, _} = err -> transform_response(err, conn)
     end
-    |> transform_response(conn)
   end
 
   defp ret_data(data, name) do
@@ -78,8 +79,8 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
     end
   end
 
-  def success_fn(response, conn) do
-    Phoenix.Controller.json(conn, transform_data(response))
+  def success_fn(response, conn, opts \\ []) do
+    Phoenix.Controller.json(conn, transform_data(response, nil, opts))
   end
 
   def json(conn, data) do
@@ -168,25 +169,36 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
 
   defp graphql_error_response(errors) when is_list(errors) do
     first_error = List.first(errors) || %{}
+    error_status = first_error[:status]
     code = first_error[:code]
-
-    status =
-      case code do
-        :unauthorized -> 401
-        :not_found -> 404
-        :forbidden -> 403
-        _ -> 400
-      end
-
     message = first_error[:message] || "Request failed"
 
-    # Detect auth-related messages even without a :code key
     status =
-      if status == 400 and is_binary(message) and
-           String.contains?(String.downcase(message), ["log in", "logged in", "unauthorized"]) do
-        401
-      else
-        status
+      cond do
+        code in [:unauthorized] -> 401
+        code in [:not_found] -> 404
+        code in [:forbidden, :not_permitted, :invite_only] -> 403
+        is_integer(error_status) and error_status in 400..599 -> error_status
+        true -> 400
+      end
+
+    # Override status based on message content when code is ambiguous
+    status =
+      cond do
+        status in [400, 500] and is_binary(message) and
+            String.contains?(String.downcase(message), [
+              "cannot edit",
+              "cannot update",
+              "not permitted"
+            ]) ->
+          403
+
+        status == 400 and is_binary(message) and
+            String.contains?(String.downcase(message), ["log in", "logged in", "unauthorized"]) ->
+          401
+
+        true ->
+          status
       end
 
     base_error = %{"error" => message}
@@ -201,12 +213,24 @@ defmodule Bonfire.API.GraphQL.RestAdapter do
     {status, error_with_details}
   end
 
-  def transform_data(data, transform_fun) when is_function(transform_fun, 1) do
+  def transform_data(data, transform_fun, opts \\ [])
+
+  def transform_data(data, transform_fun, opts) when is_function(transform_fun, 1) do
     transform_fun.(data)
-    |> transform_data()
+    |> transform_data(nil, opts)
   end
 
-  def transform_data(data, _), do: transform_data(data)
+  def transform_data(data, _, opts) when is_binary(data) and is_list(opts), do: data
+
+  def transform_data(%{} = data, _, opts) when is_list(opts) do
+    filter_nils = Keyword.get(opts, :filter_nils, true)
+    Helpers.deep_struct_to_map(data, filter_nils: filter_nils)
+  end
+
+  def transform_data(data, _, opts) when is_list(data) and is_list(opts),
+    do: Enum.map(data, &transform_data(&1, nil, opts))
+
+  def transform_data(data, _, _opts), do: inspect(data)
 
   def transform_data(data) when is_binary(data), do: data
 

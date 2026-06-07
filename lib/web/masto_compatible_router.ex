@@ -358,7 +358,25 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
       end
 
       scope "/api/v1-bonfire" do
+        pipe_through([:basic_json, :masto_api, :load_authorization])
+
+        get "/groups", Bonfire.Classify.Web.API.GroupsController, :index
+        get "/groups/:id", Bonfire.Classify.Web.API.GroupsController, :show
+      end
+
+      scope "/api/v1-bonfire" do
         pipe_through([:basic_json, :masto_api, :load_authorization, :require_authenticated_user])
+
+        post "/groups", Bonfire.Classify.Web.API.GroupsController, :create
+        patch "/groups/:id", Bonfire.Classify.Web.API.GroupsController, :update
+        post "/groups/:id/join", Bonfire.Classify.Web.API.GroupsController, :join
+        post "/groups/:id/leave", Bonfire.Classify.Web.API.GroupsController, :leave
+        get "/groups/:id/members", Bonfire.Classify.Web.API.GroupsController, :list_members
+        post "/groups/:id/members", Bonfire.Classify.Web.API.GroupsController, :add_member
+
+        delete "/groups/:id/members/:account_id",
+               Bonfire.Classify.Web.API.GroupsController,
+               :remove_member
 
         get "/timelines/events", Bonfire.Social.Events.MastoEventsController, :events_timeline
         get "/accounts/:id/events", Bonfire.Social.Events.MastoEventsController, :user_events

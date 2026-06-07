@@ -173,7 +173,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         get_field(replied, :nested_replies_count) || 0
     end
 
-    defp build_post_context(post, _opts) do
+    defp build_post_context(post, opts) do
       activity = get_field(post, :activity) || %{}
       post_content = get_field(post, :post_content) || %{}
       created = get_field(post, :created) || %{}
@@ -203,6 +203,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         uri: uri,
         post_content: post_content,
         creator: creator,
+        context_id: Keyword.get(opts, :context_id) || get_field(post, :context_id),
         media: get_field(post, :media) || get_field(activity, :media) || [],
         # Interaction flags / engagement counts: present when the post's `activity` was
         # resolved via GraphQL (e.g. the `myLikes` field). nil for the direct/Ecto path
@@ -269,6 +270,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           "media_attachments" => media_attachments,
           "mentions" => mentions,
           "tags" => extract_hashtags(object_id, opts),
+          "context_id" => context[:context_id],
           "in_reply_to_id" => context[:in_reply_to_id],
           "in_reply_to_account_id" => context[:in_reply_to_account_id],
           "favourites_count" => context[:like_count] || 0,
