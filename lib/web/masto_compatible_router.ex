@@ -80,6 +80,8 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         get "/statuses/:id/source", Bonfire.Social.Web.MastoStatusController, :source
 
         get "/statuses/:id", Bonfire.Social.Web.MastoStatusController, :show
+
+        get "/search", Bonfire.Search.Web.MastoSearchController, :search
       end
 
       # Routes that require authentication but work WITHOUT email confirmation
@@ -181,6 +183,11 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
         # Media endpoints
         get "/media/:id", Bonfire.Files.Web.MastoMediaController, :show
+
+        # OAuth token managemen
+        get "/tokens", Bonfire.OpenID.Web.MastoTokensController, :index
+        post "/tokens/:id/invalidate", Bonfire.OpenID.Web.MastoTokensController, :invalidate
+        get "/tokens/:id", Bonfire.OpenID.Web.MastoTokensController, :show
       end
 
       # Routes that REQUIRE email confirmation

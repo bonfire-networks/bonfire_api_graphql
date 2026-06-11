@@ -326,6 +326,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       filters_without_pagination =
         filters
         |> Map.merge(extra_filters)
+        # Translate Mastodon-specific params (e.g. only_media) into Bonfire feed filters
+        |> apply_masto_filter_translations(extra_filters)
         |> Map.take(valid_filter_keys)
         # Disable Bonfire's default 1-month time limit for Mastodon API
         |> Map.put_new("time_limit", 0)
@@ -343,6 +345,21 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       )
       |> atomize_pagination_keys()
     end
+
+    # Maps Mastodon timeline params that don't map 1:1 to a Bonfire feed filter.
+    # `only_media=true` → `media_types: ["*"]`, which the feed query turns into a
+    # "has any media attachment" filter (see `Bonfire.Social.Media.maybe_filter/3`).
+    defp apply_masto_filter_translations(filters, source_params) do
+      if masto_truthy?(source_params["only_media"]) do
+        Map.put(filters, "media_types", ["*"])
+      else
+        filters
+      end
+    end
+
+    defp masto_truthy?(true), do: true
+    defp masto_truthy?(v) when is_binary(v), do: v in ["true", "1"]
+    defp masto_truthy?(_), do: false
 
     @doc """
     Extract pagination cursors from Mastodon-style params.
