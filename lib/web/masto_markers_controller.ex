@@ -7,9 +7,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     alias Bonfire.API.GraphQL.RestAdapter
     alias Bonfire.Social.Markers
 
-    # Mastodon spec only supports these timelines
-    @mastodon_timelines ["home", "notifications"]
-
     @doc "GET /api/v1/markers"
     def index(conn, params) do
       case conn.assigns[:current_user] do
@@ -30,7 +27,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
         current_user ->
           result =
-            @mastodon_timelines
+            Markers.valid_timelines()
             |> Enum.reduce(%{}, fn timeline, acc ->
               case params[timeline] do
                 %{"last_read_id" => id} when is_binary(id) and id != "" ->
@@ -44,20 +41,34 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
               end
             end)
 
-          RestAdapter.json(conn, result)
+          if result == %{} and marker_params_present?(params) do
+            # all requested markers were rejected (e.g. invalid ids): don't
+            # pretend success with an empty 200 that clients can't interpret
+            conn
+            |> put_status(:unprocessable_entity)
+            |> json(%{error: "Invalid marker"})
+          else
+            RestAdapter.json(conn, result)
+          end
       end
     end
 
+    defp marker_params_present?(params) do
+      Enum.any?(Markers.valid_timelines(), &match?(%{"last_read_id" => _}, params[&1]))
+    end
+
     defp requested_timelines(params) do
+      valid = Markers.valid_timelines()
+
       case params["timeline[]"] || params["timeline"] do
         nil ->
-          @mastodon_timelines
+          valid
 
         list when is_list(list) ->
-          Enum.filter(list, &(&1 in @mastodon_timelines))
+          Enum.filter(list, &(&1 in valid))
 
         single when is_binary(single) ->
-          if single in @mastodon_timelines, do: [single], else: []
+          if single in valid, do: [single], else: []
       end
     end
   end
