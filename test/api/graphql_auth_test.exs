@@ -53,6 +53,7 @@ defmodule Bonfire.API.GraphQL.AuthTest do
     test "protected queries return needs_login", %{conn: conn} do
       resp = graphql(conn, @me_query)
       assert Enum.any?(errors(resp), &String.contains?(&1, "log in"))
+      assert data(resp, "me") == nil
     end
 
     test "introspection is always accessible", %{conn: conn} do
@@ -81,6 +82,7 @@ defmodule Bonfire.API.GraphQL.AuthTest do
 
       resp = graphql(authed_conn, @me_query)
       refute Enum.any?(errors(resp), &String.contains?(&1, "log in"))
+      assert get_in(data(resp, "me"), ["user", "id"]) == user.id
     end
   end
 
@@ -96,6 +98,7 @@ defmodule Bonfire.API.GraphQL.AuthTest do
 
       resp = graphql(authed_conn, @me_query)
       refute Enum.any?(errors(resp), &String.contains?(&1, "log in"))
+      assert get_in(data(resp, "me"), ["user", "id"]) == user.id
     end
 
     test "rejects an invalid token", %{conn: conn} do

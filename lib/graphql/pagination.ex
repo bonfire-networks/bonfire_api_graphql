@@ -43,12 +43,20 @@ defmodule Bonfire.API.GraphQL.Pagination do
 
   def connection_paginate(%Ecto.Query{} = query, args, opts) do
     # simple limit + offset
-    Absinthe.Relay.Connection.from_query(query, opts[:repo_fun] || (&Repo.all/1), args)
+    Absinthe.Relay.Connection.from_query(
+      query,
+      opts[:repo_fun] || (&Repo.all/1),
+      relay_args(args)
+    )
   end
 
   def connection_paginate(list, args, _opts) when is_list(list) do
-    Absinthe.Relay.Connection.from_list(list, args)
+    Absinthe.Relay.Connection.from_list(list, relay_args(args))
   end
+
+  defp relay_args(args) when is_map(args), do: args
+  defp relay_args(args) when is_list(args), do: Map.new(args)
+  defp relay_args(_), do: %{}
 
   defp build_cursors(items, opts \\ [])
   defp build_cursors([], _), do: {[], nil, nil}

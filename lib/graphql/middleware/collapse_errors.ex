@@ -14,6 +14,9 @@ defmodule Bonfire.API.GraphQL.Middleware.CollapseErrors do
   def collapse(%Ecto.Changeset{} = changeset),
     do: extract_messages(changeset)
 
+  def collapse(message) when is_binary(message),
+    do: %{message: message, status: 200}
+
   def collapse(%{__struct__: _} = struct), do: Map.from_struct(struct)
 
   def collapse(other), do: Bonfire.Fail.fail(other) |> collapse()
