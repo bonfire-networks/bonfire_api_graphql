@@ -2,6 +2,9 @@
 defmodule Bonfire.API.GraphQL.Middleware.CollapseErrorsTest do
   use ExUnit.Case, async: true
 
+  # bucket this into the backend CI leg: bare `ExUnit.Case` skips the tag the extension case templates apply, so without it this also runs in the federation job catch-all
+  @moduletag :backend
+
   alias Bonfire.API.GraphQL.Middleware.CollapseErrors
 
   @moduletag :graphql
