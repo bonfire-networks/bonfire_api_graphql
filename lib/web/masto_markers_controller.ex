@@ -31,7 +31,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
             |> Enum.reduce(%{}, fn timeline, acc ->
               case params[timeline] do
                 %{"last_read_id" => id} when is_binary(id) and id != "" ->
-                  case Markers.save(current_user, timeline, id) do
+                  case Markers.save(conn.assigns, timeline, id) do
                     {:ok, marker} -> Map.put(acc, timeline, marker)
                     _ -> acc
                   end

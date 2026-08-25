@@ -225,5 +225,74 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         assert response["error"]
       end
     end
+
+    describe "regression for issue #2220: markers record Seen under the ACCOUNT, not the user" do
+      test "POST /api/v1/markers writes the Seen edge with the account as subject (not the user)",
+           %{conn: conn, me: me, account: account, post: post} do
+        import Ecto.Query
+        alias Bonfire.Data.Edges.Edge
+
+        post_marker(conn, "home", post.id)
+
+        activity_id = activity_id_of(post)
+        seen_tid = Bonfire.Common.Types.table_id(Bonfire.Data.Social.Seen)
+
+        subjects =
+          Bonfire.Common.Repo.all(
+            from(e in Edge,
+              where: e.table_id == ^seen_tid and e.object_id == ^activity_id,
+              select: e.subject_id
+            )
+          )
+
+        assert subjects == [account.id]
+        refute me.id in subjects
+      end
+
+      test "POST /api/v1/markers authed via a real Bearer token (which carries no account) still records Seen under the account",
+           %{me: me, account: account, post: post} do
+        import Ecto.Query
+        alias Bonfire.Data.Edges.Edge
+
+        # mint a real OAuth access token for `me`; Bearer auth loads current_user via `Users.get_current(sub)` WITHOUT an account (unlike session/LoadCurrentUser), the prod bug.
+        {:ok, client} =
+          Bonfire.OpenID.Provider.ClientApps.new(%{
+            id: Faker.UUID.v4(),
+            name: "markers-2220-#{Faker.UUID.v4()}",
+            redirect_uris: ["http://localhost:4000/oauth/callback"]
+          })
+
+        {:ok, token} =
+          Boruta.Ecto.AccessTokens.create(
+            %{
+              client: Boruta.Ecto.OauthMapper.to_oauth_schema(client),
+              sub: me.id,
+              scope: "read write"
+            },
+            []
+          )
+
+        Phoenix.ConnTest.build_conn()
+        |> put_req_header("accept", "application/json")
+        |> put_req_header("content-type", "application/json")
+        |> put_req_header("authorization", "Bearer #{token.value}")
+        |> post("/api/v1/markers", %{"home" => %{"last_read_id" => post.id}})
+        |> json_response(200)
+
+        activity_id = activity_id_of(post)
+        seen_tid = Bonfire.Common.Types.table_id(Bonfire.Data.Social.Seen)
+
+        subjects =
+          Bonfire.Common.Repo.all(
+            from(e in Edge,
+              where: e.table_id == ^seen_tid and e.object_id == ^activity_id,
+              select: e.subject_id
+            )
+          )
+
+        assert subjects == [account.id]
+        refute me.id in subjects
+      end
+    end
   end
 end
