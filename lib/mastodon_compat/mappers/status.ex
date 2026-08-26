@@ -655,7 +655,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp strip_html_tags(html) when is_binary(html) do
       html
-      |> String.replace(~r/<[^>]+>/, "")
+      |> Bonfire.Common.Text.maybe_replace("<", &String.replace(&1, ~r/<[^>]+>/, ""))
       |> String.trim()
     end
 
