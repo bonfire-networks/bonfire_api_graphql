@@ -22,11 +22,11 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
       |> put_req_header("content-type", "application/json")
     end
 
-    describe "GET /api/v2/notifications" do
+    describe "GET /api/v1/notifications" do
       test "returns 200 with list", %{conn: conn} do
         response =
           conn
-          |> get("/api/v2/notifications")
+          |> get("/api/v1/notifications")
           |> json_response(200)
 
         assert is_list(response)
@@ -51,7 +51,7 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
 
         response =
           conn
-          |> get("/api/v2/notifications?limit=30")
+          |> get("/api/v1/notifications?limit=30")
           |> json_response(200)
 
         ordinary_post_ids = [own_post.id, unrelated_post.id]
@@ -65,7 +65,7 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
         assert leaked_status_notifications == []
       end
 
-      test "maps poll vote notifications as poll notifications", %{
+      test "does not report a vote as a poll completion", %{
         conn: conn,
         user: user
       } do
@@ -90,10 +90,10 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
 
         response =
           conn
-          |> get("/api/v2/notifications?limit=10")
+          |> get("/api/v1/notifications?limit=10")
           |> json_response(200)
 
-        assert Enum.any?(response, fn notification ->
+        refute Enum.any?(response, fn notification ->
                  notification["type"] == "poll" &&
                    get_in(notification, ["status", "id"]) == question.id
                end)
@@ -117,7 +117,7 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
 
         response =
           conn
-          |> get("/api/v2/notifications?limit=10")
+          |> get("/api/v1/notifications?limit=10")
           |> json_response(200)
 
         notification =
@@ -159,7 +159,7 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
 
         response =
           conn
-          |> get("/api/v2/notifications?limit=10")
+          |> get("/api/v1/notifications?limit=10")
           |> json_response(200)
 
         assert Enum.any?(response, fn notification ->
@@ -216,7 +216,7 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
 
         first_page =
           conn
-          |> get("/api/v2/notifications?limit=1&exclude_types%5B%5D=poll")
+          |> get("/api/v1/notifications?limit=1&exclude_types%5B%5D=poll")
           |> json_response(200)
 
         assert [first_notification] = first_page
@@ -226,7 +226,7 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
         second_page =
           conn
           |> get(
-            "/api/v2/notifications?limit=1&exclude_types%5B%5D=poll&max_id=#{first_notification["id"]}"
+            "/api/v1/notifications?limit=1&exclude_types%5B%5D=poll&max_id=#{first_notification["id"]}"
           )
           |> json_response(200)
 
@@ -238,7 +238,7 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
       test "requires authentication" do
         response =
           unauthenticated_conn()
-          |> get("/api/v2/notifications")
+          |> get("/api/v1/notifications")
           |> json_response(401)
 
         assert response["error"]
@@ -306,7 +306,7 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
         assert is_nil(notification)
       end
 
-      test "maps vote activities to poll notifications", %{user: user} do
+      test "does not map vote activities to poll completion notifications", %{user: user} do
         subject = Bonfire.Me.Fake.fake_user!()
         activity_id = "01KS7CHQQ6Y8KQR9A7X4EBPJPM"
         object_id = "01KS62C1KD0B917AG5F0H0N7BP"
@@ -328,8 +328,7 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
             mentions_by_object: %{}
           )
 
-        assert notification["type"] == "poll"
-        assert notification["status"]["id"] == object_id
+        assert is_nil(notification)
       end
 
       test "drops a real published post activity when it does not mention the current user", %{

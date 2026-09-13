@@ -21,6 +21,16 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     - `media/0` - Media fields for status queries
     """
 
+    @doc "Thread linkage and parent author for Mastodon status responses."
+    def thread_fields do
+      """
+      replied {
+        reply_to_id: replyToId
+        reply_to: replyTo { subject { ... on User { id } ... on Category { id } } }
+      }
+      """
+    end
+
     # ===========================================
     # Account / User fragments
     # ===========================================
@@ -55,8 +65,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     # MUST cover every actor type in the :any_character union — User AND Category (groups) — or
     # group-authored activities resolve to an untyped actor and get dropped on validation.
     @actor_fields """
-    ... on User { id character { username url: canonicalUri } profile { name summary } }
-    ... on Category { id character { username url: canonicalUri } profile { name summary } }
+    ... on User { id character { username url: canonicalUri } profile { name summary avatar: icon header: image } }
+    ... on Category { id character { username url: canonicalUri } profile { name summary avatar: icon header: image } }
     """
 
     @doc "Actor (subject/creator) fields for `Absinthe.run` masto queries — covers User + Category."
@@ -82,6 +92,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     @media """
       id
       url
+      preview_url: thumbnail_url
       path
       media_type
       label

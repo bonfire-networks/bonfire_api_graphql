@@ -35,7 +35,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         "id" => to_string(get_field(media, :id) || ""),
         "type" => type,
         "url" => url || "",
-        "preview_url" => url,
+        "preview_url" => build_preview_url(media, type, url),
         "remote_url" => get_field(media, :remote_url),
         "text_url" => nil,
         "meta" => build_meta(media, type),
@@ -48,7 +48,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp categorize_media_type(mime) when is_binary(mime) do
       cond do
-        String.starts_with?(mime, "image/gif") -> "gifv"
         String.starts_with?(mime, "image/") -> "image"
         String.starts_with?(mime, "video/") -> "video"
         String.starts_with?(mime, "audio/") -> "audio"
@@ -59,7 +58,15 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp categorize_media_type(_), do: "unknown"
 
     defp build_url(media) do
-      get_fields(media, [:url, :path]) || build_url_from_file(media)
+      (get_fields(media, [:url, :path]) || build_url_from_file(media))
+      |> Bonfire.Common.URIs.based_url()
+    end
+
+    defp build_preview_url(_media, "image", url), do: url
+
+    defp build_preview_url(media, _type, _url) do
+      (get_field(media, :preview_url) || Bonfire.Common.Media.thumbnail_url(media))
+      |> Bonfire.Common.URIs.based_url()
     end
 
     defp build_url_from_file(media) do

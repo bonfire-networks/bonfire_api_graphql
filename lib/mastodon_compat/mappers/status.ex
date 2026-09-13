@@ -148,7 +148,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         media: get_field(activity, :media) || [],
         replied: replied,
         in_reply_to_id: get_field(replied, :reply_to_id),
-        in_reply_to_account_id: get_field(replied, :reply_to) |> get_field(:subject_id),
+        in_reply_to_account_id: replied_account_id(replied),
         liked_by_me: get_field(activity, :liked_by_me),
         boosted_by_me: get_field(activity, :boosted_by_me),
         bookmarked_by_me: get_field(activity, :bookmarked_by_me),
@@ -167,10 +167,15 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       }
     end
 
+    defp replied_account_id(replied) do
+      parent = get_field(replied, :reply_to)
+      get_field(parent, :subject_id) ||
+        (get_field(parent, :subject) |> get_field(:id)) ||
+        (get_field(parent, :created) |> get_field(:creator_id))
+    end
+
     defp replied_replies_count(replied) do
-      get_field(replied, :total_replies_count) ||
-        get_field(replied, :direct_replies_count) ||
-        get_field(replied, :nested_replies_count) || 0
+      get_field(replied, :direct_replies_count) || 0
     end
 
     defp build_post_context(post, opts) do
@@ -178,6 +183,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       post_content = get_field(post, :post_content) || %{}
       created = get_field(post, :created) || %{}
       post_id = get_field(post, :id)
+      replied = get_field(post, :replied) || get_field(activity, :replied)
 
       creator =
         get_field(post, :creator) ||
@@ -203,6 +209,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         uri: uri,
         post_content: post_content,
         creator: creator,
+        in_reply_to_id: get_field(replied, :reply_to_id),
+        in_reply_to_account_id: replied_account_id(replied),
         context_id: Keyword.get(opts, :context_id) || get_field(post, :context_id),
         media: get_field(post, :media) || get_field(activity, :media) || [],
         # Interaction flags / engagement counts: present when the post's `activity` was
@@ -252,7 +260,12 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def build_regular_status(context, opts) do
       account = extract_account(context, opts)
       content_data = extract_content(context)
-      media_attachments = Mappers.MediaAttachment.from_media_list(context[:media])
+      {links, attachments} =
+        context[:media]
+        |> List.wrap()
+        |> Enum.split_with(&Mappers.PreviewCard.link?/1)
+
+      media_attachments = Mappers.MediaAttachment.from_media_list(attachments)
       object_id = context[:object_id] || context[:id]
       mentions = extract_mentions(object_id, context, opts)
 
@@ -268,6 +281,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           "text" => content_data.text,
           "spoiler_text" => content_data.spoiler_text,
           "media_attachments" => media_attachments,
+          "card" => Enum.find_value(links, &Mappers.PreviewCard.from_media/1),
           "mentions" => mentions,
           "tags" => extract_hashtags(object_id, opts),
           "context_id" => context[:context_id],
@@ -292,12 +306,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       |> maybe_add_poll(context, opts)
     end
 
-    # The feed query carries only the object's `__typename` for poll detection, so load the full
-    # `Bonfire.Poll.Question` (choices + post_content + voting_dates) and reuse the struct-based
-    # `Mappers.Poll.from_question` — same supplementary-load pattern reblogs use. Only fires for
-    # the (rare) poll rows; the feed itself stays on GraphQL.
+    # Feed rows identify polls by type; load their shared GraphQL representation so visibility and totals match the poll endpoint.
     defp maybe_add_poll(status, context, opts) do
-      object = context[:object]
+      object = context[:object] || context[:post]
       object_id = context[:object_id] || context[:id]
 
       if poll_object?(object) and object_id do
@@ -324,36 +335,15 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     defp load_poll_question(object_id, current_user) do
-      Bonfire.Poll.Questions.read(object_id, current_user)
+      Bonfire.Poll.API.GraphQLMasto.Adapter.read_poll(object_id, current_user)
       |> case do
-        {:ok, question} -> with_choice_vote_counts(question, current_user)
-        question when is_struct(question) -> with_choice_vote_counts(question, current_user)
+        {:ok, question} -> question
+        question when is_struct(question) -> question
         _ -> nil
       end
     rescue
       _ -> nil
     end
-
-    # `Mappers.Poll` reads `choice.votes_count` (computed, not stored), so populate it per choice
-    # from the canonical join-based `preview_vote_state_for_question/2` (same aggregate the web
-    # preview uses). Choices returned as plain maps so the mapper's `e/3` reads the added :votes_count.
-    defp with_choice_vote_counts(question, current_user) do
-      counts =
-        Bonfire.Poll.Votes.preview_vote_state_for_question(question, current_user)
-        |> Map.get(:counts_by_choice_id, %{})
-
-      choices =
-        (Map.get(question, :choices) || [])
-        |> Enum.map(fn choice ->
-          cid = Map.get(choice, :id)
-          choice |> choice_to_map() |> Map.put(:votes_count, Map.get(counts, cid, 0))
-        end)
-
-      Map.put(question, :choices, choices)
-    end
-
-    defp choice_to_map(%_{} = choice), do: Map.from_struct(choice)
-    defp choice_to_map(choice) when is_map(choice), do: choice
 
     defp extract_hashtags(nil, _opts), do: []
 
@@ -470,7 +460,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     # (no creator) — so resolve its id and load it fully (boundary-aware) for account + content.
     defp extract_reblog(context, opts) do
       reblog_opts = Keyword.merge(opts, is_reblog: true)
-      object = context[:object]
+      object = context[:object] || context[:post]
 
       cond do
         full_post?(object) ->
@@ -496,7 +486,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     # Id of the original post being boosted.
     defp reblog_object_id(context) do
-      object = context[:object]
+      object = context[:object] || context[:post]
 
       cond do
         is_struct(object, Bonfire.Data.Social.Boost) or get_field(object, :__typename) == "Boost" ->
@@ -601,12 +591,14 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
         preset_acls = Bonfire.Common.Config.get!(:preset_acls_match)
         public_ids = MapSet.new(Bonfire.Boundaries.Acls.preset_acl_ids("public", preset_acls))
+        unlisted_ids = MapSet.new(Bonfire.Boundaries.Acls.preset_acl_ids("unlisted", preset_acls))
         local_ids = MapSet.new(Bonfire.Boundaries.Acls.preset_acl_ids("local", preset_acls))
         has_public = not MapSet.disjoint?(acl_ids, public_ids)
         has_local = not MapSet.disjoint?(acl_ids, local_ids)
 
         cond do
           has_remote -> "public"
+          not MapSet.disjoint?(acl_ids, unlisted_ids) -> "unlisted"
           has_public -> "unlisted"
           has_local -> "unlisted"
           true -> "direct"

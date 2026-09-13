@@ -30,13 +30,44 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     use Bonfire.Common.Utils
     alias Bonfire.Files.Media
+    alias Bonfire.API.MastoCompat.Helpers
+
+    @doc """
+    Whether media describes a webpage rather than an attached file.
+
+        iex> Bonfire.API.MastoCompat.Mappers.PreviewCard.link?(%{media_type: "website"})
+        true
+
+        iex> Bonfire.API.MastoCompat.Mappers.PreviewCard.link?(%{media_type: "image/png"})
+        false
+    """
+    def link?(media) do
+      type = Helpers.get_field(media, :media_type)
+      metadata = Helpers.get_field(media, :metadata) || %{}
+
+      type in ["link", "website", "article", "research", "book", "profile", "url", "URL"] or
+        metadata["content_type"] in ["text/html", "application/xhtml+xml"]
+    end
 
     @doc """
     Transform a Bonfire Media struct (from trending links) to a Mastodon PreviewCard.
     """
     def from_media(nil), do: nil
 
-    def from_media(%{path: path} = media) when is_binary(path) do
+    def from_media(media) when is_map(media) do
+      path = Helpers.get_fields(media, [:path, :url])
+
+      if is_binary(path) do
+        media
+        |> Map.put(:path, path)
+        |> Map.put(:metadata, Helpers.get_field(media, :metadata) || %{})
+        |> build_card()
+      end
+    end
+
+    def from_media(_), do: nil
+
+    defp build_card(%{path: path} = media) do
       metadata = Map.get(media, :metadata) || %{}
 
       %{
@@ -57,8 +88,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         "history" => build_history(media)
       }
     end
-
-    def from_media(_), do: nil
 
     defp card_type(metadata) do
       cond do
@@ -110,15 +139,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     defp extract_preview_image(media) do
-      metadata = Map.get(media, :metadata) || %{}
-
-      e(metadata, "oembed", "thumbnail_url", nil) ||
-        e(metadata, "twitter", "image", nil) ||
-        e(metadata, "facebook", "image", "url", nil) ||
-        e(metadata, "facebook", "image", nil) ||
-        e(metadata, "image", "url", nil) ||
-        e(metadata, "image", nil)
-        |> unwrap_value()
+      Media.preview_image_url(media)
     end
 
     defp build_history(media) do

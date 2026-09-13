@@ -54,6 +54,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     ## Options
 
     - `:current_user` - The current user viewing the notification
+    - `:status` - Canonical GraphQL status supplied by the notification adapter; an explicit nil suppresses fallback mapping
     - `:subjects_by_id` - Map of subject IDs to preloaded user data
     - `:post_content_by_id` - Map of object IDs to preloaded post content
     - `:mentions_by_object` - Map of object IDs to preloaded mentions
@@ -116,7 +117,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
         status_data =
           if should_include_status?(notification_type) do
-            extract_status(notification_type, activity, opts)
+            case Keyword.fetch(opts, :status) do
+              {:ok, status} -> status
+              :error -> extract_status(notification_type, activity, opts)
+            end
           else
             nil
           end
@@ -195,7 +199,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           request_type(opts)
 
         verb_id == verb_id(:vote) ->
-          "poll"
+          nil
 
         verb_id == verb_id(:create) ->
           if user_is_mentioned?(opts), do: "mention"

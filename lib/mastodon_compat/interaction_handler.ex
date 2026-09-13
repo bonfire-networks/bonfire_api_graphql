@@ -71,28 +71,17 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
            flag_value,
            interaction_result
          ) do
-      opts = [
-        current_user: current_user,
-        preload: Bonfire.API.MastoCompat.FeedPipeline.single_status_preloads()
-      ]
+      case Bonfire.Social.API.GraphQLMasto.Adapter.read_status(id, current_user) do
+        {:ok, status} ->
+          prepared =
+            if interaction_type in [:boost, :unboost] do
+              wrap_as_boost(status, current_user, interaction_result, flag_value)
+            else
+              Map.put(status, flag, flag_value)
+            end
+            |> Helpers.deep_struct_to_map()
 
-      case Bonfire.Social.Objects.read(id, opts) do
-        {:ok, object} ->
-          case Mappers.Status.from_post(object, current_user: current_user) do
-            nil ->
-              RestAdapter.error_fn({:error, :not_found}, conn)
-
-            status ->
-              prepared =
-                if interaction_type in [:boost, :unboost] do
-                  wrap_as_boost(status, current_user, interaction_result, flag_value)
-                else
-                  Map.put(status, flag, flag_value)
-                end
-                |> Helpers.deep_struct_to_map()
-
-              Phoenix.Controller.json(conn, prepared)
-          end
+          Phoenix.Controller.json(conn, prepared)
 
         {:error, reason} ->
           RestAdapter.error_fn({:error, reason}, conn)

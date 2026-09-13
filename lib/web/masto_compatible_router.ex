@@ -360,8 +360,9 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         # Media upload (async - returns 202 Accepted)
         post "/media", Bonfire.Files.Web.MastoMediaController, :create_v2
 
-        # Notifications (proxied to v1 handler for now; grouped format is a follow-up)
-        get "/notifications", Bonfire.Social.Web.MastoTimelineController, :notifications
+        # Grouped notifications
+        get "/notifications", Bonfire.Social.Web.MastoTimelineController, :grouped_notifications
+        get "/notifications/:group_key", Bonfire.Social.Web.MastoTimelineController, :grouped_notifications
       end
 
       scope "/api/v1-bonfire" do
