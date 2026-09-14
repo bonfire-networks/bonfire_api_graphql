@@ -362,7 +362,10 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
         # Grouped notifications
         get "/notifications", Bonfire.Social.Web.MastoTimelineController, :grouped_notifications
-        get "/notifications/:group_key", Bonfire.Social.Web.MastoTimelineController, :grouped_notifications
+
+        get "/notifications/:group_key",
+            Bonfire.Social.Web.MastoTimelineController,
+            :grouped_notifications
       end
 
       scope "/api/v1-bonfire" do

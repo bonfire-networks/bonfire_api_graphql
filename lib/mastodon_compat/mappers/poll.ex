@@ -11,7 +11,13 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def from_question(question, _opts) when is_map(question) do
       choices = (get_field(question, :choices) || []) |> Enum.sort_by(&get_field(&1, :id))
       own_ids = (get_field(question, :own_votes) || []) |> Enum.map(&get_field(&1, :id))
-      own_votes = choices |> Enum.with_index() |> Enum.filter(fn {choice, _} -> get_field(choice, :id) in own_ids end) |> Enum.map(&elem(&1, 1))
+
+      own_votes =
+        choices
+        |> Enum.with_index()
+        |> Enum.filter(fn {choice, _} -> get_field(choice, :id) in own_ids end)
+        |> Enum.map(&elem(&1, 1))
+
       expires_at = get_field(question, :voting_close_at)
 
       Schemas.Poll.new(%{
@@ -23,28 +29,39 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         "voters_count" => get_field(question, :voters_count) || 0,
         "voted" => get_field(question, :voted) || false,
         "own_votes" => own_votes,
-        "options" => Enum.map(choices, fn choice ->
-          content = get_field(choice, :post_content)
-          %{"title" => get_field(content, :name) || get_field(content, :html_body) || "",
-            "votes_count" => get_field(choice, :votes_result_total)}
-        end),
+        "options" =>
+          Enum.map(choices, fn choice ->
+            content = get_field(choice, :post_content)
+
+            %{
+              "title" => get_field(content, :name) || get_field(content, :html_body) || "",
+              "votes_count" => get_field(choice, :votes_result_total)
+            }
+          end),
         "emojis" => []
       })
     end
 
     @doc "Recognises native and GraphQL poll objects for status enrichment."
-    def is_poll?(object), do: get_field(object, :__struct__) == Bonfire.Poll.Question or get_field(object, :__typename) == "Poll"
+    def is_poll?(object),
+      do:
+        get_field(object, :__struct__) == Bonfire.Poll.Question or
+          get_field(object, :__typename) == "Poll"
 
     @doc "Whether the GraphQL poll's closing time has been reached."
     def poll_expired?(question) do
       case get_field(question, :voting_close_at) do
-        %DateTime{} = date -> DateTime.compare(DateTime.utc_now(), date) != :lt
+        %DateTime{} = date ->
+          DateTime.compare(DateTime.utc_now(), date) != :lt
+
         date when is_binary(date) ->
           case DateTime.from_iso8601(date) do
             {:ok, parsed, _} -> DateTime.compare(DateTime.utc_now(), parsed) != :lt
             _ -> false
           end
-        _ -> false
+
+        _ ->
+          false
       end
     end
   end

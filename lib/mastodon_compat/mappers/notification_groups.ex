@@ -9,9 +9,14 @@ defmodule Bonfire.API.MastoCompat.Mappers.NotificationGroups do
   """
   def from_groups(groups) do
     notifications = Enum.flat_map(groups, fn {_group, items} -> items end)
+
     %{
       "accounts" => notifications |> Enum.map(& &1["account"]) |> Enum.uniq_by(& &1["id"]),
-      "statuses" => notifications |> Enum.map(& &1["status"]) |> Enum.reject(&is_nil/1) |> Enum.uniq_by(& &1["id"]),
+      "statuses" =>
+        notifications
+        |> Enum.map(& &1["status"])
+        |> Enum.reject(&is_nil/1)
+        |> Enum.uniq_by(& &1["id"]),
       "notification_groups" => Enum.map(groups, &from_group/1)
     }
   end
@@ -27,6 +32,8 @@ defmodule Bonfire.API.MastoCompat.Mappers.NotificationGroups do
       "latest_page_notification_at" => latest["created_at"],
       "sample_account_ids" => items |> Enum.map(& &1["account"]["id"]) |> Enum.uniq()
     }
-    |> then(fn mapped -> if latest["status"], do: Map.put(mapped, "status_id", latest["status"]["id"]), else: mapped end)
+    |> then(fn mapped ->
+      if latest["status"], do: Map.put(mapped, "status_id", latest["status"]["id"]), else: mapped
+    end)
   end
 end

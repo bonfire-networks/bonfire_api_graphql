@@ -169,9 +169,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp replied_account_id(replied) do
       parent = get_field(replied, :reply_to)
+
       get_field(parent, :subject_id) ||
-        (get_field(parent, :subject) |> get_field(:id)) ||
-        (get_field(parent, :created) |> get_field(:creator_id))
+        get_field(parent, :subject) |> get_field(:id) ||
+        get_field(parent, :created) |> get_field(:creator_id)
     end
 
     defp replied_replies_count(replied) do
@@ -260,6 +261,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def build_regular_status(context, opts) do
       account = extract_account(context, opts)
       content_data = extract_content(context)
+
       {links, attachments} =
         context[:media]
         |> List.wrap()
