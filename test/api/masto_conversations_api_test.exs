@@ -23,6 +23,40 @@ if Application.compile_env(:bonfire_messages, :modularity) != :disabled do
     end
 
     describe "GET /api/v1/conversations" do
+      test "populated conversations expose valid participant URLs and remain private", %{conn: conn, user: user} do
+        sender = Bonfire.Me.Fake.fake_user!()
+
+        assert {:ok, message} =
+                 Bonfire.Messages.send(sender, %{
+                   to_circles: [user.id],
+                   post_content: %{html_body: "Private conversation URL regression"}
+                 })
+
+        conversations = conn |> get("/api/v1/conversations") |> json_response(200)
+        conversation = Enum.find(conversations, &(&1["last_status"]["id"] == message.id))
+        assert conversation
+        assert conversation["last_status"]["visibility"] == "direct"
+        assert sender.id in Enum.map(conversation["accounts"], & &1["id"])
+
+        for participant <- conversation["accounts"] ++ [conversation["last_status"]["account"]] do
+          assert is_binary(participant["url"])
+          assert %URI{scheme: scheme, host: host} = URI.parse(participant["url"])
+          assert scheme in ["http", "https"]
+          assert is_binary(host) and host != ""
+        end
+
+        outsider_account = Bonfire.Me.Fake.fake_account!()
+        outsider = Bonfire.Me.Fake.fake_user!(outsider_account)
+
+        outsider_conversations =
+          Phoenix.ConnTest.build_conn()
+          |> masto_api_conn(user: outsider, account: outsider_account)
+          |> get("/api/v1/conversations")
+          |> json_response(200)
+
+        refute Enum.any?(outsider_conversations, &(&1["last_status"]["id"] == message.id))
+      end
+
       test "returns 200 with empty list when no conversations", %{conn: conn} do
         response =
           conn

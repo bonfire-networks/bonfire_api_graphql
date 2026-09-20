@@ -80,6 +80,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
       participants =
         Threads.list_participants(message, thread_id, current_user: current_user)
+        |> repo().maybe_preload(character: :peered, profile: :icon)
 
       # Skip expensive stats for conversation participants (N+1 query prevention)
       account_opts = Keyword.merge(opts, skip_expensive_stats: true)

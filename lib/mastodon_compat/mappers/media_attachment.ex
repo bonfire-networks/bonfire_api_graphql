@@ -101,7 +101,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
       duration_meta =
         if type in ["video", "audio", "gifv"] do
-          duration = metadata["duration"] || get_field(media, :duration)
+          duration =
+            (metadata["duration"] || get_field(media, :duration))
+            |> normalize_duration()
           if duration, do: %{"duration" => duration}, else: %{}
         else
           %{}
@@ -112,6 +114,55 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       |> Map.merge(focus_meta)
       |> Map.merge(duration_meta)
     end
+
+    @doc """
+    Converts media durations to numeric seconds for Mastodon clients. Unknown or invalid durations are omitted rather than exposed as strings.
+
+    Calendar years and months are not accepted because their duration in seconds is ambiguous.
+
+    ## Examples
+
+        iex> normalize_duration("PT253.47S")
+        253.47
+
+        iex> normalize_duration("PT1H2M3S")
+        3723.0
+
+        iex> normalize_duration("12.5")
+        12.5
+
+        iex> normalize_duration("unknown")
+        nil
+    """
+    def normalize_duration(duration) when is_number(duration) and duration >= 0, do: duration
+
+    def normalize_duration("P" <> _ = duration) do
+      captures =
+        Regex.named_captures(
+          ~r/^P(?:(?<days>\d+(?:\.\d+)?)D)?(?:T(?:(?<hours>\d+(?:\.\d+)?)H)?(?:(?<minutes>\d+(?:\.\d+)?)M)?(?:(?<seconds>\d+(?:\.\d+)?)S)?)$/,
+          duration
+        )
+
+      if captures && Enum.any?(Map.values(captures), &(&1 != "")) &&
+           not String.ends_with?(duration, "T") do
+        Enum.reduce([{"days", 86_400}, {"hours", 3600}, {"minutes", 60}, {"seconds", 1}], 0.0, fn
+          {unit, multiplier}, total ->
+            case Float.parse(captures[unit]) do
+              {value, ""} -> total + value * multiplier
+              _ -> total
+            end
+        end)
+      end
+    end
+
+    def normalize_duration(duration) when is_binary(duration) do
+      case Float.parse(duration) do
+        {value, ""} when value >= 0 -> value
+        _ -> nil
+      end
+    end
+
+    def normalize_duration(_), do: nil
 
     defp calculate_aspect(width, height)
          when is_number(width) and is_number(height) and height > 0 do

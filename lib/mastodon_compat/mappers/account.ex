@@ -109,7 +109,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
         account = %{
           "id" => to_string(user_id),
-          "username" => username || "",
+          "username" => username |> String.split("@", parts: 2) |> hd(),
           "acct" => acct || "",
           "display_name" => display_name || "",
           "note" => note_html,
