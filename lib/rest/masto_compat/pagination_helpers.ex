@@ -282,6 +282,19 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     # ==========================================
 
     @doc """
+    Build timeline parameters with a seven-day default independent of the instance's native feed window. Explicit time filters still take precedence; archive endpoints use `build_feed_params/3` instead.
+
+    ## Examples
+
+        iex> build_timeline_params(%{"limit" => "5"}, %{"feed_name" => "my"})
+        %{:first => 5, "filter" => %{"feed_name" => "my", "time_limit" => 7}}
+    """
+    def build_timeline_params(params, filters, opts \\ []) do
+      filters = Map.put_new(filters, "time_limit", 7)
+      build_feed_params(params, filters, opts)
+    end
+
+    @doc """
     Build feed parameters from Mastodon-style params.
 
     Converts Mastodon timeline parameters to Bonfire GraphQL format:
