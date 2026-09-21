@@ -24,7 +24,12 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     test "an explicit remote acct is preserved" do
       user = Bonfire.Me.Fake.fake_user!()
-      character = user.character |> Map.from_struct() |> Map.merge(%{username: "alice", acct: "alice@remote.example"})
+
+      character =
+        user.character
+        |> Map.from_struct()
+        |> Map.merge(%{username: "alice", acct: "alice@remote.example"})
+
       result = Account.from_user(%{user | character: character}, skip_expensive_stats: true)
       assert result["username"] == "alice"
       assert result["acct"] == "alice@remote.example"
@@ -33,11 +38,20 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     test "audio and video metadata expose numeric seconds through JSON" do
       for type <- ["audio/ogg", "video/mp4"],
           {duration, expected} <- [
-            {"PT253.47S", 253.47}, {"PT1H2M3.5S", 3723.5},
-            {"P1DT2H", 93_600.0}, {"PT0S", 0.0}, {"253.47", 253.47},
-            {253.47, 253.47}, {0, 0}
+            {"PT253.47S", 253.47},
+            {"PT1H2M3.5S", 3723.5},
+            {"P1DT2H", 93_600.0},
+            {"PT0S", 0.0},
+            {"253.47", 253.47},
+            {253.47, 253.47},
+            {0, 0}
           ] do
-        attachment = media(type, duration) |> MediaAttachment.from_media() |> Jason.encode!() |> Jason.decode!()
+        attachment =
+          media(type, duration)
+          |> MediaAttachment.from_media()
+          |> Jason.encode!()
+          |> Jason.decode!()
+
         assert attachment["meta"]["duration"] == expected
         assert is_number(attachment["meta"]["duration"])
       end
@@ -54,14 +68,18 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     test "duration can also come from the media field" do
-      attachment = media("video/mp4", nil) |> Map.put(:duration, "PT2M") |> MediaAttachment.from_media()
+      attachment =
+        media("video/mp4", nil) |> Map.put(:duration, "PT2M") |> MediaAttachment.from_media()
+
       assert attachment["meta"]["duration"] == 120.0
     end
 
     defp media(type, duration) do
       %{
-        id: "media-regression", media_type: type,
-        url: "https://remote.example/media", preview_url: "https://remote.example/preview",
+        id: "media-regression",
+        media_type: type,
+        url: "https://remote.example/media",
+        preview_url: "https://remote.example/preview",
         metadata: %{"duration" => duration}
       }
     end

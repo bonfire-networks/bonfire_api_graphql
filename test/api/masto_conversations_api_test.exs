@@ -23,7 +23,10 @@ if Application.compile_env(:bonfire_messages, :modularity) != :disabled do
     end
 
     describe "GET /api/v1/conversations" do
-      test "populated conversations expose valid participant URLs and remain private", %{conn: conn, user: user} do
+      test "populated conversations expose valid participant URLs and remain private", %{
+        conn: conn,
+        user: user
+      } do
         sender = Bonfire.Me.Fake.fake_user!()
 
         assert {:ok, message} =

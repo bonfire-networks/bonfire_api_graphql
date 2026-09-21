@@ -41,7 +41,11 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
       test "honors explicit time filters, including unlimited history" do
         for days <- [0, 2, 30] do
-          params = PaginationHelpers.build_timeline_params(%{"time_limit" => days}, %{"feed_name" => "my"})
+          params =
+            PaginationHelpers.build_timeline_params(%{"time_limit" => days}, %{
+              "feed_name" => "my"
+            })
+
           assert params["filter"]["time_limit"] == days
         end
       end

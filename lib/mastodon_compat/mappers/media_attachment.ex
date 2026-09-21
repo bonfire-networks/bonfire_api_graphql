@@ -104,6 +104,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           duration =
             (metadata["duration"] || get_field(media, :duration))
             |> normalize_duration()
+
           if duration, do: %{"duration" => duration}, else: %{}
         else
           %{}
