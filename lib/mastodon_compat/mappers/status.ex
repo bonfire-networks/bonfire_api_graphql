@@ -34,6 +34,16 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     import Helpers, only: [get_field: 2, get_fields: 2]
 
+    # an activity's own interaction flags, in both the loaded and the GraphQL spelling
+    @own_interaction_flags [
+      :liked_by_me,
+      :boosted_by_me,
+      :bookmarked_by_me,
+      "liked_by_me",
+      "boosted_by_me",
+      "bookmarked_by_me"
+    ]
+
     @doc """
     Transform a Bonfire Activity into a Mastodon Status.
 
@@ -93,6 +103,23 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       context = build_post_context(post, opts)
       status = build_regular_status(context, opts)
       Helpers.validate_and_return(status, Schemas.Status)
+    end
+
+    @doc """
+    The status an activity is about: its object, completed by the activity itself. An activity's media, counts and thread are its object's (they join on `object_id`), so they describe the post whether the activity is its creation or a like, boost or edit of it. The author is the object's creator, never the activity's subject, who on a like is the one who liked it.
+
+    Whether the reader liked, boosted or bookmarked it comes from `:interaction_states`, batch-loaded by object id, and not from the activity's own `*_by_me`, which are keyed by the activity's id and so, on a boost, describe the boost.
+    """
+    def from_activity_object(activity, opts \\ []) do
+      case get_field(activity, :object) do
+        object when is_map(object) ->
+          object
+          |> Map.put(:activity, Map.drop(activity, @own_interaction_flags))
+          |> from_post(opts)
+
+        _ ->
+          nil
+      end
     end
 
     @doc """
@@ -182,15 +209,17 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp build_post_context(post, opts) do
       activity = get_field(post, :activity) || %{}
       post_content = get_field(post, :post_content) || %{}
-      created = get_field(post, :created) || %{}
       post_id = get_field(post, :id)
       replied = get_field(post, :replied) || get_field(activity, :replied)
 
+      # the object's own creator before its activity's subject: a notification completes the post with the like or boost that notified, whose subject is the one who liked it. `find_creator/3` also stands in the current user where the preloads left them out
       creator =
         get_field(post, :creator) ||
+          Bonfire.Social.Activities.find_creator(activity, post,
+            current_user: Keyword.get(opts, :current_user)
+          ) ||
           get_field(activity, :creator) ||
-          get_field(activity, :subject) ||
-          get_field(created, :creator)
+          get_field(activity, :subject)
 
       created_at =
         get_field(activity, :created_at) ||
@@ -465,6 +494,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       object = context[:object] || context[:post]
 
       cond do
+        full_post?(object) and is_map(context[:activity]) ->
+          from_activity_object(context[:activity], reblog_opts)
+
         full_post?(object) ->
           from_post(object, reblog_opts)
 

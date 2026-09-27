@@ -1,13 +1,10 @@
 if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
   defmodule Bonfire.API.MastoCompat.BatchLoaders do
     @moduledoc """
-    Batch-loads the supplementary per-object data Mastodon mappers need (interaction
-    state, mentions, hashtags, visibility, followers-grants, post-content) in a handful
-    of queries instead of N+1, shared by the timeline and notification read paths.
+    Batch-loads the supplementary per-object data Mastodon mappers need (interaction state, mentions, hashtags, visibility, followers-grants, post-content) in a handful of queries instead of N+1, shared by the timeline and notification read paths.
     Callers pass object IDs and receive a keyword list ready to merge into mapper opts.
 
-    Reads only through stable Bonfire context functions (`Bonfire.Social.Edges`,
-    `Bonfire.Boundaries.Controlleds`, `Bonfire.Tag`), staying separated from core.
+    Reads only through stable Bonfire context functions (`Bonfire.Social.Edges`, `Bonfire.Boundaries.Controlleds`, `Bonfire.Tag`), staying separated from core.
     """
 
     use Bonfire.Common.Repo

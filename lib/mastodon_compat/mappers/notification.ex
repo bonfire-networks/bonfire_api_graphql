@@ -32,19 +32,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     import Helpers, only: [get_field: 2, get_fields: 2]
 
-    @type_to_masto %{
-      favourite: "favourite",
-      reblog: "reblog",
-      follow: "follow",
-      follow_request: "follow_request",
-      poll: "poll",
-      mention: "mention",
-      admin_report: "admin.report",
-      quote: "quote",
-      quoted_update: "quoted_update",
-      status: "status",
-      update: "update"
-    }
+    # Mastodon's name for each of our notification type atoms comes from `Schemas.Notification.type_name/1`, over the one list of its types (`valid_types/0`)
 
     @doc """
     Transform a Bonfire Activity into a Mastodon Notification.
@@ -75,7 +63,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         candidate
         |> Map.get(:status_context, [])
         |> Keyword.merge(opts)
-        |> Keyword.put(:notification_type, Map.fetch!(@type_to_masto, Map.get(candidate, :type)))
+        |> Keyword.put(
+          :notification_type,
+          Schemas.Notification.type_name(Map.get(candidate, :type))
+        )
         |> Keyword.put(:subject, Map.get(candidate, :actor))
         |> Keyword.put(:mentions, Map.get(candidate, :mentions, []))
         |> Keyword.put(:status_post, Map.get(candidate, :status_post))
@@ -305,13 +296,16 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp extract_status_from_activity(activity, opts) do
       object = get_field(activity, :object)
-      typename = get_field(object, :__typename)
 
-      case typename do
-        "Post" ->
-          Mappers.Status.from_post(object, Keyword.merge(opts, for_notification: true))
+      cond do
+        # an object with written content is a status, whatever its type (a post, a poll): the same line `Activities.experienced_as/2` draws between writing and other creations
+        get_field(object, :post_content) ->
+          Mappers.Status.from_activity_object(
+            activity,
+            Keyword.merge(opts, for_notification: true)
+          )
 
-        "Boost" ->
+        get_field(object, :__typename) == "Boost" ->
           edge = get_field(object, :edge)
           original_post = get_field(edge, :object)
 
@@ -321,7 +315,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
             fallback_status_from_activity(activity, opts)
           end
 
-        _ ->
+        true ->
           fallback_status_from_activity(activity, opts)
       end
     end

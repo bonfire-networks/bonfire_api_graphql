@@ -102,5 +102,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     @doc "GraphQL fragment for media fields (used in status queries)"
     def media, do: @media
+
+    @doc "A status's media attachments, aliased to the keys `Mappers.MediaAttachment` reads."
+    def status_media do
+      "media { id media_type: mediaType url preview_url: thumbnailUrl description metadata }"
+    end
   end
 end

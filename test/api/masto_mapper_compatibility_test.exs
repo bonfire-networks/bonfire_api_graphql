@@ -7,6 +7,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     alias Bonfire.API.MastoCompat.Mappers.{Account, MediaAttachment}
 
     doctest MediaAttachment, only: [normalize_duration: 1], import: true
+    # Mastodon's notification type names and our atoms for them, read from config
+    doctest Bonfire.API.MastoCompat.Schemas.Notification,
+      only: [type_atom: 1, type_name: 1],
+      import: true
 
     test "remote handles separate username from acct without changing local handles" do
       user = Bonfire.Me.Fake.fake_user!()
