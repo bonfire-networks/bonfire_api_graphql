@@ -65,6 +65,11 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       Config.get([__MODULE__, :valid_types], [], :bonfire_api_graphql)
     end
 
+    @doc "Whether a notification of this Mastodon type carries the status it is about, per the Mastodon spec, as declared beside `valid_types/0`. Also which ones the user stream sends as an `update` event too."
+    def with_status?(type_name) do
+      type_name in Config.get([__MODULE__, :types_with_status], [], :bonfire_api_graphql)
+    end
+
     @doc """
     Our atom for a Mastodon notification type: its name with the admin types' `.` as `_` (`"admin.report"` is `:admin_report`). `nil` for a name that isn't one of `valid_types/0`, so a client's `types[]` can't make atoms of whatever it sends.
 

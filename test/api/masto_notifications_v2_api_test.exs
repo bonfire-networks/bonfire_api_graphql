@@ -263,6 +263,8 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
         notification =
           Bonfire.API.MastoCompat.Mappers.Notification.from_activity(activity,
             current_user: user,
+            # the caller names the type, as the notification list does
+            notification_type: "mention",
             subjects_by_id: %{subject.id => subject},
             post_content_by_id: %{
               object_id => %{id: object_id, html_body: "Fallback status body"}
@@ -280,61 +282,56 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
         assert status["url"] == status["uri"]
         assert {:ok, _} = Bonfire.API.MastoCompat.Schemas.Status.validate(status)
       end
+    end
 
-      test "drops create activities that do not mention the current user", %{user: user} do
-        subject = Bonfire.Me.Fake.fake_user!()
-        activity_id = "01KS7CHQQ6Y8KQR9A7X4EBPJPM"
-        object_id = "01KS62C1KD0B917AG5F0H0N7BP"
+    # a notification's Mastodon type, named once for the list, push and streaming: a mention only when it names the reader, anything else that reached them a `status`
+    describe "Mappers.Notification.type_for/2" do
+      test "a create that doesn't name the reader is a status, not dropped", %{user: user} do
+        activity = %{verb_id: Bonfire.Boundaries.Verbs.get_id!(:create), tags: []}
 
-        activity = %{
-          id: activity_id,
-          subject_id: subject.id,
-          object_id: object_id,
-          verb_id: Bonfire.Boundaries.Verbs.get_id!(:create)
-        }
-
-        notification =
-          Bonfire.API.MastoCompat.Mappers.Notification.from_activity(activity,
-            current_user: user,
-            subjects_by_id: %{subject.id => subject},
-            post_content_by_id: %{
-              object_id => %{id: object_id, html_body: "Fallback status body"}
-            },
-            mentions_by_object: %{}
-          )
-
-        assert is_nil(notification)
+        assert Bonfire.API.MastoCompat.Mappers.Notification.type_for(activity, user) == "status"
       end
 
-      test "does not map vote activities to poll completion notifications", %{user: user} do
-        subject = Bonfire.Me.Fake.fake_user!()
-        activity_id = "01KS7CHQQ6Y8KQR9A7X4EBPJPM"
-        object_id = "01KS62C1KD0B917AG5F0H0N7BP"
+      test "a create that names the reader is a mention", %{user: user} do
+        activity = %{verb_id: Bonfire.Boundaries.Verbs.get_id!(:create), tags: [%{id: user.id}]}
 
-        activity = %{
-          id: activity_id,
-          subject_id: subject.id,
-          object_id: object_id,
-          verb_id: Bonfire.Boundaries.Verbs.get_id!(:vote)
-        }
-
-        notification =
-          Bonfire.API.MastoCompat.Mappers.Notification.from_activity(activity,
-            current_user: user,
-            subjects_by_id: %{subject.id => subject},
-            post_content_by_id: %{
-              object_id => %{id: object_id, html_body: "Poll status body"}
-            },
-            mentions_by_object: %{}
-          )
-
-        assert is_nil(notification)
+        assert Bonfire.API.MastoCompat.Mappers.Notification.type_for(activity, user) == "mention"
       end
 
-      test "drops a real published post activity when it does not mention the current user", %{
-        user: user
-      } do
+      # Mastodon's `poll` means a poll ended, which a vote isn't
+      test "a vote has no Mastodon type", %{user: user} do
+        activity = %{verb_id: Bonfire.Boundaries.Verbs.get_id!(:vote)}
+
+        assert is_nil(Bonfire.API.MastoCompat.Mappers.Notification.type_for(activity, user))
+      end
+
+      # read as a create, as a row carrying no verb is, so something that reached the reader without naming them: a `status`, as the list's Other category shows it
+      test "a verb nobody declared is a status", %{user: user} do
+        activity = %{verb_id: "VNKN0WNN0T1F1CAT10NVERB"}
+
+        assert Bonfire.API.MastoCompat.Mappers.Notification.type_for(activity, user) == "status"
+      end
+
+      test "the mapper names no type itself: without one from its caller it drops the activity",
+           %{user: user} do
+        activity = %{
+          id: "01KS7CHQQ6Y8KQR9A7X4EBPJPM",
+          object_id: "01KS62C1KD0B917AG5F0H0N7BP",
+          verb_id: Bonfire.Boundaries.Verbs.get_id!(:like)
+        }
+
+        assert is_nil(
+                 Bonfire.API.MastoCompat.Mappers.Notification.from_activity(activity,
+                   current_user: user
+                 )
+               )
+      end
+    end
+
+    describe "a post that reaches the reader without naming them" do
+      test "is a status in the notification list", %{conn: conn, user: user} do
         subject = Bonfire.Me.Fake.fake_user!()
+        {:ok, _} = Bonfire.Notify.Bells.enable(user, subject)
 
         {:ok, post} =
           Bonfire.Posts.publish(
@@ -343,42 +340,16 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
             boundary: "public"
           )
 
-        notification =
-          Bonfire.API.MastoCompat.Mappers.Notification.from_activity(post.activity,
-            current_user: user,
-            subjects_by_id: %{subject.id => subject},
-            post_content_by_id: %{
-              post.id => post.post_content
-            },
-            mentions_by_object: %{}
-          )
-
-        assert is_nil(notification)
-      end
-
-      test "drops unsupported internal notification verbs", %{user: user} do
-        subject = Bonfire.Me.Fake.fake_user!()
-        activity_id = "01KS7CHDPT6MFWEJTK92NWBC0K"
-        object_id = "01KS63DWB94WNB1RYZKGA9QP98"
-
-        activity = %{
-          id: activity_id,
-          subject_id: subject.id,
-          object_id: object_id,
-          verb_id: "VNKN0WNN0T1F1CAT10NVERB"
-        }
+        # the positive first: the bell put it in the reader's notifications
+        assert Bonfire.Social.FeedLoader.feed_contains?(:notifications, post, current_user: user)
 
         notification =
-          Bonfire.API.MastoCompat.Mappers.Notification.from_activity(activity,
-            current_user: user,
-            subjects_by_id: %{subject.id => subject},
-            post_content_by_id: %{
-              object_id => %{id: object_id, html_body: "Fallback status body"}
-            },
-            mentions_by_object: %{}
-          )
+          conn
+          |> get("/api/v1/notifications")
+          |> json_response(200)
+          |> Enum.find(&(get_in(&1, ["status", "id"]) == post.id))
 
-        assert is_nil(notification)
+        assert %{"type" => "status"} = notification
       end
     end
   end

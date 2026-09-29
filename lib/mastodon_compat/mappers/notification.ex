@@ -78,36 +78,32 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def from_activity(%{node: activity}, opts), do: from_activity(activity, opts)
 
     def from_activity(activity, opts) when is_map(activity) do
-      # Handle both GraphQL maps (verb: %{verb: "Create"}) and Ecto structs (verb: %Verb{verb: "Create"} or verb_id: "...")
-      verb_id =
-        case get_field(activity, :verb) do
-          %{verb: v} when is_binary(v) -> v
-          v when is_binary(v) -> v
-          _ -> get_field(activity, :verb_id)
-        end
-
-      current_user = Keyword.get(opts, :current_user)
-      object_id = get_field(activity, :object_id)
-
-      mentions_by_object = Keyword.get(opts, :mentions_by_object, %{})
-      raw_mentions = Keyword.get(opts, :mentions) || Map.get(mentions_by_object, object_id, [])
-
-      notification_type =
-        Keyword.get(opts, :notification_type) ||
-          map_verb_to_type(verb_id,
-            current_user: current_user,
-            mentions: raw_mentions,
-            edge_table_id: get_field(get_field(activity, :edge), :table_id)
-          )
+      # the caller names the type (`from_candidate/2` from the notification list, or `type_for/2`), so there is one way to decide it rather than a second one here from the verb alone, which can't see who the reader is or whether they were named
+      # verb_id =
+      #   case get_field(activity, :verb) do
+      #     %{verb: v} when is_binary(v) -> v
+      #     v when is_binary(v) -> v
+      #     _ -> get_field(activity, :verb_id)
+      #   end
+      # current_user = Keyword.get(opts, :current_user)
+      # object_id = get_field(activity, :object_id)
+      # mentions_by_object = Keyword.get(opts, :mentions_by_object, %{})
+      # raw_mentions = Keyword.get(opts, :mentions) || Map.get(mentions_by_object, object_id, [])
+      notification_type = Keyword.get(opts, :notification_type)
 
       if is_nil(notification_type) do
+        warn(
+          get_field(activity, :id),
+          "No Mastodon notification type given for activity, dropping"
+        )
+
         nil
       else
         subject = get_subject(activity, opts)
         account_data = Mappers.Account.from_user(subject, skip_expensive_stats: true)
 
         status_data =
-          if should_include_status?(notification_type) do
+          if Schemas.Notification.with_status?(notification_type) do
             case Keyword.fetch(opts, :status) do
               {:ok, status} -> status
               :error -> extract_status(notification_type, activity, opts)
@@ -157,104 +153,78 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def from_activity(_, _opts), do: nil
 
     @doc """
-    Maps a Bonfire verb ID to a Mastodon notification type.
+    What a Mastodon client calls this activity, as a notification to `reader`, or nil for something its vocabulary has no name for. Decided the way the notification list and push decide it: what the reader experiences it as, then the Mastodon type the notification categories declare for that.
 
-    For `:create` and `:reply` activities, only returns "mention" when the
-    current user was mentioned. Unsupported or unmentioned activities return
-    `nil` so the Mastodon notifications endpoint can drop them.
-
-    ## Options
-
-    - `:current_user` - The current user viewing notifications
-    - `:mentions` - List of mention tags from the post
+    Needs what `Bonfire.Social.Activities.experienced_as/2` reads: the verb, the object with its `post_content`, the tags (to know whether the reader was named), and an ask's edge.
     """
-    def map_verb_to_type(verb_id, opts \\ [])
-
-    def map_verb_to_type(nil, _opts) do
-      warn(nil, "Notification has nil verb_id, dropping")
-      nil
+    def type_for(activity, reader) do
+      activity
+      |> Bonfire.Social.Activities.experienced_as(reader)
+      |> Bonfire.Social.Notifications.masto_type_for()
+      |> Schemas.Notification.type_name()
     end
 
-    def map_verb_to_type(verb_id, opts) do
-      cond do
-        verb_id == verb_id(:like) ->
-          "favourite"
+    # replaced by `type_for/2`, since a verb alone can't say whether the reader was named, or tell a post from something created: this dropped every reply and post that didn't name the reader, where the list names them `status`
+    # def map_verb_to_type(verb_id, opts \\ [])
+    #
+    # def map_verb_to_type(nil, _opts) do
+    #   warn(nil, "Notification has nil verb_id, dropping")
+    #   nil
+    # end
+    #
+    # def map_verb_to_type(verb_id, opts) do
+    #   cond do
+    #     verb_id == verb_id(:like) -> "favourite"
+    #     verb_id == verb_id(:boost) -> "reblog"
+    #     verb_id == verb_id(:follow) -> "follow"
+    #     verb_id == verb_id(:request) -> request_type(opts)
+    #     verb_id == verb_id(:vote) -> nil
+    #     verb_id == verb_id(:create) -> if user_is_mentioned?(opts), do: "mention"
+    #     verb_id == verb_id(:reply) -> if user_is_mentioned?(opts), do: "mention"
+    #     verb_id == verb_id(:flag) -> "admin.report"
+    #     true ->
+    #       warn(verb_id, "Unknown verb ID in Mastodon notification mapper, dropping")
+    #       nil
+    #   end
+    # end
+    #
+    # defp verb_id(slug) do
+    #   maybe_apply(Bonfire.Boundaries.Verbs, :get_id!, [slug], fallback_return: nil)
+    # end
+    #
+    # defp quote_request?(opts) do
+    #   Keyword.get(opts, :edge_table_id) ==
+    #     maybe_apply(Bonfire.Social.Quotes, :quote_verb_id, [], fallback_return: nil)
+    # end
+    #
+    # defp follow_request?(opts) do
+    #   Keyword.get(opts, :edge_table_id) ==
+    #     Bonfire.Common.Types.table_id(Bonfire.Data.Social.Follow)
+    # end
+    #
+    # defp request_type(opts) do
+    #   cond do
+    #     quote_request?(opts) -> "quote"
+    #     follow_request?(opts) -> "follow_request"
+    #     true -> nil
+    #   end
+    # end
+    #
+    # defp user_is_mentioned?(opts) do
+    #   current_user_id = Keyword.get(opts, :current_user) |> id()
+    #   mentions = Keyword.get(opts, :mentions, [])
+    #
+    #   current_user_id &&
+    #     Enum.any?(mentions, fn mention ->
+    #       mention_user_id = get_fields(mention, [:tag_id, :id])
+    #       mention_user_id == current_user_id
+    #     end)
+    # end
 
-        verb_id == verb_id(:boost) ->
-          "reblog"
-
-        verb_id == verb_id(:follow) ->
-          "follow"
-
-        verb_id == verb_id(:request) ->
-          request_type(opts)
-
-        verb_id == verb_id(:vote) ->
-          nil
-
-        verb_id == verb_id(:create) ->
-          if user_is_mentioned?(opts), do: "mention"
-
-        verb_id == verb_id(:reply) ->
-          if user_is_mentioned?(opts), do: "mention"
-
-        verb_id == verb_id(:flag) ->
-          "admin.report"
-
-        true ->
-          warn(verb_id, "Unknown verb ID in Mastodon notification mapper, dropping")
-          nil
-      end
-    end
-
-    defp verb_id(slug) do
-      maybe_apply(Bonfire.Boundaries.Verbs, :get_id!, [slug], fallback_return: nil)
-    end
-
-    @doc """
-    Determines if a notification type should include a status object.
-    """
-    def should_include_status?(notification_type) do
-      notification_type in [
-        "mention",
-        "status",
-        "reblog",
-        "favourite",
-        "poll",
-        "update",
-        "quote",
-        "quoted_update"
-      ]
-    end
-
-    defp quote_request?(opts) do
-      Keyword.get(opts, :edge_table_id) ==
-        maybe_apply(Bonfire.Social.Quotes, :quote_verb_id, [], fallback_return: nil)
-    end
-
-    defp follow_request?(opts) do
-      Keyword.get(opts, :edge_table_id) ==
-        Bonfire.Common.Types.table_id(Bonfire.Data.Social.Follow)
-    end
-
-    defp request_type(opts) do
-      cond do
-        quote_request?(opts) -> "quote"
-        follow_request?(opts) -> "follow_request"
-        true -> nil
-      end
-    end
-
-    defp user_is_mentioned?(opts) do
-      current_user_id = Keyword.get(opts, :current_user) |> id()
-      mentions = Keyword.get(opts, :mentions, [])
-
-      current_user_id &&
-        Enum.any?(mentions, fn mention ->
-          mention_user_id = get_fields(mention, [:tag_id, :id])
-          mention_user_id == current_user_id
-        end)
-    end
+    # replaced by `Schemas.Notification.with_status?/1`, over the list declared beside Mastodon's type names, which streaming reads too
+    # def should_include_status?(notification_type) do
+    #   notification_type in ["mention", "status", "reblog", "favourite", "poll", "update", "quote", "quoted_update"]
+    # end
 
     defp get_subject(activity, opts) do
       subject_id = get_field(activity, :subject_id)
