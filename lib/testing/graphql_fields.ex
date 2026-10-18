@@ -1,8 +1,21 @@
 # SPDX-License-Identifier: AGPL-3.0-only
-if Code.ensure_loaded?(Grumble) do
+# Always defined, so other extensions' test support can import it whatever the compile order: it used to be wrapped in `if Code.ensure_loaded?(Grumble)`, and `grumble` is only a dev/test dependency, which Mix drops when compiling this as a dependency, so whether it was loaded yet depended on order (missing on 18 October, failing every extension's test support that imports this). The calls go through private wrappers rather than `import Grumble`, since `import` needs the module at compile time and a remote call doesn't; nothing calls them without `grumble` (prod)
   defmodule Bonfire.API.GraphQL.Test.GraphQLFields do
     # import Bonfire.Common.Extend
-    import Grumble
+    # import Grumble
+    # private, so a test support module importing both this and `Grumble` (eg. `quantify_faking.ex`) doesn't get each of these twice
+    defp arg(name, value), do: Grumble.arg(name, value)
+    defp field(name, set \\ []), do: Grumble.field(name, set)
+    defp fragment_spread(name), do: Grumble.fragment_spread(name)
+    defp mutation(set \\ []), do: Grumble.mutation(set)
+    defp object_spread(name, set \\ []), do: Grumble.object_spread(name, set)
+    defp param(name, type), do: Grumble.param(name, type)
+    defp query(set \\ []), do: Grumble.query(set)
+    defp subscription(set \\ []), do: Grumble.subscription(set)
+    defp list_type(name, set \\ []), do: Grumble.list_type(name, set)
+    defp type(name, set \\ []), do: Grumble.type(name, set)
+    defp type!(name, set \\ []), do: Grumble.type!(name, set)
+    defp var(name), do: Grumble.var(name)
 
     def page_info_fields do
       ~w(start_cursor end_cursor has_previous_page has_next_page __typename)a
@@ -846,4 +859,3 @@ if Code.ensure_loaded?(Grumble) do
       """
     end
   end
-end
