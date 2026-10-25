@@ -182,7 +182,8 @@ defmodule Bonfire.API.GraphQL.Auth do
 
   def user_by({account, username}) do
     user_by(username, account)
-    |> repo().maybe_preload(accounted: :account)
+    # `character: [:peered]` too, as boundary queries ask whether the user is local (on 25 October a post created through the API over HTTP failed to resolve its `activity`, as the token's user lacked it)
+    |> repo().maybe_preload(accounted: :account, character: [:peered])
     |> debug("attempted to load account from user")
   end
 
