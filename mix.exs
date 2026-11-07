@@ -28,6 +28,7 @@ defmodule Bonfire.API.GraphQL.MixProject do
           {:grumble, "~> 0.1.3", only: [:dev, :test]},
           # Mastodon API testing
           {:open_api_spex, "~> 3.21", only: :test},
+          {:jsv, "~> 0.27", only: [:dev, :test]},
           {:yaml_elixir, "~> 2.11", only: :test}
         ])
     ]

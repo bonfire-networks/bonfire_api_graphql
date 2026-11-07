@@ -11,6 +11,11 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
           key_prefix: :api,
           scale_ms: 60_000,
           limit: 60
+
+        # in tests, check each response against the Mastodon spec (when MASTO_VALIDATE is set)
+        if Application.compile_env(:bonfire, :env) == :test do
+          plug Bonfire.API.MastoCompat.Test.ValidateResponse
+        end
       end
 
       # Pipeline for authenticated routes that require email confirmation (Mastodon-compatible)

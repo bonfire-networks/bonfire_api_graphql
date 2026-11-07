@@ -1,11 +1,9 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 defmodule Bonfire.API.MastoCompat.ApiSpec do
   @moduledoc """
-  Loads and provides access to the GoToSocial/Mastodon OpenAPI specification
-  for testing Mastodon API compatibility.
+  Loads and provides access to the GoToSocial/Mastodon OpenAPI specification for testing Mastodon API compatibility.
 
-  Note: This module uses runtime checks instead of compile-time struct pattern
-  matching because OpenApiSpex is only available in the test environment.
+  Note: This module uses runtime checks instead of compile-time struct pattern matching because OpenApiSpex is only available in the test environment.
   """
 
   @spec_path Path.join(:code.priv_dir(:bonfire_api_graphql), "specs/gotosocial-swagger.json")

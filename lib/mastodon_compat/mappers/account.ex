@@ -137,7 +137,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           "emojis" => [],
           "roles" => [],
           "hide_collections" => false,
-          "last_status_at" => created_at
+          # Mastodon sends a date, not a datetime (`REST::AccountSerializer#last_status_at`). TODO: the date of the account's last post, not of its creation
+          "last_status_at" => String.slice(created_at, 0, 10)
         }
 
         if Keyword.get(opts, :include_source, false) do
