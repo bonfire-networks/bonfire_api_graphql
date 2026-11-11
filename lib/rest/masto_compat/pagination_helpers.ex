@@ -447,31 +447,15 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def encode_cursor_for_graphql(_), do: {:error, :invalid_cursor_format}
 
     @doc """
-    Validate and normalize an already-encoded cursor.
-
-    Normalizes cursor field names for backward compatibility:
-    - `{:activity, :id}` -> `:id` (old format)
+    Validate an already-encoded cursor.
     """
     def validate_encoded_cursor(cursor) do
       case Base.url_decode64(cursor) do
         {:ok, binary} ->
           # Try to decode the Erlang term to ensure it's valid
           try do
-            term = :erlang.binary_to_term(binary, [:safe])
-            # Normalize cursor field names for backward compatibility
-            normalized = normalize_cursor_fields(term)
-
-            if normalized != term do
-              # Re-encode with normalized field names
-              new_cursor =
-                normalized
-                |> :erlang.term_to_binary()
-                |> Base.url_encode64()
-
-              {:ok, new_cursor}
-            else
-              {:ok, cursor}
-            end
+            :erlang.binary_to_term(binary, [:safe])
+            {:ok, cursor}
           rescue
             ArgumentError -> {:error, :invalid_erlang_term}
           end
@@ -480,20 +464,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           {:error, :invalid_base64}
       end
     end
-
-    # Normalize old cursor field formats to current format
-    defp normalize_cursor_fields(cursor) when is_map(cursor) do
-      cursor
-      |> Enum.map(fn
-        # Convert old {:activity, :id} format to just :id
-        {{:activity, :id}, value} -> {:id, value}
-        # Keep other fields as-is
-        other -> other
-      end)
-      |> Enum.into(%{})
-    end
-
-    defp normalize_cursor_fields(other), do: other
 
     @doc """
     Encode a plain ULID as a cursor.
