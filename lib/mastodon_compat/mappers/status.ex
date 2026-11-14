@@ -72,8 +72,16 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         end
 
       # Check if this is an event activity
-      if is_event_activity?(activity) do
-        Bonfire.Social.Events.API.GraphQLMasto.EventsAdapter.build_event_status(activity, opts)
+      # if is_event_activity?(activity) do
+      #   Bonfire.Social.Events.API.GraphQLMasto.EventsAdapter.build_event_status(activity, opts)
+      # the events adapter moved to `bonfire_gatherings`; without it, an event is mapped as any other status
+      if is_event_activity?(activity) and
+           module_enabled?(Bonfire.Gatherings.API.APActivityEventsMastoAdapter) do
+        maybe_apply(
+          Bonfire.Gatherings.API.APActivityEventsMastoAdapter,
+          :build_event_status,
+          [activity, opts]
+        )
       else
         context = build_activity_context(activity, opts)
 

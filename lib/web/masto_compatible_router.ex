@@ -394,9 +394,13 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
                Bonfire.Classify.Web.API.GroupsController,
                :remove_member
 
-        get "/timelines/events", Bonfire.Social.Events.MastoEventsController, :events_timeline
-        get "/accounts/:id/events", Bonfire.Social.Events.MastoEventsController, :user_events
-        get "/events/:id", Bonfire.Social.Events.MastoEventsController, :show
+        # moved to `bonfire_gatherings` (deprecated until the native events API)
+        # get "/timelines/events", Bonfire.Social.Events.MastoEventsController, :events_timeline
+        # get "/accounts/:id/events", Bonfire.Social.Events.MastoEventsController, :user_events
+        # get "/events/:id", Bonfire.Social.Events.MastoEventsController, :show
+        get "/timelines/events", Bonfire.Gatherings.API.MastoEventsController, :events_timeline
+        get "/accounts/:id/events", Bonfire.Gatherings.API.MastoEventsController, :user_events
+        get "/events/:id", Bonfire.Gatherings.API.MastoEventsController, :show
 
         get "/locations", Bonfire.Geolocate.Web.MastoLocationsController, :index
         get "/locations/:id", Bonfire.Geolocate.Web.MastoLocationsController, :show
