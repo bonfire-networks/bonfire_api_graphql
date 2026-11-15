@@ -26,7 +26,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       """
       replied {
         reply_to_id: replyToId
-        reply_to: replyTo { subject { ... on User { id } ... on Category { id } } }
+        reply_to: replyTo { id subject { ... on User { id } ... on Category { id } } }
       }
       """
     end

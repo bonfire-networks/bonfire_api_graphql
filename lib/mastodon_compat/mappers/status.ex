@@ -182,7 +182,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         verb_id: get_field(activity, :verb_id) || get_field(activity, :verb) |> get_field(:id),
         media: get_field(activity, :media) || [],
         replied: replied,
-        in_reply_to_id: get_field(replied, :reply_to_id),
+        in_reply_to_id: readable_reply_to_id(replied),
         in_reply_to_account_id: replied_account_id(replied),
         liked_by_me: get_field(activity, :liked_by_me),
         boosted_by_me: get_field(activity, :boosted_by_me),
@@ -200,6 +200,12 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
             get_field(object, :tagged) ||
             []
       }
+    end
+
+    # the parent's id is only given when the boundary-filtered `reply_to` loaded, so a parent the viewer can't read is never named
+    defp readable_reply_to_id(replied) do
+      if parent = get_field(replied, :reply_to),
+        do: get_field(parent, :id) || get_field(replied, :reply_to_id)
     end
 
     defp replied_account_id(replied) do
@@ -247,7 +253,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         uri: uri,
         post_content: post_content,
         creator: creator,
-        in_reply_to_id: get_field(replied, :reply_to_id),
+        in_reply_to_id: Keyword.get(opts, :in_reply_to_id) || readable_reply_to_id(replied),
         in_reply_to_account_id: replied_account_id(replied),
         context_id: Keyword.get(opts, :context_id) || get_field(post, :context_id),
         media: get_field(post, :media) || get_field(activity, :media) || [],
