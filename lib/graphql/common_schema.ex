@@ -24,6 +24,7 @@ defmodule Bonfire.API.GraphQL.CommonSchema do
 
       resolve(&Bonfire.API.GraphQL.Auth.login/3)
       middleware(&Bonfire.API.GraphQL.Auth.set_context_from_resolution/2)
+      middleware(&Bonfire.API.GraphQL.Auth.mark_new_session/2)
     end
 
     @desc "Switch to a user (among those from the authenticated account)"

@@ -1,5 +1,6 @@
 defmodule Bonfire.API.GraphQL.PlugPipelines do
   # alias Bonfire.API.GraphQL.Phase.Arguments
+  require Bonfire.Common.Config
   alias Absinthe.Phase
   alias Absinthe.Pipeline
 
@@ -13,6 +14,9 @@ defmodule Bonfire.API.GraphQL.PlugPipelines do
   # parsing. Generous for any legit query incl. introspection (~1-2k tokens). Tune via:
   #   config :bonfire_api_graphql, token_limit: N
   @default_token_limit 15_000
+
+  # How deep fields may nest in a query. Tune via `config :bonfire_api_graphql, max_depth: N` (env `GRAPHQL_MAX_DEPTH`).
+  @default_max_depth 15
 
   @doc """
   Pipeline for the public `Absinthe.Plug` endpoint. Enables complexity analysis so abusive
@@ -34,7 +38,14 @@ defmodule Bonfire.API.GraphQL.PlugPipelines do
         token_limit: token_limit
       )
 
+    max_depth = Bonfire.Common.Config.get([:bonfire_api_graphql, :max_depth], @default_max_depth)
+
     Absinthe.Plug.default_pipeline(config, opts)
+    # refuses a too deeply nested document right after it is parsed
+    |> Pipeline.insert_after(
+      Phase.Parse,
+      {Bonfire.API.GraphQL.Phase.MaxDepth, max_depth: max_depth}
+    )
 
     # |> Pipeline.replace( # FIXME: this breaks triggering subscription notifications
     #   Phase.Document.Execution.Resolution,

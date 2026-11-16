@@ -101,6 +101,33 @@ defmodule Bonfire.API.GraphQL.AuthTest do
       assert get_in(data(resp, "me"), ["user", "id"]) == user.id
     end
 
+    test "a token stops working once the account's other sessions are revoked", %{conn: conn} do
+      account = Bonfire.Me.Fake.fake_account!()
+      user = Bonfire.Me.Fake.fake_user!(account)
+      token = Bonfire.API.GraphQL.Auth.token_new({account.id, user.character.username})
+
+      with_token = fn ->
+        graphql(put_req_header(conn, "authorization", "Bearer #{token}"), @me_query)
+      end
+
+      # control: it works before the revocation
+      assert get_in(data(with_token.(), "me"), ["user", "id"]) == user.id
+
+      Process.sleep(5)
+      {:ok, _} = Bonfire.Me.Accounts.revoke_other_sessions(account)
+      Process.sleep(5)
+
+      resp = with_token.()
+      assert Enum.any?(errors(resp), &String.contains?(&1, "log in"))
+      assert data(resp, "me") == nil
+
+      # a token issued after the revocation works
+      fresh = Bonfire.API.GraphQL.Auth.token_new({account.id, user.character.username})
+
+      fresh_resp = graphql(put_req_header(conn, "authorization", "Bearer #{fresh}"), @me_query)
+      assert get_in(data(fresh_resp, "me"), ["user", "id"]) == user.id
+    end
+
     test "rejects an invalid token", %{conn: conn} do
       authed_conn =
         conn

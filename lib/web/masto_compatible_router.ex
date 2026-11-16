@@ -18,6 +18,11 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         end
       end
 
+      # Refuses write requests (non-GET) made with a token that lacks the Mastodon scope the endpoint needs; use after :load_authorization
+      pipeline :require_masto_scope do
+        plug Bonfire.API.GraphQL.Plugs.RequireMastoScope
+      end
+
       # Pipeline for authenticated routes that require email confirmation (Mastodon-compatible)
       pipeline :require_confirmed do
         plug Bonfire.API.GraphQL.Plugs.RequireConfirmed
@@ -91,7 +96,13 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
       # Routes that require authentication but work WITHOUT email confirmation
       scope "/api/v1" do
-        pipe_through([:basic_json, :masto_api, :load_authorization, :require_authenticated_user])
+        pipe_through([
+          :basic_json,
+          :masto_api,
+          :load_authorization,
+          :require_authenticated_user,
+          :require_masto_scope
+        ])
 
         # Markers - timeline position tracking (stub for client compatibility)
         get "/markers", Bonfire.API.MastoCompatible.MarkersController, :index
@@ -202,6 +213,7 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
           :masto_api,
           :load_authorization,
           :require_authenticated_user,
+          :require_masto_scope,
           :require_confirmed
         ])
 
@@ -357,7 +369,13 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
       end
 
       scope "/api/v2" do
-        pipe_through([:basic_json, :masto_api, :load_authorization, :require_authenticated_user])
+        pipe_through([
+          :basic_json,
+          :masto_api,
+          :load_authorization,
+          :require_authenticated_user,
+          :require_masto_scope
+        ])
 
         # Suggestions - accounts to follow
         get "/suggestions", Bonfire.Me.Web.MastoAccountController, :suggestions
@@ -381,7 +399,13 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
       end
 
       scope "/api/v1-bonfire" do
-        pipe_through([:basic_json, :masto_api, :load_authorization, :require_authenticated_user])
+        pipe_through([
+          :basic_json,
+          :masto_api,
+          :load_authorization,
+          :require_authenticated_user,
+          :require_masto_scope
+        ])
 
         post "/groups", Bonfire.Classify.Web.API.GroupsController, :create
         patch "/groups/:id", Bonfire.Classify.Web.API.GroupsController, :update

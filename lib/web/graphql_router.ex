@@ -28,6 +28,9 @@ defmodule Bonfire.API.GraphQL.Router do
               "base-uri 'self' cdn.jsdelivr.net"
         })
 
+        # adds the enforced directives this policy does not set (no plugins, forms only to us...)
+        plug(Bonfire.UI.Common.Plugs.ContentSecurityPolicy)
+
         plug(:fetch_session)
         plug(:fetch_flash)
         # plug(:protect_from_forgery) # enabling interferes with graphql
@@ -41,13 +44,27 @@ defmodule Bonfire.API.GraphQL.Router do
         plug(:fetch_session)
         plug(:load_authorization)
         plug(Bonfire.API.GraphQL.Plugs.GraphQLContext)
+        plug(Bonfire.API.GraphQL.Plugs.Limits)
+      end
+
+      @doc """
+      Used to serve the schema (SDL), which is only for signed-in users unless public introspection is on
+      """
+      pipeline :graphql_schema do
+        plug(:fetch_session)
+        plug(:load_authorization)
+        plug(Bonfire.API.GraphQL.Plugs.GraphQLContext)
       end
 
       scope "/api" do
         # TODO: choose default UI in config
         redirect("/", "/api/explore/altair", :temporary)
 
-        get("/schema", Bonfire.API.GraphQL.DevTools, :schema)
+        scope "/" do
+          pipe_through(:graphql_schema)
+
+          get("/schema", Bonfire.API.GraphQL.DevTools, :schema)
+        end
 
         scope "/explore" do
           pipe_through(:api_browser)

@@ -9,9 +9,37 @@ defmodule Bonfire.API.GraphQL.Auth do
 
   @token_salt "bonfire_api_bearer_token_v1"
 
-  def token_new(ids), do: Bonfire.Me.Auth.BearerToken.sign(ids, salt: @token_salt)
+  @doc "Issues a bearer token for `{account_id, username}`. It carries when it was issued, so revoking the account's other sessions (password or email change, reset) ends it."
+  def token_new({account_id, username}),
+    do:
+      Bonfire.Me.Auth.BearerToken.sign({account_id, username, System.system_time(:millisecond)},
+        salt: @token_salt
+      )
 
-  def token_verify(token), do: Bonfire.Me.Auth.BearerToken.verify(token, salt: @token_salt)
+  @doc "Verifies a bearer token, returning `{:ok, {account_id, username}}`, or an error if it is invalid or was issued before the account's sessions were revoked. Costs one account lookup."
+  def token_verify(token) do
+    case Bonfire.Me.Auth.BearerToken.verify(token, salt: @token_salt) do
+      {:ok, {account_id, username, issued_at}} ->
+        verify_not_revoked(account_id, username, issued_at)
+
+      # a token issued before tokens carried when they were issued
+      {:ok, {account_id, username}} ->
+        verify_not_revoked(account_id, username, nil)
+
+      other ->
+        other
+    end
+  end
+
+  defp verify_not_revoked(account_id, username, issued_at) do
+    account = Utils.maybe_apply(Accounts, :get_current, [account_id])
+
+    if Utils.maybe_apply(Accounts, :session_revoked?, [account, issued_at],
+         fallback_return: false
+       ),
+       do: {:error, :revoked},
+       else: {:ok, {account_id, username}}
+  end
 
   @doc """
   Resolver for login mutation for Bonfire.API.GraphQL.CommonSchema
@@ -124,6 +152,7 @@ defmodule Bonfire.API.GraphQL.Auth do
       when not is_nil(current_account_id) do
     # IO.inspect(absinthe_before_send_set_session: context)
     conn
+    |> maybe_start_new_session(current_account_id, context)
     |> Plug.Conn.put_session(:current_account_id, current_account_id)
     |> Plug.Conn.put_session(
       :current_username,
@@ -132,6 +161,31 @@ defmodule Bonfire.API.GraphQL.Auth do
   end
 
   def set_session_from_context(conn, _), do: conn
+
+  @doc "Absinthe middleware for a field that signs someone in: marks the request's session as one to start afresh (see `set_session_from_context/2`)."
+  def mark_new_session(
+        %{value: %{current_account_id: account_id}, context: context} = resolution,
+        _
+      )
+      when not is_nil(account_id),
+      do: %{resolution | context: Map.put(context, :new_session, true)}
+
+  # a login that failed signs no one in, so a session already there is left alone
+  def mark_new_session(resolution, _), do: resolution
+
+  # a login starts a session the way the web login does, so nothing that was in the session before it counts (a sibling subdomain can plant cookies) and the session can later be told apart from older ones, which a password change ends
+  defp maybe_start_new_session(conn, current_account_id, %{new_session: true}) do
+    conn = Bonfire.UI.Common.Web.renew_session(conn)
+
+    Bonfire.Common.Utils.maybe_apply(
+      Bonfire.UI.Me.Sudo,
+      :renew_session_for,
+      [conn, current_account_id],
+      fallback_return: conn
+    )
+  end
+
+  defp maybe_start_new_session(conn, _current_account_id, _context), do: conn
 
   def build_context(conn) do
     cond do
