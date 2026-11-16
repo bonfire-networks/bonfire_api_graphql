@@ -84,12 +84,11 @@ defmodule Bonfire.API.GraphQL.Plugs.Limits do
   def public_introspection?,
     do: Config.get([:bonfire_api_graphql, :public_introspection], true) == true
 
-  @doc "Whether the request was made by a signed-in user or an authorised API client."
+  @doc "Whether the request was made by a signed-in user (a token with no user, as an app-only client token, counts as a guest)."
   def signed_in?(conn) do
     case conn.private[:absinthe] do
       %{context: %{} = context} ->
-        not is_nil(context[:current_user]) or not is_nil(context[:current_account_id]) or
-          not is_nil(context[:current_token])
+        not is_nil(context[:current_user]) or not is_nil(context[:current_account_id])
 
       _ ->
         false

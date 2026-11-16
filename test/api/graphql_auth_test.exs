@@ -9,7 +9,7 @@ defmodule Bonfire.API.GraphQL.AuthTest do
   - login mutation is public
   - Session auth grants access
   - Phoenix.Token bearer auth grants access
-  - OAuth2 client token grants access (client_credentials)
+  - OAuth2 client token with no user (client_credentials) is a guest (see graphql_client_token_gate_test.exs)
 
   Run with: just test extensions/bonfire_api_graphql/test/api/graphql_auth_test.exs
   """
