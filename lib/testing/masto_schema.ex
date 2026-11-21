@@ -7,22 +7,12 @@ defmodule Bonfire.API.MastoCompat.Test.MastoSchema do
   `assert_masto_entity/2` checks two things and flunks with every problem it finds:
 
   - the entity matches its schema (eg. `"Status"`, `"Account"`) in the vendored Mastodon OpenAPI spec (`priv/specs/mastodon-openapi-abraham.json`, see the README there): required fields present, JSON types right, formats (`date-time`, `uri`) valid;
-  - the fields that clients decode without a default are not null, even where the spec allows null (see `@client_required`). This also checks the entities nested in it (a Status's account and reblog).
+  - the fields that clients decode without a default are not null, even where the spec allows null (see `Bonfire.API.MastoCompat.Test.MastoClients`). This also checks the entities nested in it (a Status's account and reblog).
   """
 
   import ExUnit.Assertions, only: [flunk: 1]
 
   @spec_file "specs/mastodon-openapi-abraham.json"
-
-  # Fields that clients decode without a default, so a null or missing value fails the whole entity (and often the whole timeline page)
-  @client_required %{
-    # Tusky https://codeberg.org/tusky/Tusky/src/branch/main/app/src/main/java/com/keylesspalace/tusky/entity/Status.kt
-    "Status" =>
-      ~w(id account content created_at emojis reblogs_count favourites_count replies_count sensitive spoiler_text visibility media_attachments mentions),
-    # Tusky https://codeberg.org/tusky/Tusky/src/branch/main/app/src/main/java/com/keylesspalace/tusky/entity/Account.kt and Mastodon for iOS https://github.com/mastodon/mastodon-ios/blob/develop/MastodonSDK/Sources/MastodonSDK/Entity/Mastodon+Entity+Account.swift
-    "Account" =>
-      ~w(id username acct url display_name note avatar header locked emojis created_at followers_count following_count statuses_count)
-  }
 
   # Corrections to the vendored spec, applied before it's built: {path in the spec, replacement, why}. The spec is generated from Mastodon's docs, so where Mastodon's serializers send something else, the serializer wins; and a few fields Bonfire can't match exactly
   @spec_corrections [
@@ -105,9 +95,8 @@ defmodule Bonfire.API.MastoCompat.Test.MastoSchema do
 
   defp client_null_problems(json, entity, prefix) when is_map(json) do
     nulls =
-      @client_required
-      |> Map.get(entity, [])
-      |> Enum.filter(&is_nil(json[&1]))
+      Bonfire.API.MastoCompat.Test.MastoClients.non_null(entity)
+      |> Enum.filter(&is_nil(get_in(json, String.split(&1, "."))))
       |> Enum.map(&"#{prefix}#{&1} is null or missing (clients need it)")
 
     nested =

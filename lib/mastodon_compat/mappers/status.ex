@@ -30,7 +30,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     alias Bonfire.API.MastoCompat.Schemas
     alias Bonfire.API.MastoCompat.Helpers
     alias Bonfire.API.MastoCompat.Mappers
-    alias Bonfire.Social.Activities
 
     import Helpers, only: [get_field: 2, get_fields: 2]
 
@@ -61,16 +60,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def from_activity(%{node: activity}, opts), do: from_activity(activity, opts)
 
     def from_activity(activity, opts \\ []) do
-      # Only the Ecto-struct (direct) path needs subject/creator preloading. GraphQL nodes are
-      # string-keyed maps that already carry them, and would otherwise hit
-      # `prepare_subject_and_creator`'s "unrecognised object format" error branch on every row.
-      activity =
-        if is_struct(activity) do
-          Activities.prepare_subject_and_creator(activity, opts)
-        else
-          activity
-        end
-
       # Check if this is an event activity
       # if is_event_activity?(activity) do
       #   Bonfire.Social.Events.API.GraphQLMasto.EventsAdapter.build_event_status(activity, opts)
@@ -116,7 +105,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     @doc """
     The status an activity is about: its object, completed by the activity itself. An activity's media, counts and thread are its object's (they join on `object_id`), so they describe the post whether the activity is its creation or a like, boost or edit of it. The author is the object's creator, never the activity's subject, who on a like is the one who liked it.
 
-    Whether the reader liked, boosted or bookmarked it comes from `:interaction_states`, batch-loaded by object id, and not from the activity's own `*_by_me`, which are keyed by the activity's id and so, on a boost, describe the boost.
+    Whether the reader liked, boosted or bookmarked it comes from the object's own flags (`Fragments.object_interactions/0`), not from the activity's `*_by_me`, which are keyed by the activity's id and so, on a boost, describe the boost.
     """
     def from_activity_object(activity, opts \\ []) do
       case get_field(activity, :object) do
@@ -184,15 +173,21 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         replied: replied,
         in_reply_to_id: readable_reply_to_id(replied),
         in_reply_to_account_id: replied_account_id(replied),
-        liked_by_me: get_field(activity, :liked_by_me),
-        boosted_by_me: get_field(activity, :boosted_by_me),
-        bookmarked_by_me: get_field(activity, :bookmarked_by_me),
+        # the group or topic it was published in (GraphQL `context`)
+        context_id: get_field(get_field(activity, :context), :id),
+        # the object's own flags (GraphQL `... on Post`/`... on Poll`), which on a boost describe the post; else the activity's
+        liked_by_me: present(get_field(object, :liked_by_me), get_field(activity, :liked_by_me)),
+        boosted_by_me:
+          present(get_field(object, :boosted_by_me), get_field(activity, :boosted_by_me)),
+        bookmarked_by_me:
+          present(get_field(object, :bookmarked_by_me), get_field(activity, :bookmarked_by_me)),
         like_count: get_field(activity, :like_count),
         boost_count: get_field(activity, :boost_count),
-        # GraphQL exposes :replies_count directly; on the direct path it comes from
-        # the Replied mixin's denormalized counters (synchronously maintained).
-        replies_count: get_field(activity, :replies_count) || replied_replies_count(replied),
-        # :tags from GraphQL, :tagged from Ecto mixin
+        replies_count: get_field(activity, :replies_count),
+        # the `mentions` and `hashtags` GraphQL fields, when selected
+        mentions: get_field(activity, :mentions),
+        hashtags: get_field(activity, :hashtags),
+        visibility: get_field(activity, :visibility),
         tags:
           get_field(activity, :tags) ||
             get_field(object, :tags) ||
@@ -203,6 +198,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     # the parent's id is only given when the boundary-filtered `reply_to` loaded, so a parent the viewer can't read is never named
+    # the first value that is not nil, so a `false` is kept (unlike `||`)
+    defp present(nil, fallback), do: fallback
+    defp present(value, _fallback), do: value
+
     defp readable_reply_to_id(replied) do
       if parent = get_field(replied, :reply_to),
         do: get_field(parent, :id) || get_field(replied, :reply_to_id)
@@ -214,10 +213,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       get_field(parent, :subject_id) ||
         get_field(parent, :subject) |> get_field(:id) ||
         get_field(parent, :created) |> get_field(:creator_id)
-    end
-
-    defp replied_replies_count(replied) do
-      get_field(replied, :direct_replies_count) || 0
     end
 
     defp build_post_context(post, opts) do
@@ -255,19 +250,25 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         creator: creator,
         in_reply_to_id: Keyword.get(opts, :in_reply_to_id) || readable_reply_to_id(replied),
         in_reply_to_account_id: replied_account_id(replied),
-        context_id: Keyword.get(opts, :context_id) || get_field(post, :context_id),
+        # the group or topic it was published in: GraphQL `context` on the post's activity (favourites)
+        context_id:
+          Keyword.get(opts, :context_id) || get_field(get_field(activity, :context), :id) ||
+            get_field(post, :context_id),
         media: get_field(post, :media) || get_field(activity, :media) || [],
-        # Interaction flags / engagement counts: present when the post's `activity` was
-        # resolved via GraphQL (e.g. the `myLikes` field). nil for the direct/Ecto path
-        # (the post's activity isn't loaded), where add_interaction_states falls back to
-        # `interaction_states` opts — so this is a no-op there.
-        liked_by_me: get_field(activity, :liked_by_me),
-        boosted_by_me: get_field(activity, :boosted_by_me),
-        bookmarked_by_me: get_field(activity, :bookmarked_by_me),
+        # the post's own flags (GraphQL `... on Post`/`... on Poll`), else its activity's
+        liked_by_me: present(get_field(post, :liked_by_me), get_field(activity, :liked_by_me)),
+        boosted_by_me:
+          present(get_field(post, :boosted_by_me), get_field(activity, :boosted_by_me)),
+        bookmarked_by_me:
+          present(get_field(post, :bookmarked_by_me), get_field(activity, :bookmarked_by_me)),
         like_count: get_field(activity, :like_count),
         boost_count: get_field(activity, :boost_count),
         replies_count: get_field(activity, :replies_count),
-        # :tags from GraphQL, :tagged from Ecto mixin
+        # the `mentions` and `hashtags` GraphQL fields, when selected
+        mentions: get_field(activity, :mentions),
+        hashtags: get_field(activity, :hashtags),
+        visibility: get_field(activity, :visibility),
+        # `:tagged` is a conversation's Ecto message (`Mappers.Conversation`), until conversations move to GraphQL
         tags:
           get_field(post, :tags) ||
             get_field(activity, :tags) ||
@@ -328,113 +329,66 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           "media_attachments" => media_attachments,
           "card" => Enum.find_value(links, &Mappers.PreviewCard.from_media/1),
           "mentions" => mentions,
-          "tags" => extract_hashtags(object_id, opts),
+          "tags" => extract_hashtags(context),
           "context_id" => context[:context_id],
           "in_reply_to_id" => context[:in_reply_to_id],
           "in_reply_to_account_id" => context[:in_reply_to_account_id],
           "favourites_count" => context[:like_count] || 0,
           "reblogs_count" => context[:boost_count] || 0,
           "replies_count" => context[:replies_count] || 0,
-          "visibility" => map_visibility(object_id, opts),
+          "visibility" => map_visibility(object_id, context, opts),
           # Bonfire has no separate sensitivity flag; a content warning marks it sensitive.
           "sensitive" => content_data.spoiler_text not in [nil, ""]
         })
 
-      add_interaction_states(
-        base_status,
-        object_id,
-        context,
-        Keyword.get(opts, :current_user),
-        Keyword.get(opts, :interaction_states),
-        opts
-      )
+      add_interaction_states(base_status, object_id, context, Keyword.get(opts, :current_user))
       |> maybe_add_poll(context, opts)
     end
 
-    # Feed rows identify polls by type; load their shared GraphQL representation so visibility and totals match the poll endpoint.
+    # A GraphQL poll object carries the poll fields (`Fragments.poll_fields/0`), so it maps as it is
     defp maybe_add_poll(status, context, opts) do
       object = context[:object] || context[:post]
-      object_id = context[:object_id] || context[:id]
 
-      if poll_object?(object) and object_id do
-        current_user = Keyword.get(opts, :current_user)
-
-        case load_poll_question(object_id, current_user) do
-          nil ->
-            status
-
-          question ->
-            Map.put(
-              status,
-              "poll",
-              Mappers.Poll.from_question(question, current_user: current_user)
-            )
-        end
+      if get_field(object, :__typename) == "Poll" and is_list(get_field(object, :choices)) do
+        Map.put(
+          status,
+          "poll",
+          Mappers.Poll.from_question(object, current_user: Keyword.get(opts, :current_user))
+        )
       else
         status
       end
     end
 
-    defp poll_object?(object) do
-      get_field(object, :__typename) == "Poll" or Mappers.Poll.is_poll?(object)
-    end
-
-    defp load_poll_question(object_id, current_user) do
-      Bonfire.Poll.API.GraphQLMasto.Adapter.read_poll(object_id, current_user)
-      |> case do
-        {:ok, question} -> question
-        question when is_struct(question) -> question
-        _ -> nil
-      end
-    rescue
-      _ -> nil
-    end
-
-    defp extract_hashtags(nil, _opts), do: []
-
-    defp extract_hashtags(object_id, opts) do
-      case Map.get(Keyword.get(opts, :hashtags_by_object, %{}), object_id) do
-        hashtags when is_list(hashtags) ->
-          hashtags
-          |> Enum.map(&Mappers.Tag.from_hashtag(&1, []))
-          |> Enum.reject(&is_nil/1)
-
-        _ ->
-          []
-      end
+    # selected through GraphQL (`hashtags`): the post's own list
+    defp extract_hashtags(context) do
+      context[:hashtags]
+      |> List.wrap()
+      |> Enum.map(&Mappers.Tag.from_hashtag(&1, []))
+      |> Enum.reject(&is_nil/1)
     end
 
     defp extract_mentions(nil, _context, _opts), do: []
 
     defp extract_mentions(object_id, context, opts) do
-      mentions_by_object = Keyword.get(opts, :mentions_by_object, %{})
       current_user = Keyword.get(opts, :current_user)
 
-      case Map.get(mentions_by_object, object_id) do
-        raw_mentions when is_list(raw_mentions) and raw_mentions != [] ->
-          Mappers.Mention.from_tags(raw_mentions, current_user: current_user)
+      case context[:mentions] do
+        # selected through GraphQL (`mentions`): the post's own list
+        mentions when is_list(mentions) ->
+          Mappers.Mention.from_tags(mentions, current_user: current_user)
 
-        [] ->
-          []
-
-        nil ->
-          extract_mentions_from_context_tags(context, current_user, opts)
+        _ ->
+          extract_mentions_from_context_tags(context, current_user)
       end
     end
 
-    defp extract_mentions_from_context_tags(context, current_user, opts \\ []) do
+    # a conversation's Ecto message (`Mappers.Conversation`), until conversations move to GraphQL
+    defp extract_mentions_from_context_tags(context, current_user) do
       post = context[:post]
       tags = context[:tags] || []
 
       cond do
-        Keyword.get(opts, :lightweight, false) ->
-          # Skip DB query for tags in lightweight mode (streaming)
-          if is_list(tags) and tags != [] do
-            Mappers.Mention.from_tags(tags, current_user: current_user)
-          else
-            []
-          end
-
         is_struct(post) ->
           loaded_tags = Bonfire.Social.Tags.list_tags_mentions(post, current_user)
           Mappers.Mention.from_tags(loaded_tags, current_user: current_user)
@@ -447,14 +401,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       end
     end
 
-    defp add_interaction_states(
-           status,
-           object_id,
-           context,
-           current_user,
-           interaction_states \\ nil,
-           opts \\ []
-         ) do
+    defp add_interaction_states(status, object_id, context, current_user) do
       favourited = context[:liked_by_me]
       reblogged = context[:boosted_by_me]
       bookmarked = context[:bookmarked_by_me]
@@ -465,31 +412,22 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         |> Map.put("reblogged", reblogged)
         |> Map.put("bookmarked", bookmarked)
       else
-        lightweight? = Keyword.get(opts, :lightweight, false)
-
-        case interaction_states do
-          %{^object_id => states} when is_map(states) ->
+        # a conversation's Ecto message carries no flags (`Mappers.Conversation`), until conversations move to GraphQL
+        case current_user do
+          %{} when object_id != nil ->
             status
-            |> Map.put("favourited", Map.get(states, :favourited, false))
-            |> Map.put("reblogged", Map.get(states, :reblogged, false))
-            |> Map.put("bookmarked", Map.get(states, :bookmarked, false))
-
-          _ when current_user != nil and object_id != nil ->
-            if lightweight? do
-              status
-              |> Map.put("favourited", false)
-              |> Map.put("reblogged", false)
-              |> Map.put("bookmarked", false)
-            else
-              favourited = Bonfire.Social.Likes.liked?(current_user, object_id) || false
-              reblogged = Bonfire.Social.Boosts.boosted?(current_user, object_id) || false
-              bookmarked = Bonfire.Social.Bookmarks.bookmarked?(current_user, object_id) || false
-
-              status
-              |> Map.put("favourited", favourited)
-              |> Map.put("reblogged", reblogged)
-              |> Map.put("bookmarked", bookmarked)
-            end
+            |> Map.put(
+              "favourited",
+              Bonfire.Social.Likes.liked?(current_user, object_id) || false
+            )
+            |> Map.put(
+              "reblogged",
+              Bonfire.Social.Boosts.boosted?(current_user, object_id) || false
+            )
+            |> Map.put(
+              "bookmarked",
+              Bonfire.Social.Bookmarks.bookmarked?(current_user, object_id) || false
+            )
 
           _ ->
             status
@@ -500,9 +438,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       end
     end
 
-    # The original post a boost wraps. On the direct path the boost activity's `object` is
-    # that post (or a Boost mixin whose edge points to it), but often only partially loaded
-    # (no creator) — so resolve its id and load it fully (boundary-aware) for account + content.
+    # The original post a boost wraps: the boost activity's `object`, with its creator (`creator` in the selection). One that comes without a creator gives no reblog.
     defp extract_reblog(context, opts) do
       reblog_opts = Keyword.merge(opts, is_reblog: true)
       object = context[:object] || context[:post]
@@ -514,36 +450,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         full_post?(object) ->
           from_post(object, reblog_opts)
 
-        reblog_id = reblog_object_id(context) ->
-          # Safety net only: the feed/single-status preloads (:with_creator) normally
-          # provide the boosted post fully, so this per-item load should not fire.
-          debug(reblog_id, "reblog post not preloaded; loading per-item")
-
-          case Bonfire.Social.Objects.read(reblog_id,
-                 current_user: Keyword.get(opts, :current_user),
-                 preload: [:with_post_content, :with_creator, :with_media]
-               ) do
-            {:ok, post} -> from_post(post, reblog_opts)
-            _ -> nil
-          end
-
         true ->
+          debug(context[:object_id], "boosted post came without content or creator")
           nil
-      end
-    end
-
-    # Id of the original post being boosted.
-    defp reblog_object_id(context) do
-      object = context[:object] || context[:post]
-
-      cond do
-        is_struct(object, Bonfire.Data.Social.Boost) or get_field(object, :__typename) == "Boost" ->
-          edge = get_field(object, :edge)
-          get_field(edge, :object_id) || get_field(get_field(edge, :object), :id)
-
-        true ->
-          # boost activity's object is the original post itself
-          context[:object_id] || get_field(object, :id)
       end
     end
 
@@ -587,74 +496,37 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       end
     end
 
-    defp map_visibility(object_id, opts) do
+    defp map_visibility(object_id, context, opts) do
       cond do
         Keyword.get(opts, :for_conversation, false) ->
           "direct"
 
+        # selected through GraphQL (`visibility`)
+        is_binary(context[:visibility]) ->
+          context[:visibility]
+
         is_nil(object_id) ->
           "public"
 
-        Keyword.get(opts, :lightweight, false) and
-            not Keyword.has_key?(opts, :visibility_by_object) ->
-          # In lightweight mode without pre-loaded visibility data, default to public
-          "public"
-
         true ->
-          # Check batch-loaded data first, fall back to individual query
-          visibility_by_object = Keyword.get(opts, :visibility_by_object, %{})
-
-          acl_ids =
-            Map.get(visibility_by_object, object_id) ||
-              Bonfire.Boundaries.Controlleds.list_preset_acl_ids_on_object(object_id)
-
-          # For private vs direct distinction, check followers grants
-          followers_grant_objects = Keyword.get(opts, :followers_grant_objects, nil)
-
-          acl_ids_to_visibility(acl_ids, object_id, followers_grant_objects)
+          # an events context without the node's `visibility` (`APActivityEventsMastoAdapter`)
+          acl_ids_to_visibility(
+            Bonfire.Boundaries.Controlleds.list_preset_acl_ids_on_object(object_id),
+            object_id
+          )
       end
     end
 
-    defp acl_ids_to_visibility(acl_ids, object_id, followers_grant_objects)
-         when is_struct(acl_ids, MapSet) do
-      if MapSet.size(acl_ids) == 0 do
-        # No preset ACLs = mentions-only or followers-only
-        # Check if the object has a grant to the followers circle to distinguish
-        has_followers =
-          cond do
-            is_struct(followers_grant_objects, MapSet) ->
-              MapSet.member?(followers_grant_objects, object_id)
+    defp acl_ids_to_visibility(acl_ids, object_id) when is_struct(acl_ids, MapSet) do
+      # the followers grant only matters without preset ACLs
+      has_followers =
+        MapSet.size(acl_ids) == 0 and
+          Bonfire.Boundaries.Controlleds.object_has_followers_grant?(object_id)
 
-            not is_nil(object_id) ->
-              Bonfire.Boundaries.Controlleds.object_has_followers_grant?(object_id)
-
-            true ->
-              false
-          end
-
-        if has_followers, do: "private", else: "direct"
-      else
-        remote_ids = MapSet.new(Bonfire.Boundaries.Acls.remote_public_acl_ids())
-        has_remote = not MapSet.disjoint?(acl_ids, remote_ids)
-
-        preset_acls = Bonfire.Common.Config.get!(:preset_acls_match)
-        public_ids = MapSet.new(Bonfire.Boundaries.Acls.preset_acl_ids("public", preset_acls))
-        unlisted_ids = MapSet.new(Bonfire.Boundaries.Acls.preset_acl_ids("unlisted", preset_acls))
-        local_ids = MapSet.new(Bonfire.Boundaries.Acls.preset_acl_ids("local", preset_acls))
-        has_public = not MapSet.disjoint?(acl_ids, public_ids)
-        has_local = not MapSet.disjoint?(acl_ids, local_ids)
-
-        cond do
-          has_remote -> "public"
-          not MapSet.disjoint?(acl_ids, unlisted_ids) -> "unlisted"
-          has_public -> "unlisted"
-          has_local -> "unlisted"
-          true -> "direct"
-        end
-      end
+      Bonfire.Boundaries.Controlleds.visibility_for(acl_ids, has_followers)
     end
 
-    defp acl_ids_to_visibility(_, _, _), do: "public"
+    defp acl_ids_to_visibility(_, _), do: "public"
 
     defp extract_content(context) do
       post_content =

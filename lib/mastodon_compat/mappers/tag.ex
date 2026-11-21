@@ -75,12 +75,13 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def from_featured_hashtag(_), do: nil
 
     defp extract_name(hashtag) do
-      e(hashtag, :named, :name, nil) ||
-        e(hashtag, :name, nil)
+      # `ed`: reads atom and string keys alike
+      ed(hashtag, [:named, :name], nil) ||
+        ed(hashtag, :name, nil)
     end
 
     defp extract_id(hashtag) do
-      id = e(hashtag, :id, nil)
+      id = ed(hashtag, :id, nil)
       if id, do: to_string(id), else: nil
     end
 

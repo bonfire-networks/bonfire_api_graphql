@@ -68,6 +68,37 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     def get_field(_, _), do: nil
 
+    @doc "`pipeline_modifier` for `Absinthe.run/3`: atom keys and unserialised scalars, as `@graphql` gives (`Absinthe.run`'s `result_phase:` is ignored by `Pipeline.for_document/2`)."
+    def atom_keys(pipeline, _opts),
+      do:
+        Absinthe.Pipeline.replace(pipeline, Absinthe.Phase.Document.Result, AbsintheClient.Result)
+
+    @doc "Runs a GraphQL document as `current_user`, with atom keys (`atom_keys/2`)."
+    def run_query(document, current_user, variables \\ %{}),
+      do: run(document, current_user, variables, [], &atom_keys/2)
+
+    @doc "Runs a `feedActivity` subscription document once with `root` as the published activity, as `Absinthe.Subscription.Local` does: no subscribe step, so no topic check (the caller has matched topics)."
+    def run_published(document, root, current_user, variables \\ %{}),
+      do: run(document, current_user, variables, [root_value: root], &published/2)
+
+    defp run(document, current_user, variables, opts, pipeline_modifier) do
+      Absinthe.run(
+        document,
+        Bonfire.API.GraphQL.Schema,
+        [
+          variables: variables,
+          context: Bonfire.API.GraphQL.Schema.context(%{current_user: current_user}),
+          pipeline_modifier: pipeline_modifier
+        ] ++ opts
+      )
+    end
+
+    defp published(pipeline, opts) do
+      pipeline
+      |> Absinthe.Pipeline.without(Absinthe.Phase.Subscription.SubscribeSelf)
+      |> atom_keys(opts)
+    end
+
     @doc """
     Converts a value to string, handling nil gracefully.
 
@@ -229,19 +260,15 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         {:ok, valid} ->
           valid
 
-        {:error, {:missing_fields, fields}} ->
-          debug(entity, "#{inspect(schema_module)} missing required fields: #{inspect(fields)}")
-          nil
-
-        {:error, {:invalid_type, type}} ->
-          debug(entity, "#{inspect(schema_module)} has invalid type: #{inspect(type)}")
-          nil
-
         {:error, reason} ->
-          debug(entity, "#{inspect(schema_module)} validation failed: #{inspect(reason)}")
+          warn(reason, "#{inspect(schema_module)} dropped #{inspect(entity_id(entity))}")
+          debug(entity, "#{inspect(schema_module)} invalid entity")
           nil
       end
     end
+
+    defp entity_id(entity) when is_map(entity), do: Map.get(entity, "id") || Map.get(entity, :id)
+    defp entity_id(_), do: nil
 
     @doc """
     Get the first non-nil value from a map by trying multiple keys in order.

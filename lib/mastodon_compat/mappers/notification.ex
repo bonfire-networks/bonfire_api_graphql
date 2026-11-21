@@ -317,7 +317,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           Bonfire.Common.Text.maybe_markdown_to_html(raw_content, sanitize: true) || ""
 
         mentions_by_object = Keyword.get(opts, :mentions_by_object, %{})
-        raw_mentions = Map.get(mentions_by_object, object_id, [])
+        # the activity's GraphQL `mentions` when selected, else the batch's
+        raw_mentions =
+          get_field(activity, :mentions) || Map.get(mentions_by_object, object_id, [])
+
         current_user = Keyword.get(opts, :current_user)
         mentions = Mappers.Mention.from_tags(raw_mentions, current_user: current_user)
         status_created_at = fallback_status_created_at(activity, object_id)
