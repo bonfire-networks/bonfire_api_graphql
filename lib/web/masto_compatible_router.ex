@@ -56,6 +56,18 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         get "/trends/tags", Bonfire.Social.Web.MastoTrendsController, :tags
       end
 
+      # Public reads: no token needed, a signed-in reader is still loaded; Mastodon serves these to guests (masto-live-fixes step 1, decisions 1, 2). Before the authenticated scope below, whose `/timelines/:feed` would otherwise catch `/timelines/public`
+      scope "/api/v1" do
+        pipe_through([:basic_json, :masto_api, :load_authorization])
+
+        get "/instance", Bonfire.API.MastoCompatible.InstanceController, :show
+        get "/instance/peers", Bonfire.API.MastoCompatible.InstanceController, :peers
+        get "/custom_emojis", Bonfire.API.MastoCompatible.InstanceController, :custom_emojis
+        get "/timelines/public", Bonfire.Social.Web.MastoTimelineController, :public
+        get "/timelines/local", Bonfire.Social.Web.MastoTimelineController, :local
+        get "/timelines/tag/:hashtag", Bonfire.Social.Web.MastoTimelineController, :hashtag
+      end
+
       # Routes that don't require authentication but still check if user is logged in (signup etc)
       scope "/api/v1" do
         pipe_through([:basic_json, :masto_api, :throttle_forms, :load_authorization])
@@ -103,6 +115,12 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
           :require_authenticated_user,
           :require_masto_scope
         ])
+
+        # Stubs for features Bonfire does not have yet: Phanpy and Elk call them at start (masto-live-fixes decision 11)
+        get "/announcements", Bonfire.API.MastoCompatible.InstanceController, :announcements
+
+        # v1 suggestions: plain accounts, the shape Ice Cubes reads (masto-live-fixes step 3)
+        get "/suggestions", Bonfire.Me.Web.MastoAccountController, :suggestions_v1
 
         # Markers - timeline position tracking (stub for client compatibility)
         get "/markers", Bonfire.API.MastoCompatible.MarkersController, :index
@@ -163,13 +181,19 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
             Bonfire.Me.Web.MastoAccountController,
             :show_preferences
 
-        get "/instance", Bonfire.API.MastoCompatible.InstanceController, :show
-        get "/custom_emojis", Bonfire.API.MastoCompatible.InstanceController, :custom_emojis
-
         # Notification requests (pending follow requests) - MUST come before /notifications/:id
         get "/notifications/requests",
             Bonfire.Social.Web.MastoTimelineController,
             :notification_requests
+
+        # Before /notifications/:id, which would otherwise catch them (masto-live-fixes decision 4)
+        get "/notifications/policy",
+            Bonfire.Social.Web.MastoTimelineController,
+            :notification_policy_v1
+
+        get "/notifications/unread_count",
+            Bonfire.Social.Web.MastoTimelineController,
+            :notifications_unread_count
 
         post "/notifications/:id/dismiss",
              Bonfire.Social.Web.MastoTimelineController,
@@ -190,10 +214,8 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
         get "/lists", Bonfire.Boundaries.Web.MastoListController, :index
 
-        # Timelines - specific routes before generic
+        # Timelines - specific routes before generic (public, local and tag are in the public scope above)
         get "/timelines/home", Bonfire.Social.Web.MastoTimelineController, :home
-        get "/timelines/public", Bonfire.Social.Web.MastoTimelineController, :public
-        get "/timelines/local", Bonfire.Social.Web.MastoTimelineController, :local
 
         get "/timelines/:feed", Bonfire.Social.Web.MastoTimelineController, :timeline
 
@@ -319,8 +341,6 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         post "/polls/:id/votes", Bonfire.Poll.Web.MastoPollController, :vote
         get "/polls/:id", Bonfire.Poll.Web.MastoPollController, :show
 
-        get "/timelines/tag/:hashtag", Bonfire.Social.Web.MastoTimelineController, :hashtag
-
         get "/timelines/list/:list_id",
             Bonfire.Social.Web.MastoTimelineController,
             :list_timeline
@@ -380,11 +400,23 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         # Suggestions - accounts to follow
         get "/suggestions", Bonfire.Me.Web.MastoAccountController, :suggestions
 
+        # Stub: Bonfire has no filters yet (masto-live-fixes decision 11)
+        get "/filters", Bonfire.API.MastoCompatible.InstanceController, :filters
+
         # Media upload (async - returns 202 Accepted)
         post "/media", Bonfire.Files.Web.MastoMediaController, :create_v2
 
         # Grouped notifications
         get "/notifications", Bonfire.Social.Web.MastoTimelineController, :grouped_notifications
+
+        # Before /notifications/:group_key, which would otherwise catch them and answer 501 (live testing L4, masto-live-fixes decision 4)
+        get "/notifications/policy",
+            Bonfire.Social.Web.MastoTimelineController,
+            :notification_policy
+
+        get "/notifications/unread_count",
+            Bonfire.Social.Web.MastoTimelineController,
+            :notifications_unread_count
 
         get "/notifications/:group_key",
             Bonfire.Social.Web.MastoTimelineController,

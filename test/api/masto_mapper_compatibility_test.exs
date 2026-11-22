@@ -73,7 +73,12 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         user = Bonfire.Me.Fake.fake_user!()
 
         input =
-          graphql_account(user, %{followers_count: 3, following_count: 4, statuses_count: 5})
+          graphql_account(user, %{
+            followers_count: 3,
+            following_count: 4,
+            statuses_count: 5,
+            last_post_at: "2026-11-18T09:00:00Z"
+          })
 
         {account, queries} =
           Bonfire.Common.Testing.count_queries(fn -> Account.from_user(input) end)
@@ -86,7 +91,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         assert account["display_name"] == "Alice"
         assert account["note"] =~ "Hello"
         assert account["created_at"] == "2026-11-01T10:00:00Z"
-        assert account["last_status_at"] == "2026-11-01"
+        # the date of the newest post, from the input, not the creation date (masto-live-fixes step 4)
+        assert account["last_status_at"] == "2026-11-18"
 
         assert {account["statuses_count"], account["followers_count"], account["following_count"]} ==
                  {5, 3, 4}
@@ -102,6 +108,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
         assert {account["statuses_count"], account["followers_count"], account["following_count"]} ==
                  {0, 0, 0}
+
+        # not selected: null, as Mastodon sends for an account that never posted (masto-live-fixes step 4)
+        assert account["last_status_at"] == nil
       end
 
       test "a struct is not read: nil, and nothing is queried" do

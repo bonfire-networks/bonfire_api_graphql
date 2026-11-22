@@ -245,6 +245,92 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
       end
     end
 
+    # Ice Cubes asks for the policy each time its notifications open; the `/notifications/:group_key` route caught the word "policy" and answered 501 (live testing L4, masto-live-fixes step 1)
+    describe "GET /api/v2/notifications/policy" do
+      test "answers a notification policy, not 501", %{conn: conn} do
+        policy =
+          conn
+          |> get("/api/v2/notifications/policy")
+          |> json_response(200)
+
+        for key <- ~w(for_not_following for_not_followers for_new_accounts for_private_mentions for_limited_accounts) do
+          assert policy[key] in ~w(accept filter drop), "#{key}: #{inspect(policy[key])}"
+        end
+
+        assert %{"pending_requests_count" => _, "pending_notifications_count" => _} =
+                 policy["summary"]
+      end
+
+      # v1 is Mastodon 4.3's shape (booleans), v2 is 4.4's (`for_*`); both routes answered v2's (code review of masto-live-fixes)
+      test "GET /api/v1/notifications/policy answers the v1 shape", %{conn: conn} do
+        policy =
+          conn
+          |> get("/api/v1/notifications/policy")
+          |> json_response(200)
+
+        for key <- ~w(filter_not_following filter_not_followers filter_new_accounts filter_private_mentions) do
+          assert is_boolean(policy[key]), "#{key}: #{inspect(policy[key])}"
+        end
+
+        refute Enum.any?(Map.keys(policy), &String.starts_with?(&1, "for_"))
+        assert %{"pending_requests_count" => _, "pending_notifications_count" => _} = policy["summary"]
+      end
+
+      test "a group key still answers 501", %{conn: conn} do
+        assert conn
+               |> get("/api/v2/notifications/ungrouped-#{Needle.ULID.generate()}")
+               |> json_response(501)
+      end
+    end
+
+    # the badge count apps show; both routes were caught by `/notifications/:group_key` and `/notifications/:id` (masto-live-fixes decision 4)
+    describe "GET /api/v2/notifications/unread_count" do
+      test "counts a notification the reader has not seen, in v2 and v1", %{conn: conn, user: user} do
+        {:ok, post} =
+          Bonfire.Posts.publish(
+            current_user: user,
+            post_attrs: %{post_content: %{html_body: "like me"}},
+            boundary: "public"
+          )
+
+        {:ok, _} = Bonfire.Social.Likes.like(Bonfire.Me.Fake.fake_user!(), post)
+
+        assert %{"count" => count} =
+                 conn |> get("/api/v2/notifications/unread_count") |> json_response(200)
+
+        assert count >= 1
+
+        assert %{"count" => ^count} =
+                 conn |> get("/api/v1/notifications/unread_count") |> json_response(200)
+      end
+
+      # the count stops at `limit`, in the query rather than after counting every unseen row (code review of masto-live-fixes)
+      test "counts no further than limit", %{conn: conn, user: user} do
+        {:ok, post} =
+          Bonfire.Posts.publish(
+            current_user: user,
+            post_attrs: %{post_content: %{html_body: "like me, three of you"}},
+            boundary: "public"
+          )
+
+        for _ <- 1..3, do: {:ok, _} = Bonfire.Social.Likes.like(Bonfire.Me.Fake.fake_user!(), post)
+
+        assert %{"count" => 2} =
+                 conn |> get("/api/v2/notifications/unread_count?limit=2") |> json_response(200)
+
+        assert %{"count" => count} =
+                 conn |> get("/api/v2/notifications/unread_count") |> json_response(200)
+
+        assert count >= 3
+      end
+
+      test "requires authentication" do
+        assert unauthenticated_conn()
+               |> get("/api/v2/notifications/unread_count")
+               |> json_response(401)
+      end
+    end
+
     describe "notification mapper fallback status" do
       test "builds a valid mention notification when activity object is not preloaded", %{
         user: user

@@ -123,8 +123,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           "emojis" => [],
           "roles" => [],
           "hide_collections" => false,
-          # Mastodon sends a date, not a datetime (`REST::AccountSerializer#last_status_at`). TODO: the date of the account's last post, not of its creation
-          "last_status_at" => String.slice(created_at, 0, 10)
+          # Mastodon sends a date, not a datetime (`REST::AccountSerializer#last_status_at`): the date of the newest post, from `last_post_at`; nil when not selected or never posted (masto-live-fixes step 4)
+          "last_status_at" => last_status_date(Map.get(user, :last_post_at))
         }
 
         if Keyword.get(opts, :include_source, false) do
@@ -212,6 +212,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           end
       end
     end
+
+    defp last_status_date(%DateTime{} = at), do: at |> DateTime.to_date() |> Date.to_iso8601()
+    defp last_status_date(at) when is_binary(at), do: String.slice(at, 0, 10)
+    defp last_status_date(_), do: nil
 
     defp count_from(user, key) do
       case Map.get(user, key) do

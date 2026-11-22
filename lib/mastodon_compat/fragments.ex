@@ -69,6 +69,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
                         followers_count
                         following_count
                         statuses_count
+                        last_post_at
                       """
 
     @doc "`user_profile/0` plus the counts."
@@ -86,7 +87,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     @doc "Actor (subject/creator) fields for `Absinthe.run` masto queries — covers User + Category."
     def actor_fields, do: @actor_fields
 
-    @author_counts "followers_count: followersCount following_count: followingCount statuses_count: statusesCount"
+    @author_counts "followers_count: followersCount following_count: followingCount statuses_count: statusesCount last_post_at: lastPostAt"
 
     @author_fields @actor_fields <>
                      """
