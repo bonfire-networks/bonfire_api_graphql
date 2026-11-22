@@ -43,9 +43,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     - `:current_user` - The current user viewing the notification
     - `:status` - Canonical GraphQL status supplied by the notification adapter; an explicit nil suppresses fallback mapping
-    - `:subjects_by_id` - Map of subject IDs to preloaded user data
-    - `:post_content_by_id` - Map of object IDs to preloaded post content
-    - `:mentions_by_object` - Map of object IDs to preloaded mentions
 
     ## Examples
 
@@ -227,21 +224,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     # end
 
     defp get_subject(activity, opts) do
-      subject_id = get_field(activity, :subject_id)
-      subjects_by_id = Keyword.get(opts, :subjects_by_id, %{})
-      batch_subject = subject_id && Map.get(subjects_by_id, subject_id)
       subject = Keyword.get(opts, :subject) || get_fields(activity, [:account, :subject])
 
-      cond do
-        present_subject?(batch_subject) ->
-          batch_subject
-
-        present_subject?(subject) ->
-          subject
-
-        true ->
-          nil
-      end
+      if present_subject?(subject), do: subject
     end
 
     defp extract_status("quote", activity, opts) do
@@ -292,15 +277,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp fallback_status_from_activity(activity, opts) do
       object_id = get_field(activity, :object_id)
-      post_content = get_field(activity, :object_post_content)
-
-      post_content =
-        if is_nil(post_content) || post_content == %{} do
-          post_content_by_id = Keyword.get(opts, :post_content_by_id, %{})
-          Map.get(post_content_by_id, object_id) || %{}
-        else
-          post_content
-        end
+      post_content = get_field(activity, :object_post_content) || %{}
 
       subject = get_subject(activity, opts)
 
@@ -316,10 +293,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         html_content =
           Bonfire.Common.Text.maybe_markdown_to_html(raw_content, sanitize: true) || ""
 
-        mentions_by_object = Keyword.get(opts, :mentions_by_object, %{})
-        # the activity's GraphQL `mentions` when selected, else the batch's
-        raw_mentions =
-          get_field(activity, :mentions) || Map.get(mentions_by_object, object_id, [])
+        # the activity's GraphQL `mentions`
+        raw_mentions = get_field(activity, :mentions) || []
 
         current_user = Keyword.get(opts, :current_user)
         mentions = Mappers.Mention.from_tags(raw_mentions, current_user: current_user)

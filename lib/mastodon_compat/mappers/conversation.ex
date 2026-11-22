@@ -1,164 +1,69 @@
 if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
   defmodule Bonfire.API.MastoCompat.Mappers.Conversation do
     @moduledoc """
-    Maps Bonfire Message threads to Mastodon Conversation format.
+    Maps a GraphQL conversation (`my_conversations` or `conversation(id:)`, selected with
+    `Fragments.conversation_fields/0`) to a Mastodon Conversation. It only reads its input.
 
     A Mastodon Conversation represents a DM thread with:
     - id: Thread ID
     - accounts: Participants in the conversation
     - unread: Whether there are unseen messages
     - last_status: The most recent message in the thread
-
-    ## Usage
-
-        # Transform a thread message (from latest_in_threads query)
-        Mappers.Conversation.from_thread(message, current_user: user)
     """
 
-    use Bonfire.Common.Utils
-    use Bonfire.Common.Repo
     import Untangle
 
     alias Bonfire.API.MastoCompat.{Helpers, Mappers, Schemas}
-    alias Bonfire.Social.Threads
 
-    import Helpers, only: [get_field: 2, get_fields: 2]
+    import Helpers, only: [get_field: 2]
 
     @doc """
-    Transform a Bonfire thread message into a Mastodon Conversation.
-
-    Expects a message from `Bonfire.Messages.list/3` with `latest_in_threads: true`.
+    Transform a GraphQL conversation node (atom keys) into a Mastodon Conversation.
 
     ## Options
 
-    - `:current_user` - The current user (required for participants and seen status)
-
-    ## Examples
-
-        iex> from_thread(message, current_user: user)
-        %{"id" => "thread_123", "accounts" => [...], "unread" => false, "last_status" => {...}}
+    - `:current_user` - The reader, for the mentions of the last status
     """
-    def from_thread(message, opts \\ [])
+    def from_graphql(node, opts \\ [])
 
-    def from_thread(message, opts) when is_map(message),
-      do: [message] |> from_threads(opts) |> List.first()
+    def from_graphql(%{node: node}, opts), do: from_graphql(node, opts)
 
-    def from_thread(_, _opts), do: nil
+    def from_graphql(node, opts) when is_map(node) do
+      participants = get_field(node, :participants) || []
 
-    @doc "Like `from_thread/2` for a page of messages, reading every participant and sender in one GraphQL run (`Accounts.by_ids/2`)."
-    def from_threads(messages, opts \\ []) when is_list(messages) do
-      current_user = Keyword.get(opts, :current_user)
+      case get_field(node, :id) do
+        nil ->
+          warn(node, "A conversation came without an id")
+          nil
 
-      threads =
-        messages
-        |> Enum.filter(&is_map/1)
-        |> Enum.map(fn message ->
-          case get_thread_id(message) do
-            nil ->
-              warn(message, "Could not extract thread_id from message")
-              nil
-
-            thread_id ->
-              {message, thread_id,
-               Threads.list_participants(message, thread_id, current_user: current_user)}
-          end
-        end)
-        |> Enum.reject(&is_nil/1)
-
-      accounts_by_id =
-        threads
-        |> Enum.flat_map(fn {message, _thread_id, participants} ->
-          [
-            message |> get_field(:activity) |> get_field(:subject_id)
-            | Enum.map(participants, &Types.uid/1)
-          ]
-        end)
-        # with counts: the sender is the last status's author
-        |> Bonfire.API.MastoCompat.Accounts.by_ids(current_user, counts: true)
-
-      opts = Keyword.put(opts, :accounts_by_id, accounts_by_id)
-
-      Enum.map(threads, fn {message, thread_id, participants} ->
-        Schemas.Conversation.new(%{
-          "id" => to_string(thread_id),
-          "accounts" => get_participants(participants, opts),
-          "unread" => check_unread(message, opts),
-          "last_status" => build_last_status(message, opts)
-        })
-        |> Helpers.validate_and_return(Schemas.Conversation)
-      end)
-    end
-
-    defp get_thread_id(message) do
-      # Try to get thread_id from replied association
-      # Falls back to the message's own ID if it's the thread root
-      replied = get_field(message, :replied)
-      thread_id = get_field(replied, :thread_id)
-
-      # If no thread_id, this message might be the thread root
-      thread_id || get_field(message, :id)
-    end
-
-    defp get_participants(participants, opts) do
-      accounts_by_id = Keyword.get(opts, :accounts_by_id, %{})
-
-      participants
-      |> Enum.map(&Map.get(accounts_by_id, Types.uid(&1)))
-      |> Enum.map(&Mappers.Account.from_user/1)
-      |> Enum.reject(&is_nil/1)
-      |> filter_current_user(Keyword.get(opts, :current_user))
-    end
-
-    defp filter_current_user(accounts, nil), do: accounts
-
-    defp filter_current_user(accounts, current_user) do
-      current_user_id = Types.uid(current_user)
-
-      # Optionally exclude current user from participants list
-      # Mastodon includes the current user, so we keep them
-      # but this can be changed if needed
-      accounts
-    end
-
-    defp check_unread(message, _opts) do
-      # The :with_seen preload adds seen to activity.seen (not directly on message)
-      # See activities.ex:864-866 for the preload structure
-      activity = get_field(message, :activity)
-      seen = get_field(activity, :seen)
-
-      # If seen is nil or empty, it's unread
-      # If seen exists (has an edge), it's been read
-      cond do
-        is_nil(seen) -> true
-        seen == false -> true
-        is_map(seen) and map_size(seen) == 0 -> true
-        is_list(seen) and length(seen) == 0 -> true
-        true -> false
+        id ->
+          Schemas.Conversation.new(%{
+            "id" => to_string(id),
+            "accounts" =>
+              participants
+              |> Enum.map(&Mappers.Account.from_user/1)
+              |> Enum.reject(&is_nil/1),
+            "unread" => get_field(node, :unread) != false,
+            "last_status" =>
+              last_status(get_field(node, :last_message), get_field(node, :sender), opts)
+          })
+          |> Helpers.validate_and_return(Schemas.Conversation)
       end
     end
 
-    defp build_last_status(message, opts) do
-      # Ensure necessary associations are loaded for Status transformation
-      # Messages need:
-      # - post_content for message content
-      # - activity.subject with profile/character for Account mapper
-      # - tagged with tag.character for mentions extraction
-      message =
-        message
-        |> repo().maybe_preload([
-          :post_content,
-          activity: [subject: [:character, profile: :icon]],
-          # Preload tags (mentions) - Tagged mixin with character data for mentioned users
-          tagged: [tag: [:character, :profile]]
-        ])
+    def from_graphql(_, _opts), do: nil
 
-      # Messages loaded via Ecto (not GraphQL) are structured like Posts:
-      # - message.post_content for content
-      # - message.activity.subject for the sender
-      # - message.tagged for mentions
-      # Use from_post which handles this structure correctly
-      # Pass for_conversation: true so Status mapper sets visibility to "direct"
-      Mappers.Status.from_post(message, Keyword.put(opts, :for_conversation, true))
+    # The sender is read with the reader's boundaries: one the reader may not see leaves no last status, as before. A DM is always "direct" (conversation decision 4).
+    defp last_status(nil, _sender, _opts), do: nil
+    defp last_status(_message, nil, _opts), do: nil
+
+    defp last_status(message, sender, opts) do
+      activity = get_field(message, :activity) || %{}
+
+      message
+      |> Map.put(:creator, sender)
+      |> Map.put(:activity, Map.put(activity, :visibility, "direct"))
+      |> Mappers.Status.from_post(current_user: Keyword.get(opts, :current_user))
     end
   end
 end

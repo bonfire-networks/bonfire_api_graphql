@@ -253,30 +253,26 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
         activity_id = "01KS7CHQQ6Y8KQR9A7X4EBPJPM"
         object_id = "01KS62C1KD0B917AG5F0H0N7BP"
 
+        # shaped as the notification list's GraphQL selection returns it: the subject, the object's content and the mentions on the activity itself
         activity = %{
           id: activity_id,
           subject_id: subject.id,
           object_id: object_id,
-          verb_id: Bonfire.Boundaries.Verbs.get_id!(:create)
+          verb_id: Bonfire.Boundaries.Verbs.get_id!(:create),
+          subject: %{
+            id: subject.id,
+            character: %{username: subject.character.username},
+            profile: %{name: subject.profile.name}
+          },
+          object_post_content: %{id: object_id, html_body: "Fallback status body"},
+          mentions: [%{id: user.id, character: %{username: user.character.username}}]
         }
 
         notification =
           Bonfire.API.MastoCompat.Mappers.Notification.from_activity(activity,
             current_user: user,
             # the caller names the type, as the notification list does
-            notification_type: "mention",
-            # the subject as GraphQL returns it: the account mapper reads only that shape (unit 4)
-            subjects_by_id: %{
-              subject.id => %{
-                id: subject.id,
-                character: %{username: subject.character.username},
-                profile: %{name: subject.profile.name}
-              }
-            },
-            post_content_by_id: %{
-              object_id => %{id: object_id, html_body: "Fallback status body"}
-            },
-            mentions_by_object: %{object_id => [%{tag_id: user.id}]}
+            notification_type: "mention"
           )
 
         status = notification["status"]

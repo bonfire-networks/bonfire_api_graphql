@@ -155,6 +155,24 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     @doc "A status's content, aliased to the keys `Mappers.Status` reads."
     def status_post_content, do: "post_content: postContent { name summary html_body: rawBody }"
 
+    @doc """
+    A conversation (`my_conversations`, `conversation(id:)`) for `Mappers.Conversation`, its own selection rather than the shared status ones (conversation decision 9). It leaves out what the conversations API has never shown: counts, the replied-to post, media and hashtags (conversation decision 8). Participants and sender are read with the reader's boundaries.
+    """
+    def conversation_fields do
+      """
+      id
+      unread
+      participants { #{author_fields()} }
+      sender { #{author_fields()} }
+      last_message: lastMessage {
+        id
+        #{status_post_content()}
+        #{object_interactions()}
+        activity { mentions { #{actor_fields()} } }
+      }
+      """
+    end
+
     @doc "A status's object: a post or a poll, with its content, media, author and the reader's flags on it."
     def status_object do
       """

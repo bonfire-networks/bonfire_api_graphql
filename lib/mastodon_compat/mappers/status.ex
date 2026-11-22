@@ -188,12 +188,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         mentions: get_field(activity, :mentions),
         hashtags: get_field(activity, :hashtags),
         visibility: get_field(activity, :visibility),
-        tags:
-          get_field(activity, :tags) ||
-            get_field(object, :tags) ||
-            get_field(activity, :tagged) ||
-            get_field(object, :tagged) ||
-            []
+        tags: get_field(activity, :tags) || get_field(object, :tags) || []
       }
     end
 
@@ -254,7 +249,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         context_id:
           Keyword.get(opts, :context_id) || get_field(get_field(activity, :context), :id) ||
             get_field(post, :context_id),
-        media: get_field(post, :media) || get_field(activity, :media) || [],
+        # the activity's media first: it is the post's (joined on `object_id`) and the feed preloads it, where the post's own `media` may not be loaded (a notification's object, live run L3)
+        media: get_field(activity, :media) || get_field(post, :media) || [],
         # the post's own flags (GraphQL `... on Post`/`... on Poll`), else its activity's
         liked_by_me: present(get_field(post, :liked_by_me), get_field(activity, :liked_by_me)),
         boosted_by_me:
@@ -268,13 +264,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         mentions: get_field(activity, :mentions),
         hashtags: get_field(activity, :hashtags),
         visibility: get_field(activity, :visibility),
-        # `:tagged` is a conversation's Ecto message (`Mappers.Conversation`), until conversations move to GraphQL
-        tags:
-          get_field(post, :tags) ||
-            get_field(activity, :tags) ||
-            get_field(post, :tagged) ||
-            get_field(activity, :tagged) ||
-            []
+        tags: get_field(post, :tags) || get_field(activity, :tags) || []
       }
     end
 
@@ -341,7 +331,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           "sensitive" => content_data.spoiler_text not in [nil, ""]
         })
 
-      add_interaction_states(base_status, object_id, context, Keyword.get(opts, :current_user))
+      add_interaction_states(base_status, context)
       |> maybe_add_poll(context, opts)
     end
 
@@ -383,59 +373,24 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       end
     end
 
-    # a conversation's Ecto message (`Mappers.Conversation`), until conversations move to GraphQL
+    # a context built by hand with its tags (an ActivityPub event, `build_regular_status/2`)
     defp extract_mentions_from_context_tags(context, current_user) do
-      post = context[:post]
-      tags = context[:tags] || []
-
-      cond do
-        is_struct(post) ->
-          loaded_tags = Bonfire.Social.Tags.list_tags_mentions(post, current_user)
-          Mappers.Mention.from_tags(loaded_tags, current_user: current_user)
-
-        is_list(tags) and tags != [] ->
-          Mappers.Mention.from_tags(tags, current_user: current_user)
-
-        true ->
-          []
+      case context[:tags] do
+        [_ | _] = tags -> Mappers.Mention.from_tags(tags, current_user: current_user)
+        _ -> []
       end
     end
 
-    defp add_interaction_states(status, object_id, context, current_user) do
+    defp add_interaction_states(status, context) do
       favourited = context[:liked_by_me]
       reblogged = context[:boosted_by_me]
       bookmarked = context[:bookmarked_by_me]
 
-      if is_boolean(favourited) && is_boolean(reblogged) && is_boolean(bookmarked) do
-        status
-        |> Map.put("favourited", favourited)
-        |> Map.put("reblogged", reblogged)
-        |> Map.put("bookmarked", bookmarked)
-      else
-        # a conversation's Ecto message carries no flags (`Mappers.Conversation`), until conversations move to GraphQL
-        case current_user do
-          %{} when object_id != nil ->
-            status
-            |> Map.put(
-              "favourited",
-              Bonfire.Social.Likes.liked?(current_user, object_id) || false
-            )
-            |> Map.put(
-              "reblogged",
-              Bonfire.Social.Boosts.boosted?(current_user, object_id) || false
-            )
-            |> Map.put(
-              "bookmarked",
-              Bonfire.Social.Bookmarks.bookmarked?(current_user, object_id) || false
-            )
-
-          _ ->
-            status
-            |> Map.put("favourited", false)
-            |> Map.put("reblogged", false)
-            |> Map.put("bookmarked", false)
-        end
-      end
+      # selected through GraphQL (`Fragments.object_interactions/0`); a flag not selected is false
+      status
+      |> Map.put("favourited", favourited == true)
+      |> Map.put("reblogged", reblogged == true)
+      |> Map.put("bookmarked", bookmarked == true)
     end
 
     # The original post a boost wraps: the boost activity's `object`, with its creator (`creator` in the selection). One that comes without a creator gives no reblog.
@@ -486,14 +441,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp prepare_account(nil, _opts), do: nil
     defp prepare_account(%Ecto.Association.NotLoaded{}, _opts), do: nil
 
-    defp prepare_account(user_data, opts) do
-      # conversations pass the accounts they read by id; one the reader may not see stays out
-      user_data =
-        case Keyword.fetch(opts, :accounts_by_id) do
-          {:ok, accounts_by_id} -> Map.get(accounts_by_id, Types.uid(user_data))
-          :error -> user_data
-        end
-
+    defp prepare_account(user_data, _opts) do
       case Mappers.Account.from_user(user_data) do
         nil ->
           nil
@@ -503,12 +451,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       end
     end
 
-    defp map_visibility(object_id, context, opts) do
+    defp map_visibility(object_id, context, _opts) do
       cond do
-        Keyword.get(opts, :for_conversation, false) ->
-          "direct"
-
-        # selected through GraphQL (`visibility`)
+        # selected through GraphQL (`visibility`); a conversation sets "direct"
         is_binary(context[:visibility]) ->
           context[:visibility]
 
