@@ -37,7 +37,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       source = Keyword.get(opts, :source, "global")
       sources = Keyword.get(opts, :sources, [source])
 
-      # Pass remaining options to Account mapper (e.g., skip_expensive_stats)
       account_opts = Keyword.drop(opts, [:source, :sources])
 
       case Account.from_user(user, account_opts) do

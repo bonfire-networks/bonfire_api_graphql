@@ -1,10 +1,8 @@
 if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
   defmodule Bonfire.API.MastoCompat.Mappers.Account do
     @moduledoc """
-    Maps Bonfire User objects to Mastodon Account format.
-
-    Pass `skip_expensive_stats: true` for list endpoints, or provide preloaded
-    counts via `follow_counts` and `status_count` opts.
+    Maps an account as GraphQL returns it (atom keys) to a Mastodon Account. Runs no query:
+    counts and `follow_requests_count` are what the query selected, 0 when none.
     """
 
     use Bonfire.Common.Utils
@@ -13,18 +11,14 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     alias Bonfire.Common.Text
 
     @doc """
-    Transform a Bonfire User into a Mastodon Account.
+    Transform a GraphQL account into a Mastodon Account.
 
-    Returns nil if the user is nil or invalid.
+    Returns nil if the input is nil, has no username, or is a struct (select the account in
+    GraphQL instead).
 
     ## Options
 
-    - `:skip_expensive_stats` - Skip computing expensive stats (statuses_count,
-      followers_count, following_count, follow_requests_count). Use for list endpoints
-      where these counts are not displayed. Default: false
-    - `:follow_counts` - Pre-loaded follow counts map with :followers and :following keys
-    - `:status_count` - Pre-loaded status count integer
-    - `:current_user` - Current user context (for settings lookups)
+    - `:include_source` - Add the reader's own `source` (with `follow_requests_count`)
     - `:fallback_return` - Value to return on error (default: nil)
 
     ## Examples
@@ -43,6 +37,18 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       Keyword.get(opts, :fallback_return, nil)
     end
 
+    # structs are not read; warn only for an account struct (a post can arrive as a subject)
+    def from_user(user, opts) when is_struct(user) do
+      if Bonfire.API.MastoCompat.Accounts.account?(user),
+         do:
+           warn(
+             Types.object_type(user),
+             "Mappers.Account reads GraphQL output, not structs: select the account in GraphQL"
+           )
+
+      Keyword.get(opts, :fallback_return, nil)
+    end
+
     def from_user(user, opts) when is_map(user) do
       case build_account(user, opts) do
         %{"id" => id} = account when not is_nil(id) ->
@@ -56,56 +62,36 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     def from_user(_, opts), do: Keyword.get(opts, :fallback_return, nil)
 
-    @doc """
-    Same as from_user/2 but raises on invalid input.
-    """
-    def from_user!(user, opts \\ []) do
-      case from_user(user, opts) do
-        nil -> raise Bonfire.Fail, :not_found
-        account -> account
-      end
-    end
-
-    @doc """
-    Checks if an account object is valid (non-nil and has ID).
-    """
-    def valid?(account) do
-      is_map(account) && (Map.has_key?(account, :id) || Map.has_key?(account, "id"))
-    end
-
     defp build_account(user, opts) do
       profile = extract_nested(user, :profile)
       character = extract_nested(user, :character)
-      username = get_field(character, [:username, "username"])
+      username = get_field(character, [:username])
 
-      # Return nil for users without username (BatchLoader will filter these out)
       if is_nil(username) or username == "" do
         nil
       else
-        peered = extract_nested(character, :peered) || extract_nested(user, :peered)
+        peered = extract_nested(character, :peered)
         user_id = extract_id(user, character, profile)
-        acct = get_field(character, [:acct, "acct"]) || username
-        display_name = get_field(profile, [:display_name, "display_name", :name, "name"])
-        note_raw = get_field(profile, [:note, "note", :summary, "summary", :bio, "bio"])
+        acct = get_field(character, [:acct]) || username
+        display_name = get_field(profile, [:display_name, :name])
+        note_raw = get_field(profile, [:note, :summary])
         note_html = Text.maybe_markdown_to_html(note_raw) || ""
 
         url =
-          get_field(character, [:url, "url", :canonical_uri, "canonical_uri"]) ||
-            get_field(peered, [:canonical_uri, "canonical_uri"]) ||
-            compute_canonical_url(user, character)
+          get_field(character, [:url, :canonical_uri]) ||
+            get_field(peered, [:canonical_uri])
 
         avatar = resolve_avatar_url(user, profile)
         header = resolve_header_url(user, profile)
 
         created_at = extract_created_at(user)
-        {statuses_count, followers_count, following_count} = compute_stats(user, opts)
+        statuses_count = count_from(user, :statuses_count)
+        followers_count = count_from(user, :followers_count)
+        following_count = count_from(user, :following_count)
         indexable = Bonfire.Common.Extend.module_enabled?(Bonfire.Search.Indexer, user)
 
-        discoverable =
-          Bonfire.Common.Settings.get([Bonfire.Me.Users, :undiscoverable], nil,
-            current_user: user
-          ) !=
-            true
+        # true when not selected (groups)
+        discoverable = Map.get(user, :discoverable) != false
 
         account = %{
           "id" => to_string(user_id),
@@ -142,7 +128,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         }
 
         if Keyword.get(opts, :include_source, false) do
-          Map.put(account, "source", build_source(note_raw, user, opts, indexable, discoverable))
+          Map.put(account, "source", build_source(note_raw, user, indexable, discoverable))
         else
           account
         end
@@ -150,9 +136,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     defp extract_id(user, character, profile) do
-      get_field(user, [:id, "id"]) ||
-        get_field(character, [:id, "id"]) ||
-        get_field(profile, [:id, "id"])
+      get_field(user, [:id]) ||
+        get_field(character, [:id]) ||
+        get_field(profile, [:id])
     end
 
     # Differs from Helpers.get_field/2: also treats "" as nil for account field extraction
@@ -162,7 +148,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp get_field(map, keys) when is_map(map) and is_list(keys) do
       Enum.find_value(keys, fn key ->
         case Map.get(map, key) do
-          %Ecto.Association.NotLoaded{} -> nil
           "" -> nil
           value -> value
         end
@@ -175,12 +160,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp extract_nested(%{} = map, key) when map_size(map) == 0, do: %{}
 
     defp extract_nested(parent, key) when is_atom(key) and is_map(parent) do
-      value = Map.get(parent, key) || Map.get(parent, Atom.to_string(key))
-
-      case value do
-        %Ecto.Association.NotLoaded{} -> %{}
-        nil -> %{}
-        data when is_struct(data) -> Map.from_struct(data)
+      case Map.get(parent, key) do
         data when is_map(data) -> data
         _ -> %{}
       end
@@ -189,7 +169,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp extract_nested(_, _), do: %{}
 
     defp resolve_avatar_url(user, profile) do
-      case get_field(profile, [:avatar, "avatar"]) do
+      case get_field(profile, [:avatar]) do
         url when is_binary(url) and url != "" ->
           Bonfire.Common.URIs.based_url(url)
 
@@ -200,7 +180,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     defp resolve_header_url(user, profile) do
-      case get_field(profile, [:header, "header"]) do
+      case get_field(profile, [:header]) do
         url when is_binary(url) and url != "" ->
           Bonfire.Common.URIs.based_url(url)
 
@@ -217,7 +197,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     defp extract_created_at(user) do
-      case get_field(user, [:created_at, "created_at"]) do
+      case get_field(user, [:created_at]) do
         %DateTime{} = dt ->
           DateTime.to_iso8601(dt)
 
@@ -233,120 +213,19 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       end
     end
 
-    defp compute_canonical_url(user, character) do
-      # Fallback when no stored URL. Only attempt on real structs — a GraphQL-shaped string-keyed
-      # map (e.g. %{"username" => "ivan"}) can't be resolved and makes URIs.canonical_url log a
-      # "no case matched" warning. GraphQL actors already carry the URL as `canonicalUri`.
-      canonical_from_struct(character) || canonical_from_struct(user)
-    rescue
-      _ -> nil
-    end
-
-    defp canonical_from_struct(thing) when is_struct(thing),
-      do: Bonfire.Common.URIs.canonical_url(thing, preload_if_needed: false)
-
-    defp canonical_from_struct(_), do: nil
-
-    defp compute_stats(user, opts) do
-      skip = Keyword.get(opts, :skip_expensive_stats, false)
-      preloaded_follows = Keyword.get(opts, :follow_counts)
-      preloaded_status = Keyword.get(opts, :status_count)
-
-      cond do
-        skip ->
-          {0, 0, 0}
-
-        preloaded_follows && preloaded_status != nil ->
-          {
-            preloaded_status,
-            Map.get(preloaded_follows, :followers, 0),
-            Map.get(preloaded_follows, :following, 0)
-          }
-
-        preloaded_follows ->
-          {
-            get_statuses_count(user),
-            Map.get(preloaded_follows, :followers, 0),
-            Map.get(preloaded_follows, :following, 0)
-          }
-
-        true ->
-          {get_statuses_count(user), get_followers_count(user), get_following_count(user)}
-      end
-    end
-
-    defp get_followers_count(user) do
-      case get_follow_count(user) do
-        %{object_count: count} when is_integer(count) -> count
+    defp count_from(user, key) do
+      case Map.get(user, key) do
+        count when is_integer(count) -> count
         _ -> 0
       end
     end
 
-    defp get_following_count(user) do
-      case get_follow_count(user) do
-        %{subject_count: count} when is_integer(count) -> count
-        _ -> 0
-      end
-    end
-
-    defp get_follow_count(user) do
-      user_id = Bonfire.Common.Types.uid(user)
-
-      if user_id do
-        Bonfire.Common.Repo.get(Bonfire.Data.Social.FollowCount, user_id)
-      end
-    end
-
-    defp get_statuses_count(user) do
-      user_id = Bonfire.Common.Types.uid(user)
-
-      if user_id do
-        import Ecto.Query
-
-        Bonfire.Common.Repo.one(
-          from(c in Bonfire.Data.Social.Created,
-            join: p in Bonfire.Data.Social.Post,
-            on: c.id == p.id,
-            where: c.creator_id == ^user_id,
-            select: count(c.id)
-          )
-        ) || 0
-      else
-        0
-      end
-    end
-
-    defp get_follow_requests_count(user) do
-      user_id = Bonfire.Common.Types.uid(user)
-
-      if user_id do
-        import Ecto.Query
-        alias Bonfire.Data.Social.Request
-        alias Bonfire.Data.Social.Follow
-
-        Bonfire.Common.Repo.one(
-          from(r in Request,
-            join: e in assoc(r, :edge),
-            where: e.object_id == ^user_id,
-            where: e.table_id == ^Needle.Tables.id!(Follow),
-            where: is_nil(r.ignored_at),
-            select: count(r.id)
-          )
-        ) || 0
-      else
-        0
-      end
-    end
-
-    defp build_source(note_raw, user, opts, indexable, discoverable) do
-      skip_expensive = Keyword.get(opts, :skip_expensive_stats, false)
-
+    defp build_source(note_raw, user, indexable, discoverable) do
       %{
         "indexable" => indexable,
         "discoverable" => discoverable,
         "note" => note_raw || "",
-        "follow_requests_count" =>
-          if(skip_expensive, do: 0, else: get_follow_requests_count(user)),
+        "follow_requests_count" => count_from(user, :follow_requests_count),
         "hide_collections" => false,
         "attribution_domains" => [],
         "privacy" => "public",

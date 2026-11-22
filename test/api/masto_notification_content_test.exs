@@ -8,7 +8,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     # Post bodies are stored as Markdown, so a status built straight from the stored body must render it to HTML like `Mappers.Status` does
     test "a notification status built from the stored body is rendered and sanitized" do
-      user = Bonfire.Me.Fake.fake_user!()
+      fake = Bonfire.Me.Fake.fake_user!()
+      # the subject as GraphQL returns it: the account mapper reads only that shape (unit 4)
+      user = %{id: fake.id, character: %{username: fake.character.username}, profile: %{}}
       object_id = Needle.UID.generate()
 
       activity = %{

@@ -486,8 +486,15 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp prepare_account(nil, _opts), do: nil
     defp prepare_account(%Ecto.Association.NotLoaded{}, _opts), do: nil
 
-    defp prepare_account(user_data, _opts) do
-      case Mappers.Account.from_user(user_data, skip_expensive_stats: true) do
+    defp prepare_account(user_data, opts) do
+      # conversations pass the accounts they read by id; one the reader may not see stays out
+      user_data =
+        case Keyword.fetch(opts, :accounts_by_id) do
+          {:ok, accounts_by_id} -> Map.get(accounts_by_id, Types.uid(user_data))
+          :error -> user_data
+        end
+
+      case Mappers.Account.from_user(user_data) do
         nil ->
           nil
 

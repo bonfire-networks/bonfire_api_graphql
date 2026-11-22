@@ -100,7 +100,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         nil
       else
         subject = get_subject(activity, opts)
-        account_data = Mappers.Account.from_user(subject, skip_expensive_stats: true)
+        account_data = Mappers.Account.from_user(subject)
 
         status_data =
           if Schemas.Notification.with_status?(notification_type) do
@@ -305,7 +305,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       subject = get_subject(activity, opts)
 
       if object_id && subject do
-        account = Mappers.Account.from_user(subject, skip_expensive_stats: true)
+        account = Mappers.Account.from_user(subject)
 
         raw_content =
           get_field(post_content, :content) ||

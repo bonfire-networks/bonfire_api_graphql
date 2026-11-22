@@ -89,7 +89,13 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     defp wrap_as_boost(original_status, current_user, boost_result, reblogged) do
-      booster_account = Mappers.Account.from_user(current_user, skip_expensive_stats: true)
+      booster_id = Types.uid(current_user)
+
+      booster_account =
+        Bonfire.API.MastoCompat.Accounts.by_ids([booster_id], current_user, counts: true)
+        |> Map.get(booster_id)
+        |> Mappers.Account.from_user()
+
       boost_id = Helpers.get_field(boost_result, :id)
 
       Schemas.Status.new(%{

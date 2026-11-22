@@ -41,6 +41,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     @user_profile """
       id
       created_at: date_created
+      discoverable
       profile {
         avatar: icon
         avatar_static: icon
@@ -63,17 +64,38 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     @doc "GraphQL fragment for user/account profile data"
     def user_profile, do: @user_profile
 
+    @account_fields @user_profile <>
+                      """
+                        followers_count
+                        following_count
+                        statuses_count
+                      """
+
+    @doc "`user_profile/0` plus the counts."
+    def account_fields, do: @account_fields
+
     # Actor (subject/creator) selection for the raw `Absinthe.run` masto read paths. camelCase
     # field names with snake_case aliases (the inline-query style those adapters use), and it
     # MUST cover every actor type in the :any_character union — User AND Category (groups) — or
     # group-authored activities resolve to an untyped actor and get dropped on validation.
     @actor_fields """
-    ... on User { id character { username url: canonicalUri } profile { name summary avatar: icon header: image } }
+    ... on User { id discoverable character { username url: canonicalUri } profile { name summary avatar: icon header: image } }
     ... on Category { id character { username url: canonicalUri } profile { name summary avatar: icon header: image } }
     """
 
     @doc "Actor (subject/creator) fields for `Absinthe.run` masto queries — covers User + Category."
     def actor_fields, do: @actor_fields
+
+    @author_counts "followers_count: followersCount following_count: followingCount statuses_count: statusesCount"
+
+    @author_fields @actor_fields <>
+                     """
+                     ... on User { #{@author_counts} }
+                     ... on Category { #{@author_counts} }
+                     """
+
+    @doc "`actor_fields/0` plus the counts, for authors; mentions use `actor_fields/0`."
+    def author_fields, do: @author_fields
 
     @poll_fields """
     id
@@ -142,13 +164,13 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           id
           #{status_post_content()}
           #{status_media()}
-          creator { #{actor_fields()} }
+          creator { #{author_fields()} }
           #{object_interactions()}
         }
         ... on Poll {
           #{poll_fields()}
           #{status_post_content()}
-          creator { #{actor_fields()} }
+          creator { #{author_fields()} }
           #{object_interactions()}
         }
       }

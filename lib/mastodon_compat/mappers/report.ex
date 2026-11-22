@@ -56,20 +56,30 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp extract_target_account(nil, _opts), do: nil
 
     defp extract_target_account(flagged, opts) do
+      opts
+      |> Keyword.get(:accounts_by_id, %{})
+      |> Map.get(target_user_id_of(flagged))
+      |> Mappers.Account.from_user()
+    end
+
+    @doc "The id of the account a flag reports: the flagged user, or the creator of the flagged object."
+    def target_user_id(flag) do
+      flag |> Helpers.get_field(:edge) |> Helpers.get_field(:object) |> target_user_id_of()
+    end
+
+    defp target_user_id_of(nil), do: nil
+
+    defp target_user_id_of(flagged) do
       object_type = Bonfire.Common.Types.object_type(flagged)
 
-      user =
-        if object_type in [Bonfire.Data.Identity.User, Bonfire.Data.Identity.Character] do
-          flagged
-        else
-          created = Helpers.get_field(flagged, :created)
-          Helpers.get_field(created, :creator)
-        end
-
-      debug(user, "target user for report")
-
-      account_opts = Keyword.put_new(opts, :skip_expensive_stats, true)
-      Mappers.Account.from_user(user, account_opts)
+      if object_type in [Bonfire.Data.Identity.User, Bonfire.Data.Identity.Character] do
+        Bonfire.Common.Types.uid(flagged)
+      else
+        flagged
+        |> Helpers.get_field(:created)
+        |> Helpers.get_field(:creator)
+        |> Bonfire.Common.Types.uid()
+      end
     end
 
     defp extract_status_ids(nil), do: nil

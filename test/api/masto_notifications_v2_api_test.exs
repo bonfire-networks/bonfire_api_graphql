@@ -265,7 +265,14 @@ if Application.compile_env(:bonfire_social, :modularity) != :disabled do
             current_user: user,
             # the caller names the type, as the notification list does
             notification_type: "mention",
-            subjects_by_id: %{subject.id => subject},
+            # the subject as GraphQL returns it: the account mapper reads only that shape (unit 4)
+            subjects_by_id: %{
+              subject.id => %{
+                id: subject.id,
+                character: %{username: subject.character.username},
+                profile: %{name: subject.profile.name}
+              }
+            },
             post_content_by_id: %{
               object_id => %{id: object_id, html_body: "Fallback status body"}
             },

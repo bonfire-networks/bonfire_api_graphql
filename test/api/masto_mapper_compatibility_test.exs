@@ -19,8 +19,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
             {"by_caballero", "by_caballero@mastodon.social"},
             {"alice", "alice"}
           ] do
-        actor = %{user | character: %{user.character | username: acct}}
-        result = Account.from_user(actor, skip_expensive_stats: true)
+        # GraphQL-shaped input, the only shape the mapper reads (unit 4)
+        actor = %{id: user.id, character: %{username: acct}, profile: %{}}
+        result = Account.from_user(actor)
         assert result["username"] == username
         assert result["acct"] == acct
       end
@@ -29,14 +30,122 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     test "an explicit remote acct is preserved" do
       user = Bonfire.Me.Fake.fake_user!()
 
-      character =
-        user.character
-        |> Map.from_struct()
-        |> Map.merge(%{username: "alice", acct: "alice@remote.example"})
+      # GraphQL-shaped input, the only shape the mapper reads (unit 4)
+      input = %{
+        id: user.id,
+        character: %{username: "alice", acct: "alice@remote.example"},
+        profile: %{}
+      }
 
-      result = Account.from_user(%{user | character: character}, skip_expensive_stats: true)
+      result = Account.from_user(input)
       assert result["username"] == "alice"
       assert result["acct"] == "alice@remote.example"
+    end
+
+    describe "pure: an atom-key GraphQL account in, a Mastodon account out, no query" do
+      # the shape `Fragments.account_fields` selects (team-docs/plans/masto-pure-mappers.md, unit 2)
+      defp graphql_account(user, extra \\ %{}) do
+        Map.merge(
+          %{
+            id: user.id,
+            created_at: "2026-11-01T10:00:00Z",
+            profile: %{
+              avatar: "/images/me.png",
+              avatar_static: "/images/me.png",
+              header: "/images/my-header.png",
+              header_static: "/images/my-header.png",
+              display_name: "Alice",
+              note: "Hello",
+              website: nil
+            },
+            character: %{
+              username: "alice",
+              acct: "alice",
+              url: "http://localhost:4000/pub/actors/alice",
+              peered: nil
+            }
+          },
+          extra
+        )
+      end
+
+      test "counts come from the input, and nothing is queried" do
+        user = Bonfire.Me.Fake.fake_user!()
+
+        input =
+          graphql_account(user, %{followers_count: 3, following_count: 4, statuses_count: 5})
+
+        {account, queries} =
+          Bonfire.Common.Testing.count_queries(fn -> Account.from_user(input) end)
+
+        assert queries == 0
+        assert account["id"] == user.id
+        assert account["username"] == "alice"
+        assert account["url"] == "http://localhost:4000/pub/actors/alice"
+        assert account["uri"] == "http://localhost:4000/pub/actors/alice"
+        assert account["display_name"] == "Alice"
+        assert account["note"] =~ "Hello"
+        assert account["created_at"] == "2026-11-01T10:00:00Z"
+        assert account["last_status_at"] == "2026-11-01"
+
+        assert {account["statuses_count"], account["followers_count"], account["following_count"]} ==
+                 {5, 3, 4}
+      end
+
+      test "counts not selected are 0, and nothing is queried" do
+        user = Bonfire.Me.Fake.fake_user!()
+
+        {account, queries} =
+          Bonfire.Common.Testing.count_queries(fn -> Account.from_user(graphql_account(user)) end)
+
+        assert queries == 0
+
+        assert {account["statuses_count"], account["followers_count"], account["following_count"]} ==
+                 {0, 0, 0}
+      end
+
+      test "a struct is not read: nil, and nothing is queried" do
+        user = Bonfire.Me.Fake.fake_user!()
+
+        {account, queries} =
+          Bonfire.Common.Testing.count_queries(fn -> Account.from_user(user) end)
+
+        assert account == nil
+        assert queries == 0
+      end
+
+      test "a struct that is not an account (a post as subject) gives nil without a warning" do
+        log =
+          ExUnit.CaptureLog.capture_log([level: :warning], fn ->
+            assert Account.from_user(%Bonfire.Data.Social.Post{id: Needle.UID.generate()}) == nil
+          end)
+
+        refute log =~ "reads GraphQL output"
+      end
+
+      test "a group struct warns, as a user struct does" do
+        log =
+          ExUnit.CaptureLog.capture_log([level: :warning], fn ->
+            group = %Bonfire.Classify.Category{id: Needle.UID.generate(), type: :group}
+            assert Account.from_user(group) == nil
+          end)
+
+        assert log =~ "reads GraphQL output"
+      end
+
+      test "the reader's own account takes follow_requests_count from the input" do
+        user = Bonfire.Me.Fake.fake_user!()
+        input = graphql_account(user, %{follow_requests_count: 2})
+
+        {account, queries} =
+          Bonfire.Common.Testing.count_queries(fn ->
+            Account.from_user(input, include_source: true)
+          end)
+
+        assert queries == 0
+        assert account["source"]["follow_requests_count"] == 2
+        assert account["source"]["note"] == "Hello"
+      end
     end
 
     test "audio and video metadata expose numeric seconds through JSON" do

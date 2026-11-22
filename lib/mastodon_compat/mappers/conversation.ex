@@ -40,30 +40,54 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     """
     def from_thread(message, opts \\ [])
 
-    def from_thread(nil, _opts), do: nil
-
-    def from_thread(message, opts) when is_map(message) do
-      current_user = Keyword.get(opts, :current_user)
-
-      thread_id = get_thread_id(message)
-
-      if thread_id do
-        conversation =
-          Schemas.Conversation.new(%{
-            "id" => to_string(thread_id),
-            "accounts" => get_participants(message, thread_id, opts),
-            "unread" => check_unread(message, opts),
-            "last_status" => build_last_status(message, opts)
-          })
-
-        Helpers.validate_and_return(conversation, Schemas.Conversation)
-      else
-        warn(message, "Could not extract thread_id from message")
-        nil
-      end
-    end
+    def from_thread(message, opts) when is_map(message),
+      do: [message] |> from_threads(opts) |> List.first()
 
     def from_thread(_, _opts), do: nil
+
+    @doc "Like `from_thread/2` for a page of messages, reading every participant and sender in one GraphQL run (`Accounts.by_ids/2`)."
+    def from_threads(messages, opts \\ []) when is_list(messages) do
+      current_user = Keyword.get(opts, :current_user)
+
+      threads =
+        messages
+        |> Enum.filter(&is_map/1)
+        |> Enum.map(fn message ->
+          case get_thread_id(message) do
+            nil ->
+              warn(message, "Could not extract thread_id from message")
+              nil
+
+            thread_id ->
+              {message, thread_id,
+               Threads.list_participants(message, thread_id, current_user: current_user)}
+          end
+        end)
+        |> Enum.reject(&is_nil/1)
+
+      accounts_by_id =
+        threads
+        |> Enum.flat_map(fn {message, _thread_id, participants} ->
+          [
+            message |> get_field(:activity) |> get_field(:subject_id)
+            | Enum.map(participants, &Types.uid/1)
+          ]
+        end)
+        # with counts: the sender is the last status's author
+        |> Bonfire.API.MastoCompat.Accounts.by_ids(current_user, counts: true)
+
+      opts = Keyword.put(opts, :accounts_by_id, accounts_by_id)
+
+      Enum.map(threads, fn {message, thread_id, participants} ->
+        Schemas.Conversation.new(%{
+          "id" => to_string(thread_id),
+          "accounts" => get_participants(participants, opts),
+          "unread" => check_unread(message, opts),
+          "last_status" => build_last_status(message, opts)
+        })
+        |> Helpers.validate_and_return(Schemas.Conversation)
+      end)
+    end
 
     defp get_thread_id(message) do
       # Try to get thread_id from replied association
@@ -75,20 +99,14 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       thread_id || get_field(message, :id)
     end
 
-    defp get_participants(message, thread_id, opts) do
-      current_user = Keyword.get(opts, :current_user)
-
-      participants =
-        Threads.list_participants(message, thread_id, current_user: current_user)
-        |> repo().maybe_preload(character: :peered, profile: :icon)
-
-      # Skip expensive stats for conversation participants (N+1 query prevention)
-      account_opts = Keyword.merge(opts, skip_expensive_stats: true)
+    defp get_participants(participants, opts) do
+      accounts_by_id = Keyword.get(opts, :accounts_by_id, %{})
 
       participants
-      |> Enum.map(&Mappers.Account.from_user(&1, account_opts))
+      |> Enum.map(&Map.get(accounts_by_id, Types.uid(&1)))
+      |> Enum.map(&Mappers.Account.from_user/1)
       |> Enum.reject(&is_nil/1)
-      |> filter_current_user(current_user)
+      |> filter_current_user(Keyword.get(opts, :current_user))
     end
 
     defp filter_current_user(accounts, nil), do: accounts
