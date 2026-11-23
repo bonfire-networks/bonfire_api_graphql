@@ -325,8 +325,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       {params, extra_filters} = Map.split(params, @pagination_keys)
 
       # Build filter without pagination cursors (cursors are top-level GraphQL args, not filters)
+      # what a timeline reads is the server's to say: a client can't set its feed, circles or activity types from the query string, and the server's filters win over the rest
       filters_without_pagination =
-        # what a timeline reads is the server's to say: a client can't set its feed, circles or activity types from the query string, and the server's filters win over the rest
         extra_filters
         |> Map.drop(@server_scoped_filters)
         |> Map.merge(filters)

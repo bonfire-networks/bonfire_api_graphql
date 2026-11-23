@@ -12,12 +12,21 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     @moduletag :masto_api
 
-
     # Mastodon timelines carry no window; the 7-day one (commit 2692c30) stopped scrolling at posts a week old (masto-live-fixes pagination bug 1, decision 1.1), so timelines use build_feed_params/3 like the other lists
     describe "no history window" do
       test "timelines, archives and notifications carry none" do
-        for feed_name <- ["my", "local", "explore", "notifications", "user_activities", "bookmarks", nil] do
-          params = PaginationHelpers.build_feed_params(%{"limit" => "5"}, %{"feed_name" => feed_name})
+        for feed_name <- [
+              "my",
+              "local",
+              "explore",
+              "notifications",
+              "user_activities",
+              "bookmarks",
+              nil
+            ] do
+          params =
+            PaginationHelpers.build_feed_params(%{"limit" => "5"}, %{"feed_name" => feed_name})
+
           assert params["filter"]["time_limit"] == 0
         end
       end
@@ -36,7 +45,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
       test "honors explicit time filters" do
         for days <- [0, 2, 30] do
-          params = PaginationHelpers.build_feed_params(%{"time_limit" => days}, %{"feed_name" => "my"})
+          params =
+            PaginationHelpers.build_feed_params(%{"time_limit" => days}, %{"feed_name" => "my"})
+
           assert params["filter"]["time_limit"] == days
         end
       end
