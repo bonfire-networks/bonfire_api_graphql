@@ -40,11 +40,11 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     # structs are not read; warn only for an account struct (a post can arrive as a subject)
     def from_user(user, opts) when is_struct(user) do
       if Bonfire.API.MastoCompat.Accounts.account?(user),
-         do:
-           warn(
-             Types.object_type(user),
-             "Mappers.Account reads GraphQL output, not structs: select the account in GraphQL"
-           )
+        do:
+          warn(
+            Types.object_type(user),
+            "Mappers.Account reads GraphQL output, not structs: select the account in GraphQL"
+          )
 
       Keyword.get(opts, :fallback_return, nil)
     end
