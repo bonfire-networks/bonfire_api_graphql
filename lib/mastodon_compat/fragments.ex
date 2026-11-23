@@ -113,9 +113,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     @doc "Poll fields for `Mappers.Poll.from_question/2`: the poll endpoint selects them, and the status queries inside `... on Poll` so a poll status needs no second query."
     def poll_fields, do: @poll_fields
 
-    @doc "Whether the reader liked, boosted or bookmarked it. Inside `... on Post`/`... on Poll` they describe the object; on an activity, that activity (on a boost or a like the two differ)."
+    @doc "Whether the reader liked, boosted, bookmarked or pinned it. Inside `... on Post`/`... on Poll` they describe the object; on an activity, that activity (on a boost or a like the two differ)."
     def object_interactions,
-      do: "liked_by_me: likedByMe boosted_by_me: boostedByMe bookmarked_by_me: bookmarkedByMe"
+      do:
+        "liked_by_me: likedByMe boosted_by_me: boostedByMe bookmarked_by_me: bookmarkedByMe pinned_by_me: pinnedByMe"
 
     # ===========================================
     # Status / Post fragments

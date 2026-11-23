@@ -38,9 +38,11 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       :liked_by_me,
       :boosted_by_me,
       :bookmarked_by_me,
+      :pinned_by_me,
       "liked_by_me",
       "boosted_by_me",
-      "bookmarked_by_me"
+      "bookmarked_by_me",
+      "pinned_by_me"
     ]
 
     @doc """
@@ -181,6 +183,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           present(get_field(object, :boosted_by_me), get_field(activity, :boosted_by_me)),
         bookmarked_by_me:
           present(get_field(object, :bookmarked_by_me), get_field(activity, :bookmarked_by_me)),
+        pinned_by_me: present(get_field(object, :pinned_by_me), get_field(activity, :pinned_by_me)),
         like_count: get_field(activity, :like_count),
         boost_count: get_field(activity, :boost_count),
         replies_count: get_field(activity, :replies_count),
@@ -257,6 +260,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           present(get_field(post, :boosted_by_me), get_field(activity, :boosted_by_me)),
         bookmarked_by_me:
           present(get_field(post, :bookmarked_by_me), get_field(activity, :bookmarked_by_me)),
+        pinned_by_me: present(get_field(post, :pinned_by_me), get_field(activity, :pinned_by_me)),
         like_count: get_field(activity, :like_count),
         boost_count: get_field(activity, :boost_count),
         replies_count: get_field(activity, :replies_count),
@@ -385,12 +389,14 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       favourited = context[:liked_by_me]
       reblogged = context[:boosted_by_me]
       bookmarked = context[:bookmarked_by_me]
+      pinned = context[:pinned_by_me]
 
       # selected through GraphQL (`Fragments.object_interactions/0`); a flag not selected is false
       status
       |> Map.put("favourited", favourited == true)
       |> Map.put("reblogged", reblogged == true)
       |> Map.put("bookmarked", bookmarked == true)
+      |> Map.put("pinned", pinned == true)
     end
 
     # The original post a boost wraps: the boost activity's `object`, with its creator (`creator` in the selection). One that comes without a creator gives no reblog.
