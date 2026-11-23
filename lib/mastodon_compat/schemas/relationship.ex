@@ -22,6 +22,14 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     @doc "Returns the default values for a Relationship"
     def defaults, do: @defaults
 
+    @doc "Mastodon's `blocking` and `muting` from Bonfire's ghost and silence: a block is both (a full block also silences), a mute is silence alone; a ghost alone is neither, as `/blocks` and `/mutes` list them. The one rule for every builder of a Relationship."
+    def restrictions(ghosting?, silencing?) do
+      blocking = ghosting? == true and silencing? == true
+      muting = silencing? == true and ghosting? != true
+
+      %{"blocking" => blocking, "muting" => muting, "muting_notifications" => muting}
+    end
+
     @doc "Creates a new Relationship by merging attrs with defaults"
     def new(attrs) when is_map(attrs) do
       @defaults

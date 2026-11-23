@@ -12,48 +12,32 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     @moduletag :masto_api
 
-    doctest PaginationHelpers, only: [build_timeline_params: 3], import: true
 
-    describe "timeline history window" do
-      test "bounds timelines even when the native feed window is one year" do
-        Process.put([:bonfire_ui_social, Bonfire.UI.Social.FeedLive, :time_limit], 365)
-
-        for feed_name <- ["my", "local", "explore", "custom", nil] do
-          params =
-            PaginationHelpers.build_timeline_params(%{"limit" => "5"}, %{"feed_name" => feed_name})
-
-          assert params["filter"]["time_limit"] == 7
-          assert params[:first] == 5
+    # Mastodon timelines carry no window; the 7-day one (commit 2692c30) stopped scrolling at posts a week old (masto-live-fixes pagination bug 1, decision 1.1), so timelines use build_feed_params/3 like the other lists
+    describe "no history window" do
+      test "timelines, archives and notifications carry none" do
+        for feed_name <- ["my", "local", "explore", "notifications", "user_activities", "bookmarks", nil] do
+          params = PaginationHelpers.build_feed_params(%{"limit" => "5"}, %{"feed_name" => feed_name})
+          assert params["filter"]["time_limit"] == 0
         end
       end
 
-      test "keeps the window on subsequent pages and preserves timeline filters" do
+      test "keeps timeline filters on subsequent pages" do
         params =
-          PaginationHelpers.build_timeline_params(%{"max_id" => "01KQF70CN3DVTXVN6VWWPZ1B1J"}, %{
+          PaginationHelpers.build_feed_params(%{"max_id" => "01KQF70CN3DVTXVN6VWWPZ1B1J"}, %{
             "feed_name" => "local",
             "tags" => ["bonfire"]
           })
 
-        assert params["filter"]["time_limit"] == 7
+        assert params["filter"]["time_limit"] == 0
         assert params["filter"]["tags"] == ["bonfire"]
         assert params[:after]
       end
 
-      test "honors explicit time filters, including unlimited history" do
+      test "honors explicit time filters" do
         for days <- [0, 2, 30] do
-          params =
-            PaginationHelpers.build_timeline_params(%{"time_limit" => days}, %{
-              "feed_name" => "my"
-            })
-
+          params = PaginationHelpers.build_feed_params(%{"time_limit" => days}, %{"feed_name" => "my"})
           assert params["filter"]["time_limit"] == days
-        end
-      end
-
-      test "does not restrict archive and notification callers" do
-        for feed_name <- ["notifications", "user_activities", "bookmarks", nil] do
-          params = PaginationHelpers.build_feed_params(%{}, %{"feed_name" => feed_name})
-          assert params["filter"]["time_limit"] == 0
         end
       end
     end

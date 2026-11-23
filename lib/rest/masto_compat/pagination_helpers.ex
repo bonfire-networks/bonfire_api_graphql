@@ -282,19 +282,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     # ==========================================
 
     @doc """
-    Build timeline parameters with a seven-day default independent of the instance's native feed window. Explicit time filters still take precedence; archive endpoints use `build_feed_params/3` instead.
-
-    ## Examples
-
-        iex> build_timeline_params(%{"limit" => "5"}, %{"feed_name" => "my"})
-        %{:first => 5, "filter" => %{"feed_name" => "my", "time_limit" => 7}}
-    """
-    def build_timeline_params(params, filters, opts \\ []) do
-      filters = Map.put_new(filters, "time_limit", 7)
-      build_feed_params(params, filters, opts)
-    end
-
-    @doc """
     Build feed parameters from Mastodon-style params.
 
     Converts Mastodon timeline parameters to Bonfire GraphQL format:
@@ -322,6 +309,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       :since_id
     ]
 
+    @server_scoped_filters ~w(feed_name feed_ids subject_circles activity_types subjects creators objects)
+
     def build_feed_params(params, filters, opts \\ []) do
       default_limit = Keyword.get(opts, :default_limit, 20)
       max_limit = Keyword.get(opts, :max_limit, 40)
@@ -337,8 +326,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
       # Build filter without pagination cursors (cursors are top-level GraphQL args, not filters)
       filters_without_pagination =
-        filters
-        |> Map.merge(extra_filters)
+        # what a timeline reads is the server's to say: a client can't set its feed, circles or activity types from the query string, and the server's filters win over the rest
+        extra_filters
+        |> Map.drop(@server_scoped_filters)
+        |> Map.merge(filters)
         # Translate Mastodon-specific params (e.g. only_media) into Bonfire feed filters
         |> apply_masto_filter_translations(extra_filters)
         |> Map.take(valid_filter_keys)
