@@ -501,7 +501,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
       # Convert markdown to HTML if needed (matches GraphQL resolver behavior)
       # When loaded via GraphQL, html_body goes through a resolver that calls maybe_markdown_to_html
-      # When loaded via Ecto directly (e.g., InteractionHandler for boost/like), we get raw DB value
+      # When loaded via Ecto directly, we get the raw DB value
       html =
         if is_binary(raw_content) and raw_content != "" do
           Bonfire.Common.Text.maybe_markdown_to_html(raw_content, sanitize: true)
