@@ -43,12 +43,12 @@ defmodule Bonfire.API.MastoCompat.Test.MastoClients do
       # https://github.com/Dimillian/IceCubesApp/tree/main/Packages/Models/Sources/Models
       register: %{encoding: :json, redirect_uri: "icecubesapp://"},
       token: :json,
-      preflight: [{"/api/v2/instance", "InstanceV2"}],
+      preflight: [{"/api/v2/instance", "Instance"}],
       non_null: %{
         "Status" =>
           ~w(id content account created_at media_attachments mentions replies_count reblogs_count favourites_count emojis visibility spoiler_text sensitive tags),
         "Account" => ~w(avatar header fields locked emojis bot),
-        "InstanceV2" => ~w(title domain version thumbnail registrations.enabled contact.email)
+        "Instance" => ~w(title domain version thumbnail registrations.enabled contact.email)
       },
       urls: %{"Account" => ~w(avatar header)},
       enums: %{"Status" => %{"visibility" => ~w(public unlisted private direct)}}
@@ -72,12 +72,12 @@ defmodule Bonfire.API.MastoCompat.Test.MastoClients do
       # https://github.com/mastodon/mastodon-android/tree/master/mastodon/src/main/java/org/joinmastodon/android/model
       register: %{encoding: :json, redirect_uri: "org.joinmastodon.android-auth://callback"},
       token: :json,
-      preflight: [{"/api/v2/instance", "InstanceV2"}],
+      preflight: [{"/api/v2/instance", "Instance"}],
       non_null: %{
         "Status" =>
           ~w(id uri created_at account content visibility spoiler_text media_attachments mentions tags emojis),
         "Account" => ~w(id username acct url display_name note avatar header created_at),
-        "InstanceV2" => ~w(title description version languages domain registrations),
+        "Instance" => ~w(title description version languages domain registrations),
         "Notification" => ~w(id created_at)
       },
       enums: %{"Status" => %{"visibility" => ~w(public unlisted private direct)}}
@@ -88,7 +88,7 @@ defmodule Bonfire.API.MastoCompat.Test.MastoClients do
       register: %{encoding: :form, redirect_uri: "com.tapbots.Ivory.19300:/request_token"},
       token: :form,
       preflight: [],
-      non_null: %{"InstanceV1" => ~w(urls.streaming_api)}
+      non_null: %{"V1Instance" => ~w(urls.streaming_api)}
     }
   ]
 
