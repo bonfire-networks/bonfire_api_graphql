@@ -193,15 +193,12 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp parse_float(num) when is_number(num), do: num
     defp parse_float(_), do: 0.0
 
+    # the alt text, or nil: Mastodon sends `null` for none, and apps show an ALT badge for any string
     defp extract_description(media) do
-      case get_fields(media, [:description, :label]) do
-        nil ->
-          metadata = get_field(media, :metadata) || %{}
-          metadata["description"] || metadata["label"] || ""
+      metadata = get_field(media, :metadata) || %{}
 
-        value ->
-          value
-      end
+      [get_fields(media, [:description, :label]), metadata["description"], metadata["label"]]
+      |> Enum.find(&(is_binary(&1) and String.trim(&1) != ""))
     end
 
     defp extract_blurhash(media) do

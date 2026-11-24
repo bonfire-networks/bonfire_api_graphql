@@ -14,7 +14,7 @@ defmodule Bonfire.API.MastoApi.StubEndpointsTest do
     account = Bonfire.Me.Fake.fake_account!()
     user = Bonfire.Me.Fake.fake_user!(account)
 
-    {:ok, api_conn: masto_api_conn(conn, user: user, account: account)}
+    {:ok, api_conn: masto_api_conn(conn, user: user, account: account), user: user}
   end
 
   test "GET /api/v2/filters answers no filters", %{api_conn: api_conn} do
@@ -23,5 +23,22 @@ defmodule Bonfire.API.MastoApi.StubEndpointsTest do
 
   test "GET /api/v1/announcements answers no announcements", %{api_conn: api_conn} do
     assert api_conn |> get("/api/v1/announcements") |> json_response(200) == []
+  end
+
+  test "GET /api/v1/trends answers as /api/v1/trends/tags", %{api_conn: api_conn} do
+    assert api_conn |> get("/api/v1/trends") |> json_response(200) ==
+             api_conn |> get("/api/v1/trends/tags") |> json_response(200)
+  end
+
+  test "GET /api/v1/accounts/:id/endorsements answers no featured accounts", %{
+    api_conn: api_conn,
+    user: user
+  } do
+    assert api_conn |> get("/api/v1/accounts/#{user.id}/endorsements") |> json_response(200) ==
+             []
+  end
+
+  test "GET /api/v1/endorsements answers no featured accounts", %{api_conn: api_conn} do
+    assert api_conn |> get("/api/v1/endorsements") |> json_response(200) == []
   end
 end

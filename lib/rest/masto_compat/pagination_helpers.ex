@@ -349,11 +349,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     # Maps Mastodon timeline params that don't map 1:1 to a Bonfire feed filter.
-    # `only_media=true` → `media_types: ["*"]`, which the feed query turns into a
-    # "has any media attachment" filter (see `Bonfire.Files.FeedFilters.maybe_filter/3`).
+    # `only_media=true` → media that is not a link preview (`Bonfire.Files.FeedFilters`), since clients get those as a `card`
     defp apply_masto_filter_translations(filters, source_params) do
       if masto_truthy?(source_params["only_media"]) do
-        Map.put(filters, "media_types", ["*"])
+        Map.put(filters, "media_types", ["attachment"])
       else
         filters
       end

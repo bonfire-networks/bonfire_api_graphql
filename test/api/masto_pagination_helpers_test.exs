@@ -72,13 +72,13 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     describe "build_feed_params/2 only_media translation" do
-      test "only_media=true adds a has-media filter (media_types: [\"*\"])" do
+      test "only_media=true adds a has-attachment filter (media_types: [\"attachment\"])" do
         params =
           PaginationHelpers.build_feed_params(%{"only_media" => "true"}, %{
             "feed_name" => "local"
           })
 
-        assert params["filter"]["media_types"] == ["*"]
+        assert params["filter"]["media_types"] == ["attachment"]
         assert params["filter"]["feed_name"] == "local"
       end
 
@@ -86,7 +86,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         params =
           PaginationHelpers.build_feed_params(%{"only_media" => true}, %{"feed_name" => "local"})
 
-        assert params["filter"]["media_types"] == ["*"]
+        assert params["filter"]["media_types"] == ["attachment"]
       end
 
       test "only_media=false / absent does not add a media filter" do

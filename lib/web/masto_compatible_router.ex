@@ -54,6 +54,8 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         get "/trends/links", Bonfire.Social.Web.MastoTrendsController, :links
         get "/trends/statuses", Bonfire.Social.Web.MastoTrendsController, :statuses
         get "/trends/tags", Bonfire.Social.Web.MastoTrendsController, :tags
+        # Deprecated alias of /trends/tags; Mastodon iOS asks it first
+        get "/trends", Bonfire.Social.Web.MastoTrendsController, :tags
       end
 
       # Public reads: no token needed, a signed-in reader is still loaded; Mastodon serves these to guests (masto-live-fixes step 1, decisions 1, 2). Before the authenticated scope below, whose `/timelines/:feed` would otherwise catch `/timelines/public`
@@ -119,6 +121,13 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
         # Stubs for features Bonfire does not have yet: Phanpy and Elk call them at start (masto-live-fixes decision 11)
         get "/announcements", Bonfire.API.MastoCompatible.InstanceController, :announcements
 
+        # Featured accounts, which Bonfire doesn't have; Mastodon iOS asks on every profile
+        get "/endorsements", Bonfire.API.MastoCompatible.InstanceController, :endorsements
+
+        get "/accounts/:id/endorsements",
+            Bonfire.API.MastoCompatible.InstanceController,
+            :endorsements
+
         # v1 suggestions: plain accounts, the shape Ice Cubes reads (masto-live-fixes step 3)
         get "/suggestions", Bonfire.Me.Web.MastoAccountController, :suggestions_v1
 
@@ -176,6 +185,9 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
             :verify_credentials
 
         get "/accounts/:id", Bonfire.Me.Web.MastoAccountController, :show
+
+        # Several accounts by `id[]`
+        get "/accounts", Bonfire.Me.Web.MastoAccountController, :index
 
         get "/preferences",
             Bonfire.Me.Web.MastoAccountController,
