@@ -183,7 +183,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
           present(get_field(object, :boosted_by_me), get_field(activity, :boosted_by_me)),
         bookmarked_by_me:
           present(get_field(object, :bookmarked_by_me), get_field(activity, :bookmarked_by_me)),
-        pinned_by_me: present(get_field(object, :pinned_by_me), get_field(activity, :pinned_by_me)),
+        pinned_by_me:
+          present(get_field(object, :pinned_by_me), get_field(activity, :pinned_by_me)),
         like_count: get_field(activity, :like_count),
         boost_count: get_field(activity, :boost_count),
         replies_count: get_field(activity, :replies_count),

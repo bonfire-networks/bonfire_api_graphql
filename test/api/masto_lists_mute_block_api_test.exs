@@ -130,7 +130,10 @@ if Application.compile_env(:bonfire_boundaries, :modularity) != :disabled do
         refute muted.id in account_ids(conn, "/api/v1/blocks")
       end
 
-      test "relationships of a blocked account: blocking true, muting false", %{conn: conn, user: user} do
+      test "relationships of a blocked account: blocking true, muting false", %{
+        conn: conn,
+        user: user
+      } do
         blocked = restrict!(user, :block)
 
         assert [relationship] =

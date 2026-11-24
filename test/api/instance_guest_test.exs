@@ -71,7 +71,10 @@ defmodule Bonfire.API.MastoApi.InstanceGuestTest do
         Bonfire.Federate.ActivityPub.Instances.get_or_create("https://#{host}/users/someone")
 
       # as instance_ghost_feeds_instance_wide_test.exs blocks an instance
-      Bonfire.Boundaries.Blocks.block(peer, type, scope: :instance_wide, skip_boundary_check: true)
+      Bonfire.Boundaries.Blocks.block(peer, type,
+        scope: :instance_wide,
+        skip_boundary_check: true
+      )
     end
 
     peers = get_json(conn, "/api/v1/instance/peers")

@@ -91,6 +91,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         assert account["display_name"] == "Alice"
         assert account["note"] =~ "Hello"
         assert account["created_at"] == "2026-11-01T10:00:00Z"
+
         # the date of the newest post, from the input, not the creation date (masto-live-fixes step 4)
         assert account["last_status_at"] == "2026-11-18"
 
