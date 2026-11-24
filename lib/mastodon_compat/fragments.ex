@@ -10,18 +10,14 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
         alias Bonfire.API.MastoCompat.Fragments
 
-        @user_profile Fragments.user_profile()
-        @post_content Fragments.post_content()
+        @account_fields Fragments.account_fields()
 
     ## Available Fragments
 
-    - `user_profile/0` - Account/profile fields (`... on User`)
     - `actor_fields/0` - Actor (subject/creator) selection covering User + Category (groups)
     - `poll_fields/0` - Poll fields (`... on Poll`)
     - `object_interactions/0` - The reader's like/boost/bookmark of an object or activity
     - `status_post_content/0`, `status_object/0` - A status's content and its object (post or poll)
-    - `post_content/0` - Status content fields
-    - `media/0` - Media fields for status queries
     """
 
     @doc "Thread linkage and parent author for Mastodon status responses."
@@ -60,9 +56,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         }
       }
     """
-
-    @doc "GraphQL fragment for user/account profile data"
-    def user_profile, do: @user_profile
 
     @account_fields @user_profile <>
                       """
@@ -117,37 +110,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def object_interactions,
       do:
         "liked_by_me: likedByMe boosted_by_me: boostedByMe bookmarked_by_me: bookmarkedByMe pinned_by_me: pinnedByMe"
-
-    # ===========================================
-    # Status / Post fragments
-    # ===========================================
-
-    @post_content """
-      name
-      summary
-      content: html_body
-    """
-
-    @doc "GraphQL fragment for post/status content"
-    def post_content, do: @post_content
-
-    # ===========================================
-    # Media fragments
-    # ===========================================
-
-    @media """
-      id
-      url
-      preview_url: thumbnail_url
-      path
-      media_type
-      label
-      description
-      size
-    """
-
-    @doc "GraphQL fragment for media fields (used in status queries)"
-    def media, do: @media
 
     @doc "A status's media attachments, aliased to the keys `Mappers.MediaAttachment` reads."
     def status_media do

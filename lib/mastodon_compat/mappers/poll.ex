@@ -42,14 +42,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       })
     end
 
-    @doc "Recognises native and GraphQL poll objects for status enrichment."
-    def is_poll?(object),
-      do:
-        get_field(object, :__struct__) == Bonfire.Poll.Question or
-          get_field(object, :__typename) == "Poll"
-
-    @doc "Whether the GraphQL poll's closing time has been reached."
-    def poll_expired?(question) do
+    # Whether the GraphQL poll's closing time has been reached.
+    defp poll_expired?(question) do
       case get_field(question, :voting_close_at) do
         %DateTime{} = date ->
           DateTime.compare(DateTime.utc_now(), date) != :lt

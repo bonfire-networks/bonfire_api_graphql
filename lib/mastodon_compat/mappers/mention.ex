@@ -15,9 +15,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     ## Usage
 
-        # Transform a single tag to mention
-        Mappers.Mention.from_tag(tag)
-
         # Transform a list of tags to mentions (filters out non-mentions)
         Mappers.Mention.from_tags(tags, current_user: user)
     """
@@ -76,22 +73,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     def from_tags(_, _opts), do: []
 
-    @doc """
-    Transform a single Bonfire tag (with character) to a Mastodon Mention.
+    # a tag as a Mastodon Mention; nil when it is not a user mention or lacks data
+    defp from_tag(nil), do: nil
 
-    Returns nil if the tag doesn't represent a user mention or is missing required data.
-
-    ## Examples
-
-        iex> from_tag(tag_with_character)
-        %{"id" => "123", "username" => "alice", "acct" => "alice", "url" => "https://..."}
-
-        iex> from_tag(hashtag)
-        nil
-    """
-    def from_tag(nil), do: nil
-
-    def from_tag(tag) when is_map(tag) do
+    defp from_tag(tag) when is_map(tag) do
       # Extract character data from the tag
       # Tags can have character data in different places depending on how they were loaded
       character = extract_character(tag)
@@ -103,7 +88,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       end
     end
 
-    def from_tag(_), do: nil
+    defp from_tag(_), do: nil
 
     # Private functions
 

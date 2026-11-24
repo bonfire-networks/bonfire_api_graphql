@@ -118,33 +118,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def to_string_safe(value), do: to_string(value)
 
     @doc """
-    Formats a datetime to ISO8601 format as expected by Mastodon API.
-
-    Handles various datetime types (DateTime, NaiveDateTime, Date) and
-    returns nil for invalid inputs.
-
-    ## Examples
-
-        iex> format_datetime(~U[2024-01-15 10:30:00Z])
-        "2024-01-15T10:30:00.000Z"
-
-        iex> format_datetime(nil)
-        nil
-    """
-    def format_datetime(nil), do: nil
-    def format_datetime(%DateTime{} = dt), do: DateTime.to_iso8601(dt)
-    def format_datetime(%NaiveDateTime{} = dt), do: NaiveDateTime.to_iso8601(dt) <> "Z"
-
-    def format_datetime(value) when is_binary(value) do
-      case DateTime.from_iso8601(value) do
-        {:ok, dt, _} -> DateTime.to_iso8601(dt)
-        _ -> value
-      end
-    end
-
-    def format_datetime(_), do: nil
-
-    @doc """
     Recursively converts structs to JSON-safe values.
 
     Handles DateTime, NaiveDateTime, Date, and Ecto NotLoaded associations.
@@ -319,40 +292,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         iex> normalize_hashtag(nil)
         ""
     """
-    @doc "Resolve a media object to its URL, handling structs, maps, and plain strings."
-    def resolve_media_url(nil), do: nil
-    def resolve_media_url(%Ecto.Association.NotLoaded{}), do: nil
-    def resolve_media_url(url) when is_binary(url), do: url
-
-    def resolve_media_url(media) when is_struct(media) do
-      case Map.get(media, :path) || Map.get(media, :url) do
-        url when is_binary(url) -> url
-        _ -> build_url_from_file(media)
-      end
-    end
-
-    def resolve_media_url(media) when is_map(media) do
-      case Map.get(media, :path) || Map.get(media, :url) ||
-             Map.get(media, "path") || Map.get(media, "url") do
-        url when is_binary(url) -> url
-        _ -> build_url_from_file(media)
-      end
-    end
-
-    def resolve_media_url(_), do: nil
-
-    defp build_url_from_file(media) do
-      file = if is_map(media), do: Map.get(media, :file)
-
-      case file do
-        %{file_name: name} when is_binary(name) ->
-          Bonfire.Files.full_url(nil, media)
-
-        _ ->
-          nil
-      end
-    end
-
     def normalize_hashtag(hashtag) when is_binary(hashtag) do
       hashtag
       |> String.trim()

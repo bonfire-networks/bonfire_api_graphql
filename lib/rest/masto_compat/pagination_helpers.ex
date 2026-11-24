@@ -220,24 +220,22 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     # Cursor Encoding Helpers
     # ==========================================
 
-    @doc """
-    Encode a cursor for use in Link headers.
+    # Encode a cursor for use in Link headers.
+    #
+    # Handles:
+    # - nil cursors (returns nil)
+    # - Already-encoded base64 cursors (pass through)
+    # - Plain IDs (encode with cursor field format)
+    # - Map cursors (encode to base64)
+    defp encode_cursor_for_link_header(nil, _cursor_field), do: nil
 
-    Handles:
-    - nil cursors (returns nil)
-    - Already-encoded base64 cursors (pass through)
-    - Plain IDs (encode with cursor field format)
-    - Map cursors (encode to base64)
-    """
-    def encode_cursor_for_link_header(nil, _cursor_field), do: nil
-
-    def encode_cursor_for_link_header(cursor, _cursor_field) when is_map(cursor) do
+    defp encode_cursor_for_link_header(cursor, _cursor_field) when is_map(cursor) do
       cursor
       |> :erlang.term_to_binary()
       |> Base.url_encode64()
     end
 
-    def encode_cursor_for_link_header(cursor, cursor_field) when is_binary(cursor) do
+    defp encode_cursor_for_link_header(cursor, cursor_field) when is_binary(cursor) do
       # Check if already base64 encoded (Paginator format starts with "g3")
       if String.match?(cursor, ~r/^g3[A-Za-z0-9_-]+=*$/) do
         cursor
@@ -365,16 +363,14 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp masto_truthy?(v) when is_binary(v), do: v in ["true", "1"]
     defp masto_truthy?(_), do: false
 
-    @doc """
-    Extract pagination cursors from Mastodon-style params.
-
-    Maps Mastodon pagination IDs to Relay cursor params:
-    - max_id → after (items AFTER cursor in descending list = older/lower IDs)
-    - since_id/min_id → before (items BEFORE cursor in descending list = newer/higher IDs)
-
-    Cursors are encoded as base64 for GraphQL compatibility.
-    """
-    def extract_pagination_cursors(params) do
+    # Extract pagination cursors from Mastodon-style params.
+    #
+    # Maps Mastodon pagination IDs to Relay cursor params:
+    # - max_id → after (items AFTER cursor in descending list = older/lower IDs)
+    # - since_id/min_id → before (items BEFORE cursor in descending list = newer/higher IDs)
+    #
+    # Cursors are encoded as base64 for GraphQL compatibility.
+    defp extract_pagination_cursors(params) do
       params
       |> Map.take(["max_id", "since_id", "min_id"])
       |> Enum.reduce(%{}, fn
@@ -410,16 +406,14 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       end)
     end
 
-    @doc """
-    Encode a cursor for GraphQL query parameters.
-
-    Handles both already-encoded cursors and plain IDs:
-    - Already base64 encoded (from Link headers) → validate and pass through
-    - Plain ID (ULID) → create proper cursor map and encode
-
-    Returns `{:ok, cursor}` or `{:error, reason}`.
-    """
-    def encode_cursor_for_graphql(id) when is_binary(id) do
+    # Encode a cursor for GraphQL query parameters.
+    #
+    # Handles both already-encoded cursors and plain IDs:
+    # - Already base64 encoded (from Link headers) → validate and pass through
+    # - Plain ID (ULID) → create proper cursor map and encode
+    #
+    # Returns `{:ok, cursor}` or `{:error, reason}`.
+    defp encode_cursor_for_graphql(id) when is_binary(id) do
       # URL-decode first in case cursor came through Link header (%3D -> =)
       id = URI.decode(id)
 
@@ -435,12 +429,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       end
     end
 
-    def encode_cursor_for_graphql(_), do: {:error, :invalid_cursor_format}
+    defp encode_cursor_for_graphql(_), do: {:error, :invalid_cursor_format}
 
-    @doc """
-    Validate an already-encoded cursor.
-    """
-    def validate_encoded_cursor(cursor) do
+    # Validate an already-encoded cursor.
+    defp validate_encoded_cursor(cursor) do
       case Base.url_decode64(cursor) do
         {:ok, binary} ->
           # Try to decode the Erlang term to ensure it's valid
@@ -456,13 +448,11 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       end
     end
 
-    @doc """
-    Encode a plain ULID as a cursor.
-
-    Creates a cursor map matching Bonfire's cursor_fields format:
-    `%{id: id}`
-    """
-    def encode_plain_id_cursor(id) do
+    # Encode a plain ULID as a cursor.
+    #
+    # Creates a cursor map matching Bonfire's cursor_fields format:
+    # `%{id: id}`
+    defp encode_plain_id_cursor(id) do
       try do
         cursor =
           %{id: id}
@@ -478,15 +468,13 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       end
     end
 
-    @doc """
-    Extract limit and determine pagination direction (first vs last).
-
-    Relay pagination: "first" with "after", "last" with "before"
-    With descending sort:
-    - "after" + "first" = older posts (max_id)
-    - "before" + "last" = newer posts (min_id/since_id)
-    """
-    def extract_limit_with_direction(params, cursors, opts \\ []) do
+    # Extract limit and determine pagination direction (first vs last).
+    #
+    # Relay pagination: "first" with "after", "last" with "before"
+    # With descending sort:
+    # - "after" + "first" = older posts (max_id)
+    # - "before" + "last" = newer posts (min_id/since_id)
+    defp extract_limit_with_direction(params, cursors, opts \\ []) do
       default = Keyword.get(opts, :default, 20)
       max = Keyword.get(opts, :max, 40)
 
@@ -507,12 +495,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       end
     end
 
-    @doc """
-    Convert pagination param keys from strings to atoms.
-
-    Pagination module expects atom keys for :after, :before, :first, :last.
-    """
-    def atomize_pagination_keys(params) do
+    # Convert pagination param keys from strings to atoms.
+    #
+    # Pagination module expects atom keys for :after, :before, :first, :last.
+    defp atomize_pagination_keys(params) do
       params
       |> Enum.map(fn
         {"after", val} -> {:after, val}

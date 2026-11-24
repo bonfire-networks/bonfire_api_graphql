@@ -6,8 +6,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     See: https://docs.joinmastodon.org/entities/Poll/
     """
 
-    @required_fields ["id", "options"]
-
     @defaults %{
       "id" => nil,
       "expires_at" => nil,
@@ -28,15 +26,6 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     def new(attrs) when is_map(attrs) do
       @defaults
       |> Map.merge(attrs)
-    end
-
-    @doc "Validates that required fields are present"
-    def validate(poll) do
-      missing = Enum.filter(@required_fields, &is_nil(poll[&1]))
-
-      if Enum.empty?(missing),
-        do: {:ok, poll},
-        else: {:error, {:missing_fields, missing}}
     end
   end
 end

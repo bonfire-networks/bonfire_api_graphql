@@ -22,9 +22,9 @@ defmodule Bonfire.API.GraphQL.Plugs.RequireMastoScope do
     end
   end
 
-  @doc "Scopes of which any one allows the write request to the given path segments (e.g. `[\"api\", \"v1\", \"statuses\", id, \"favourite\"]`)."
-  def required_scopes([_api, _version | path]), do: specific_scopes(path) ++ ["write"]
-  def required_scopes(_), do: ["write"]
+  # scopes of which any one allows the write request to the given path segments (e.g. `["api", "v1", "statuses", id, "favourite"]`)
+  defp required_scopes([_api, _version | path]), do: specific_scopes(path) ++ ["write"]
+  defp required_scopes(_), do: ["write"]
 
   defp specific_scopes(["accounts", _id, action]) when action in ["follow", "unfollow"],
     do: ["write:follows", "follow"]
