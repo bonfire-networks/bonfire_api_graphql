@@ -434,9 +434,10 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     defp validate_encoded_cursor(cursor) do
       case Base.url_decode64(cursor) do
         {:ok, binary} ->
-          # Try to decode the Erlang term to ensure it's valid
+          # Try to decode the Erlang term to ensure it's valid, refusing executable terms (funs) as the paginator does when it decodes the same cursor
           try do
-            :erlang.binary_to_term(binary, [:safe])
+            # :erlang.binary_to_term(binary, [:safe])
+            Plug.Crypto.non_executable_binary_to_term(binary, [:safe])
             {:ok, cursor}
           rescue
             ArgumentError -> {:error, :invalid_erlang_term}
