@@ -48,6 +48,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
 
     defp categorize_media_type(mime) when is_binary(mime) do
       cond do
+        Bonfire.Files.Media.embed_type?(mime) -> "unknown"
         String.starts_with?(mime, "image/") -> "image"
         String.starts_with?(mime, "video/") -> "video"
         String.starts_with?(mime, "audio/") -> "audio"

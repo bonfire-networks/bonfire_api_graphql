@@ -46,6 +46,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       metadata = Helpers.get_field(media, :metadata) || %{}
 
       type in ["link", "website", "article", "research", "book", "profile", "url", "URL"] or
+        Media.embed_type?(type) or
         metadata["content_type"] in ["text/html", "application/xhtml+xml"]
     end
 
