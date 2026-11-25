@@ -38,6 +38,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         iex> Bonfire.API.MastoCompat.Mappers.PreviewCard.link?(%{media_type: "website"})
         true
 
+        iex> Bonfire.API.MastoCompat.Mappers.PreviewCard.link?(%{media_type: "event"})
+        true
+
         iex> Bonfire.API.MastoCompat.Mappers.PreviewCard.link?(%{media_type: "image/png"})
         false
     """
@@ -45,7 +48,7 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       type = Helpers.get_field(media, :media_type)
       metadata = Helpers.get_field(media, :metadata) || %{}
 
-      type in ["link", "website", "article", "research", "book", "profile", "url", "URL"] or
+      Bonfire.Files.link_preview_type?(type) or
         Media.embed_type?(type) or
         metadata["content_type"] in ["text/html", "application/xhtml+xml"]
     end

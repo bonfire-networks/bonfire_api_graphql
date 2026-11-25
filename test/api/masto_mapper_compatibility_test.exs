@@ -12,6 +12,9 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
       only: [type_atom: 1, type_name: 1],
       import: true
 
+    # a link preview of any kind (an event's or a book's page too) is a card, not an attachment
+    doctest Bonfire.API.MastoCompat.Mappers.PreviewCard, only: [link?: 1]
+
     test "remote handles separate username from acct without changing local handles" do
       user = Bonfire.Me.Fake.fake_user!()
 
