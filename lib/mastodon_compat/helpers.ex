@@ -307,5 +307,20 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
     end
 
     def normalize_hashtag(_), do: ""
+
+    @doc """
+    The user's default boundary preset as a Mastodon visibility, for `/api/v1/preferences`, `source.privacy` and a ScheduledStatus: apps post with what these say, so it is never wider than the preset (B49 decision 5, review R1). Mastodon has no `local`, and its `unlisted` and `private` reach remote people, so `local`, `mentions`, `private` and a custom preset are all `direct`.
+    """
+    def default_visibility(current_user) do
+      case Bonfire.Boundaries.Presets.default_boundaries(current_user: current_user) do
+        [{preset, _name} | _] -> preset_visibility(to_string(preset))
+        _ -> "public"
+      end
+    end
+
+    defp preset_visibility("public"), do: "public"
+    defp preset_visibility("unlisted"), do: "unlisted"
+    # `local`, `mentions`, `private` and custom presets (an ACL id)
+    defp preset_visibility(_narrower), do: "direct"
   end
 end

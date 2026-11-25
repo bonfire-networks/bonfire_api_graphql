@@ -232,7 +232,8 @@ if Application.compile_env(:bonfire_api_graphql, :modularity) != :disabled do
         "follow_requests_count" => count_from(user, :follow_requests_count),
         "hide_collections" => false,
         "attribution_domains" => [],
-        "privacy" => "public",
+        # the reader's default visibility, put on the input by the adapter (`default_privacy`), as `follow_requests_count` is
+        "privacy" => Map.get(user, :default_privacy) || "public",
         "sensitive" => false,
         "language" => "",
         "fields" => []
