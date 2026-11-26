@@ -69,6 +69,10 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
             Bonfire.API.MastoCompatible.InstanceController,
             :translation_languages
 
+        get "/instance/extended_description",
+            Bonfire.API.MastoCompatible.InstanceController,
+            :extended_description
+
         get "/custom_emojis", Bonfire.API.MastoCompatible.InstanceController, :custom_emojis
         get "/timelines/public", Bonfire.Social.Web.MastoTimelineController, :public
         get "/timelines/local", Bonfire.Social.Web.MastoTimelineController, :local

@@ -61,4 +61,7 @@ defmodule Bonfire.API.MastoCompatible.InstanceController do
 
   @doc "GET /api/v1/instance/translation_languages: Bonfire has no translation service yet; Mastodon iOS asks at launch and decodes a map of source to target languages, so the empty answer is an object (masto-api-json-404 decision 2)."
   def translation_languages(conn, _params), do: json(conn, %{})
+
+  @doc "GET /api/v1/instance/extended_description: the code of conduct, which Mastodon apps show under \"About this server\" (masto-instance-about decision 4)."
+  def extended_description(conn, _params), do: json(conn, InstanceAdapter.extended_description())
 end
