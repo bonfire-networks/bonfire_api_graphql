@@ -41,4 +41,32 @@ defmodule Bonfire.API.MastoApi.StubEndpointsTest do
   test "GET /api/v1/endorsements answers no featured accounts", %{api_conn: api_conn} do
     assert api_conn |> get("/api/v1/endorsements") |> json_response(200) == []
   end
+
+  # Mastodon iOS asks this at launch and decodes it as `[String: [String]]`, so the empty answer is an object, not a list
+  test "GET /api/v1/instance/translation_languages answers no languages", %{api_conn: api_conn} do
+    assert api_conn
+           |> delete_req_header("accept")
+           |> get("/api/v1/instance/translation_languages")
+           |> json_response(200) == %{}
+  end
+
+  # Mastodon iOS and Ice Cubes send no Accept header, so an unknown path answered the HTML error page, which an app cannot read as an error (bonfire.cafe, 2026-11-26)
+  describe "an unknown /api path with no Accept header" do
+    test "answers a JSON 404", %{api_conn: api_conn} do
+      assert %{"error" => _} =
+               api_conn
+               |> delete_req_header("accept")
+               |> get("/api/v1/no_such_endpoint")
+               |> json_response(404)
+    end
+
+    # Bonfire keeps per-user instance blocks, so an empty-list stub would tell a user who blocked instances that they have none (masto-api-json-404 decision 3)
+    test "covers /api/v1/domain_blocks, which is not stubbed", %{api_conn: api_conn} do
+      assert %{"error" => _} =
+               api_conn
+               |> delete_req_header("accept")
+               |> get("/api/v1/domain_blocks")
+               |> json_response(404)
+    end
+  end
 end

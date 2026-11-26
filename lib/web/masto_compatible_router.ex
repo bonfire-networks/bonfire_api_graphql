@@ -64,6 +64,11 @@ defmodule Bonfire.API.GraphQL.MastoCompatible.Router do
 
         get "/instance", Bonfire.API.MastoCompatible.InstanceController, :show
         get "/instance/peers", Bonfire.API.MastoCompatible.InstanceController, :peers
+
+        get "/instance/translation_languages",
+            Bonfire.API.MastoCompatible.InstanceController,
+            :translation_languages
+
         get "/custom_emojis", Bonfire.API.MastoCompatible.InstanceController, :custom_emojis
         get "/timelines/public", Bonfire.Social.Web.MastoTimelineController, :public
         get "/timelines/local", Bonfire.Social.Web.MastoTimelineController, :local
