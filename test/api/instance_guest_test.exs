@@ -54,7 +54,8 @@ defmodule Bonfire.API.MastoApi.InstanceGuestTest do
 
     refute "image/svg+xml" in accepted
     refute "image/svg+xml" in advertised
-    assert "image/jpeg" in advertised
+    # JPEG is only accepted where a tool can resize it
+    assert "image/jpeg" in advertised == Bonfire.Files.MediaEdit.capabilities().resize
     assert Enum.sort(advertised) == Enum.sort(accepted)
   end
 
