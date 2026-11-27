@@ -40,6 +40,24 @@ defmodule Bonfire.API.MastoApi.InstanceGuestTest do
     end
   end
 
+  # The types the instance refuses (no sanitiser here, so no SVG) must not be advertised
+  test "/api/v2/instance lists the accepted upload types, not the ones dropped at boot", %{
+    conn: conn
+  } do
+    advertised =
+      get_json(conn, "/api/v2/instance")["configuration"]["media_attachments"][
+        "supported_mime_types"
+      ]
+
+    require Bonfire.Common.Config
+    accepted = Bonfire.Common.Config.get_ext(:bonfire_files, :all_allowed_media_types)
+
+    refute "image/svg+xml" in accepted
+    refute "image/svg+xml" in advertised
+    assert "image/jpeg" in advertised
+    assert Enum.sort(advertised) == Enum.sort(accepted)
+  end
+
   test "/api/v1/instance passes the V1Instance client checks", %{conn: conn} do
     conn
     |> get_json("/api/v1/instance")
